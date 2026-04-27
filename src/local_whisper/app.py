@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import signal
 import sys
 import threading
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-from local_whisper import audio, clipboard, command, transcribe
+from local_whisper import audio, clipboard, command, corrections, transcribe
 from local_whisper.hotkey import HotkeyListener
 
 if TYPE_CHECKING:
@@ -25,6 +26,7 @@ class App:
         self._overlay = overlay
         self._stop_event = threading.Event()
         self._recording = False
+        self._corrections: dict[str, str] = corrections.load()
         self._command_stop_event = threading.Event()
         self._command_recording = False
         self._command_selection: str = ""
@@ -37,6 +39,7 @@ class App:
 
     def start(self) -> None:
         """Start the keyboard listener in a daemon thread. Non-blocking."""
+        signal.signal(signal.SIGHUP, lambda _s, _f: self._reload_config())
         self._listener.start()
         print(
             "local-whisper running. Hold Right ⌘ to dictate, Right ⌥ for command mode. Ctrl+C to quit.",
@@ -58,6 +61,11 @@ class App:
         finally:
             self.stop()
             print("\nStopped.", file=sys.stderr)
+
+    def _reload_config(self) -> None:
+        """Reload corrections config without restarting."""
+        self._corrections = corrections.load()
+        print("[local-whisper] Config reloaded.", file=sys.stderr, flush=True)
 
     def _on_key_press(self) -> None:
         """Start recording in a background thread."""
@@ -84,6 +92,7 @@ class App:
             if not text:
                 print("[local-whisper] Empty transcription.", file=sys.stderr)
                 return
+            text = corrections.apply(text, self._corrections)
             clipboard.write_and_paste(text)
         except Exception as exc:  # noqa: BLE001
             print(f"[local-whisper] Error: {exc}", file=sys.stderr)
