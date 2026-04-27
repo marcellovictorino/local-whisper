@@ -17,9 +17,11 @@ if TYPE_CHECKING:
 class App:
     """Orchestrates hotkey → record → transcribe → paste flow.
 
-    Hold Right Command to record. Release to transcribe and paste
-    the result at the active cursor position. Runs as a persistent
-    background listener until interrupted.
+    Hold Right Command to record. Mode is determined automatically at press time:
+    - Text selected → command mode: voice instruction applied to selection via API.
+    - No selection  → dictation mode: transcription pasted at cursor.
+
+    Runs as a persistent background listener until interrupted.
     """
 
     def __init__(self, overlay: RecordingOverlay | None = None) -> None:
@@ -33,8 +35,6 @@ class App:
         self._listener = HotkeyListener(
             on_activate=self._on_key_press,
             on_deactivate=self._on_key_release,
-            on_command_activate=self._on_command_press,
-            on_command_deactivate=self._on_command_release,
         )
 
     def start(self) -> None:
@@ -42,7 +42,7 @@ class App:
         signal.signal(signal.SIGHUP, lambda _s, _f: self._reload_config())
         self._listener.start()
         print(
-            "local-whisper running. Hold Right ⌘ to dictate, Right ⌥ for command mode. Ctrl+C to quit.",
+            "local-whisper running. Hold Right ⌘ to dictate (or apply command to selection). Ctrl+C to quit.",
             file=sys.stderr,
             flush=True,
         )
@@ -68,18 +68,32 @@ class App:
         print("[local-whisper] Config reloaded.", file=sys.stderr, flush=True)
 
     def _on_key_press(self) -> None:
-        """Start recording in a background thread."""
+        """Detect mode from selection, then start recording in a background thread."""
         if self._recording or self._command_recording:
             return  # already recording — debounce
-        self._recording = True
-        self._stop_event.clear()
-        if self._overlay:
-            self._overlay.show()
-        threading.Thread(target=self._record_and_process, daemon=True).start()
+
+        selection = command.get_selection()
+
+        if selection:
+            self._command_selection = selection
+            self._command_recording = True
+            self._command_stop_event.clear()
+            if self._overlay:
+                self._overlay.show_command()
+            threading.Thread(target=self._command_record_and_process, daemon=True).start()
+        else:
+            self._recording = True
+            self._stop_event.clear()
+            if self._overlay:
+                self._overlay.show()
+            threading.Thread(target=self._record_and_process, daemon=True).start()
 
     def _on_key_release(self) -> None:
-        """Signal recording to stop."""
-        self._stop_event.set()
+        """Signal the active recording to stop."""
+        if self._command_recording:
+            self._command_stop_event.set()
+        else:
+            self._stop_event.set()
 
     def _record_and_process(self) -> None:
         """Record until stop_event, then transcribe and paste."""
@@ -101,22 +115,6 @@ class App:
             self._recording = False
             if self._overlay:
                 self._overlay.hide()
-
-    def _on_command_press(self) -> None:
-        """Capture selection and start command recording."""
-        if self._command_recording or self._recording:
-            return
-        # Copy selection while the user's app is still frontmost.
-        self._command_selection = command.copy_selection()
-        self._command_recording = True
-        self._command_stop_event.clear()
-        if self._overlay:
-            self._overlay.show_command()
-        threading.Thread(target=self._command_record_and_process, daemon=True).start()
-
-    def _on_command_release(self) -> None:
-        """Signal command recording to stop."""
-        self._command_stop_event.set()
 
     def _command_record_and_process(self) -> None:
         """Record until stop_event, transcribe, apply voice command via API, paste."""
