@@ -118,9 +118,70 @@ tail -f ~/Library/Logs/local-whisper.log                   # logs
 | 2 | Right ⌘ hold-to-record + clipboard paste | ✅ v0.1 |
 | 3 | Frosted-glass recording indicator overlay | ✅ v0.1 |
 | 4 | launchd auto-start + bash install script | ✅ v0.1 |
-| — | Snippet expansion (spoken keywords → predefined text) | v0.2 |
+| 5 | Snippet expansion (spoken keywords → predefined text) | ✅ v0.2 |
 | — | Personal dictionary (learned corrections) | v0.2 |
 | 7 | Command mode (apply spoken prompt to selected text) | ✅ v0.2 |
+
+## How-To
+
+<details>
+<summary><strong>Snippet expansion</strong> — spoken shorthand → predefined text</summary>
+
+### What it does
+
+After transcription, any spoken keywords matching entries in your snippets config are replaced with their predefined expansions before the text is pasted. Matching is case-insensitive and works anywhere within the transcription — not just as the full text.
+
+**Example:** say _"reach me at my email"_ → pastes _"reach me at you@example.com"_
+
+### Setup
+
+Create the config file (run once):
+
+```bash
+mkdir -p ~/.config/local-whisper && echo '[snippets]
+"my email" = "you@example.com"
+brb = "be right back"
+omw = "on my way"' > ~/.config/local-whisper/config.toml
+```
+
+Changes take effect immediately — no restart needed.
+
+### Config format
+
+All features share a single file: `~/.config/local-whisper/config.toml`
+
+```toml
+[snippets]
+# Single-word keys
+brb = "be right back"
+
+# Multi-word keys (use quotes)
+"my email" = "you@example.com"
+"my address" = "123 Main St, Springfield"
+
+# Keys with special characters (use quotes)
+"c++" = "C plus plus"
+
+[corrections]
+# Fix consistent ASR mishearings: wrong = "right"
+whisper = "Whisper"
+```
+
+Keys are matched **case-insensitively**. `BRB`, `brb`, and `Brb` all expand the same entry.
+
+### Extending
+
+- Add any number of `key = "value"` pairs under `[snippets]`
+- Values can be multi-line strings using TOML triple-quotes:
+  ```toml
+  "email sig" = """
+  Best regards,
+  Your Name
+  your@email.com"""
+  ```
+- No restart required — config reloads on every transcription
+
+</details>
 
 ## Troubleshooting
 

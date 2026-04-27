@@ -7,7 +7,7 @@ import tomllib
 from pathlib import Path
 
 
-_CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "corrections.toml"
+_CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
 
 
 def load(path: Path = _CONFIG_PATH) -> dict[str, str]:
@@ -16,7 +16,7 @@ def load(path: Path = _CONFIG_PATH) -> dict[str, str]:
     Returns empty dict if file does not exist.
 
     Args:
-        path: Path to corrections.toml. Defaults to ~/.config/local-whisper/corrections.toml.
+        path: Path to config.toml. Defaults to ~/.config/local-whisper/config.toml.
 
     Returns:
         Dict mapping misheard words (lowercased) to correct replacements.
