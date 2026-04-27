@@ -44,7 +44,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | No KeepAlive in launchd plist | Phase 4 | Prevents restart loop when Accessibility not yet granted |
 | Single config.toml for snippets + corrections | Phase 5/6 | ~/.config/local-whisper/config.toml with [snippets] and [corrections] sections |
 | Env vars for command mode API config | Phase 7 | API keys unsuitable for config files; LOCAL_WHISPER_OPENAI_API_KEY, LOCAL_WHISPER_OPENAI_BASE_URL, LOCAL_WHISPER_COMMAND_MODEL |
-| Right ⌥ hotkey for command mode | Phase 7 | Distinct from Right ⌘ dictation; overlay shows ⚡ ... vs ⏺ ... |
+| Right ⌘ auto-detects mode via NSPasteboard.changeCount | Phase 7 → post-7 fix | Selection detected → command mode (⚡); no selection → dictation (⏺). Replaced Right ⌥ separate key to avoid hotkey conflicts. |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |

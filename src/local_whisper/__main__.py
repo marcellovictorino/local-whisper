@@ -1,5 +1,6 @@
 import argparse
 import sys
+import threading
 
 from local_whisper import audio, transcribe
 
@@ -71,7 +72,6 @@ def main() -> None:
         app.start()  # starts pynput listener in daemon thread (non-blocking)
 
         # Pre-load model and compile Metal shaders so first keypress is instant.
-        import threading
         threading.Thread(target=transcribe.warm_up, daemon=True).start()
 
         try:

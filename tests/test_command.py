@@ -25,6 +25,7 @@ def _mock_openai(text: str) -> tuple[MagicMock, MagicMock]:
 
 
 def _mock_pasteboard(count_before: int, count_after: int, text: str) -> MagicMock:
+    """Return mock _NSPasteboard with given changeCount sequence and stringForType_ value."""
     mock_pb = MagicMock()
     mock_pb.changeCount.side_effect = [count_before, count_after]
     mock_pb.stringForType_.return_value = text
