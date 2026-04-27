@@ -1,7 +1,17 @@
 import sys
 import time
+from pathlib import Path
 
 import numpy as np
+
+_MODEL_SIZE_HINT = "~1.5 GB"
+
+
+def _model_is_cached(model: str) -> bool:
+    """Check if the HuggingFace model is already in the local cache."""
+    model_dir = "models--" + model.replace("/", "--")
+    cache_path = Path.home() / ".cache" / "huggingface" / "hub" / model_dir
+    return cache_path.exists()
 
 
 def run(
@@ -18,6 +28,14 @@ def run(
         Transcribed text string, stripped of leading/trailing whitespace.
     """
     import mlx_whisper  # lazy import — avoids slow startup cost
+
+    if not _model_is_cached(model):
+        print(
+            f"First run: downloading model '{model}' ({_MODEL_SIZE_HINT}).\n"
+            "  This only happens once — subsequent runs are instant.",
+            file=sys.stderr,
+            flush=True,
+        )
 
     print(f"Transcribing with {model}...", file=sys.stderr, flush=True)
     start = time.perf_counter()

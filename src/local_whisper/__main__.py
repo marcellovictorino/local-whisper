@@ -11,9 +11,14 @@ def main() -> None:
         description="Local offline speech-to-text on Apple Silicon.",
     )
     parser.add_argument(
+        "--run",
+        action="store_true",
+        help="Start the background listener (hold Right ⌘ to dictate).",
+    )
+    parser.add_argument(
         "--test",
         action="store_true",
-        help="Record 5 seconds and print transcription (smoke test).",
+        help="Record N seconds and print transcription (smoke test).",
     )
     parser.add_argument(
         "--duration",
@@ -23,7 +28,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.test:
+    if args.run:
+        from local_whisper.app import App  # lazy import — avoids loading pynput on --test
+
+        App().run()
+    elif args.test:
         print(f"Speak now — recording for {args.duration}s...", file=sys.stderr)
         audio_data = audio.record(duration=args.duration)
         text = transcribe.run(audio_data)

@@ -8,14 +8,14 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 
 **v0.1 MVP** (v0.1.0)
 Status: In progress
-Phases: 1 of 4 complete
+Phases: 2 of 4 complete
 
 ## Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
 | 1 | Core Pipeline | 1/1 | ✅ Complete | 2026-04-27 |
-| 2 | Hotkey + Clipboard | 1 | Not started | - |
+| 2 | Hotkey + Clipboard | 1/1 | ✅ Complete | 2026-04-27 |
 | 3 | Visual Overlay | 1 | Not started | - |
 | 4 | Distribution | 1 | Not started | - |
 

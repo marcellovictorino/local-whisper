@@ -1,4 +1,5 @@
 import sys
+import threading
 
 import numpy as np
 import sounddevice
@@ -24,3 +25,47 @@ def record(duration: float, sample_rate: int = 16000) -> np.ndarray:
     sounddevice.wait()
     print("Done.", file=sys.stderr, flush=True)
     return audio.squeeze()
+
+
+def record_until_event(
+    stop_event: threading.Event,
+    sample_rate: int = 16000,
+    chunk_size: int = 1024,
+) -> np.ndarray:
+    """Record audio from default microphone until stop_event is set.
+
+    Args:
+        stop_event: Threading event — recording stops when set.
+        sample_rate: Sample rate in Hz. Whisper expects 16000.
+        chunk_size: Frames per callback chunk.
+
+    Returns:
+        Float32 numpy array of shape (N,) normalised to [-1.0, 1.0].
+    """
+    chunks: list[np.ndarray] = []
+
+    def _callback(
+        indata: np.ndarray,
+        frames: int,  # noqa: ARG001
+        time_info: object,  # noqa: ARG001
+        status: sounddevice.CallbackFlags,
+    ) -> None:
+        if status:
+            print(f"[audio] {status}", file=sys.stderr)
+        chunks.append(indata.copy())
+
+    print("Recording...", file=sys.stderr, flush=True)
+    with sounddevice.InputStream(
+        samplerate=sample_rate,
+        channels=1,
+        dtype="float32",
+        blocksize=chunk_size,
+        callback=_callback,
+    ):
+        stop_event.wait()
+
+    print("Done.", file=sys.stderr, flush=True)
+
+    if not chunks:
+        return np.zeros(0, dtype="float32")
+    return np.concatenate(chunks).squeeze()

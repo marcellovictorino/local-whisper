@@ -24,11 +24,14 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 - [x] Microphone audio capture at 16kHz (sounddevice → float32 numpy) — Phase 1
 - [x] Local offline transcription on Apple Silicon (mlx-whisper, whisper-large-v3-turbo) — Phase 1
 - [x] CLI smoke test: `python -m local_whisper --test` records and prints transcript — Phase 1
+- [x] Global keyboard shortcut listener (Right Command hold-to-record, debounced) — Phase 2
+- [x] Clipboard write + paste at active cursor via osascript — Phase 2
+- [x] Persistent background listener: `python -m local_whisper --run` — Phase 2
+- [x] First-run model download notice — Phase 2
 
 ### Active (In Progress)
 
-- [ ] Global keyboard shortcut listener (Right Command key toggle) — Phase 2
-- [ ] Clipboard write + paste at active cursor position — Phase 2
+- [ ] Visual recording indicator overlay — Phase 3
 
 ### Planned (Next)
 
@@ -83,6 +86,8 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | sounddevice for audio capture | NumPy-native, no disk I/O, simple API, no PortAudio compile issues | 2026-04-27 | Active |
 | Lazy import mlx_whisper | Avoids 2-3s import cost — cold start penalty paid once per session | 2026-04-27 | Active |
 | stdout=transcript, stderr=progress | Clean Unix tool behaviour, allows piping output | 2026-04-27 | Active |
+| Hold-to-record (not toggle) | Simpler state, push-to-talk ergonomic, less edge cases | 2026-04-27 | Active |
+| osascript for paste | Works across all apps, no AXUIElement permission needed | 2026-04-27 | Active |
 
 ## Success Metrics
 
@@ -107,4 +112,4 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-04-27 after Phase 1 (Core Pipeline)*
+*Last updated: 2026-04-27 after Phase 2 (Hotkey + Clipboard)*
