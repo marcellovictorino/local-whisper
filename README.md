@@ -33,12 +33,12 @@ Once installed, local-whisper runs in the background automatically.
 |--------|--------|
 | Hold Right ⌘ | Recording pill (⏺) appears — dictation mode |
 | Release Right ⌘ | Transcription runs, text pastes at cursor |
-| Hold Right ⌥ | Recording pill (⚡) appears — command mode |
-| Release Right ⌥ | Voice instruction applied to selected text, result pastes |
+| Select text, then hold Right ⌘ | Recording pill (⚡) appears — command mode |
+| Release Right ⌘ | Voice instruction applied to selection, result pastes |
 
 ### Command mode
 
-Command mode lets you speak an instruction and apply it to whatever text you have selected. Select a paragraph, hold Right ⌥, say "fix the grammar", release — done.
+Command mode activates automatically when you have text selected. Select a paragraph, hold Right ⌘, say "fix the grammar", release — done. No separate key to remember.
 
 Requires the `command` optional dependency and an API key:
 
@@ -119,7 +119,7 @@ tail -f ~/Library/Logs/local-whisper.log                   # logs
 | 3 | Frosted-glass recording indicator overlay | ✅ v0.1 |
 | 4 | launchd auto-start + bash install script | ✅ v0.1 |
 | 5 | Snippet expansion (spoken keywords → predefined text) | ✅ v0.2 |
-| — | Personal dictionary (learned corrections) | v0.2 |
+| 6 | Personal corrections (fix consistent ASR mishearings) | ✅ v0.2 |
 | 7 | Command mode (apply spoken prompt to selected text) | ✅ v0.2 |
 
 ## How-To
