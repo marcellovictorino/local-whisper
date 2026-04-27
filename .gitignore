@@ -1,2 +1,18 @@
-src/local_whisper/__pycache__/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
 .venv/
+
+# pytest
+.pytest_cache/
+
+# uv
+.python-version
+
+# macOS
+.DS_Store
+
+# Claude Code session data
+.claude/
+
