@@ -55,3 +55,10 @@ def test_apply_returns_unchanged_when_no_corrections() -> None:
 
 def test_apply_returns_unchanged_when_no_match() -> None:
     assert apply("hello world", {"foo": "bar"}) == "hello world"
+
+
+def test_apply_does_not_partially_match_hyphenated_token() -> None:
+    # "gpt" correction must not fire on "gpt-4" — would produce "GPT-4-4"
+    assert apply("gpt-4 is good", {"gpt": "GPT-4"}) == "gpt-4 is good"
+    # but standalone "gpt" still corrected
+    assert apply("use gpt today", {"gpt": "GPT-4"}) == "use GPT-4 today"

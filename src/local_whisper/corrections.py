@@ -49,7 +49,7 @@ def apply(text: str, corrections: dict[str, str]) -> str:
         return text
     for wrong, right in corrections.items():
         text = re.sub(
-            rf"\b{re.escape(wrong)}\b",
+            rf"(?<![\w-]){re.escape(wrong)}(?![\w-])",
             lambda _: right,
             text,
             flags=re.IGNORECASE,
