@@ -40,3 +40,8 @@ run:
 [group('dev')]
 logs:
     tail -f {{log_file}}
+
+# Run tests
+[group('dev')]
+test:
+    {{uv}} run pytest tests/ -v

@@ -38,8 +38,9 @@ def write_and_paste(text: str) -> None:
         )
         print(f"Pasted {len(text)} chars.", file=sys.stderr, flush=True)
     except subprocess.CalledProcessError as exc:
+        stderr_msg = exc.stderr.decode().strip() if exc.stderr else ""
         print(
-            f"[local-whisper] Paste via osascript failed: {exc.stderr.decode().strip()}\n"
+            f"[local-whisper] Paste via osascript failed: {stderr_msg}\n"
             "  → Text copied to clipboard — paste manually with Cmd+V.",
             file=sys.stderr,
         )
