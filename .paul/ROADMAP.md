@@ -7,8 +7,8 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 ## Current Milestone
 
 **v0.2 Enhancements** (v0.2.0)
-Status: Planning
-Phases: 0 of 3 complete
+Status: ✅ Complete
+Phases: 3 of 3 complete
 
 ---
 
@@ -20,11 +20,11 @@ Phases: 4 of 4 complete
 
 ### v0.2 Enhancements
 
-| Phase | Name | Plans | Status | GitHub Issue | Agent-ready |
-|-------|------|-------|--------|--------------|-------------|
-| 5 | Snippet Expansion | 1 | Planning | #2 | ✅ Yes |
-| 6 | Personal Corrections | 1 | Planning | #3 | ✅ Yes |
-| 7 | Command Mode | 1 | Design | #4 | ❌ Needs design |
+| Phase | Name | Plans | Status | GitHub Issue | Completed |
+|-------|------|-------|--------|--------------|-----------|
+| 5 | Snippet Expansion | 1 | ✅ Complete | #4 | 2026-04-27 |
+| 6 | Personal Corrections | 1 | ✅ Complete | #2 | 2026-04-27 |
+| 7 | Command Mode | 1 | ✅ Complete | #3 | 2026-04-27 |
 
 ### v0.1 MVP
 
@@ -96,4 +96,4 @@ Phases: 4 of 4 complete
 
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-04-27 — v0.2 milestone planned; phases 5+6 agent-ready*
+*Last updated: 2026-04-27 — v0.2 milestone complete; all 3 phases shipped*

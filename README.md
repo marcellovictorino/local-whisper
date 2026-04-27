@@ -8,14 +8,13 @@ Built on [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whis
 
 - macOS with Apple Silicon (M1/M2/M3/M4+)
 - [uv](https://docs.astral.sh/uv/) — Python package manager
+- [just](https://github.com/casey/just) — command runner
 - Accessibility permission for the process running local-whisper
 
 ## Install
 
 ```bash
-git clone <repo-url> local-whisper
-cd local-whisper
-bash setup.sh
+git clone https://github.com/marcellovictorino/local-whisper && cd local-whisper && bash setup.sh
 ```
 
 `setup.sh` does everything in one shot:
@@ -33,40 +32,133 @@ Once installed, local-whisper runs in the background automatically.
 |--------|--------|
 | Hold Right ⌘ | Recording pill (⏺) appears — dictation mode |
 | Release Right ⌘ | Transcription runs, text pastes at cursor |
-| Hold Right ⌥ | Recording pill (⚡) appears — command mode |
-| Release Right ⌥ | Voice instruction applied to selected text, result pastes |
+| Select text, then hold Right ⌘ | Recording pill (⚡) appears — command mode |
+| Release Right ⌘ | Voice instruction applied to selection, result pastes |
 
-### Command mode
+**Command mode** activates automatically when you have text selected — no separate key to remember. Select a paragraph, hold Right ⌘, say "fix the grammar", release — done.
 
-Command mode lets you speak an instruction and apply it to whatever text you have selected. Select a paragraph, hold Right ⌥, say "fix the grammar", release — done.
+## How-To
 
-Requires the `command` optional dependency and an API key:
+<details>
+<summary><strong>Snippet expansion</strong> — spoken shorthand → predefined text</summary>
+
+### What it does
+
+After transcription, spoken keywords matching entries in your config are replaced with predefined expansions before pasting. Matching is case-insensitive and works anywhere within the transcription.
+
+**Example:** say _"reach me at my email"_ → pastes _"reach me at you@example.com"_
+
+### Setup
+
+Create the config file (run once):
+
+```bash
+mkdir -p ~/.config/local-whisper && cat > ~/.config/local-whisper/config.toml << 'EOF'
+[snippets]
+"my email" = "you@example.com"
+brb = "be right back"
+omw = "on my way"
+EOF
+```
+
+Changes take effect immediately — no restart needed.
+
+### Config format
+
+```toml
+[snippets]
+# Single-word keys
+brb = "be right back"
+
+# Multi-word keys (use quotes)
+"my email" = "you@example.com"
+"my address" = "123 Main St, Springfield"
+
+# Keys with special characters (use quotes)
+"c++" = "C plus plus"
+
+# Multi-line values
+"email sig" = """
+Best regards,
+Your Name
+your@email.com"""
+```
+
+Keys are matched **case-insensitively**. `BRB`, `brb`, and `Brb` all expand the same entry.
+
+</details>
+
+<details>
+<summary><strong>Personal corrections</strong> — fix consistent ASR mishearings</summary>
+
+### What it does
+
+After transcription, whole-word corrections are applied before pasting. Useful for fixing model quirks — words it consistently mishears.
+
+**Example:** Whisper writes _"open a I"_ → corrects to _"OpenAI"_
+
+### Setup
+
+Add a `[corrections]` section to `~/.config/local-whisper/config.toml`:
+
+```toml
+[corrections]
+# wrong = "right"
+"open a I" = "OpenAI"
+whisper = "Whisper"
+```
+
+Matching is case-insensitive and whole-word only — `"open"` won't match `"openly"`.
+
+Changes take effect immediately — no restart needed. To reload without waiting, send SIGHUP to the process:
+
+```bash
+kill -HUP $(pgrep -f local_whisper)
+```
+
+</details>
+
+<details>
+<summary><strong>Command mode</strong> — apply a voice instruction to selected text</summary>
+
+### What it does
+
+Select any text, hold Right ⌘, speak an instruction, release — the transformed text replaces the selection.
+
+**Examples:**
+- Select a paragraph → say _"summarize as TLDR"_ → bullet-point summary pastes
+- Select a sentence → say _"fix the grammar"_ → corrected sentence pastes
+- Select code → say _"add docstring"_ → documented version pastes
+
+### Setup
+
+Install the command mode dependency:
 
 ```bash
 uv sync --extra command
 ```
 
-Set these environment variables (add to `~/.zshrc` or `~/.bash_profile`):
+Set your API key (add to `~/.zshrc` or `~/.bash_profile`):
 
 ```bash
-# Required — your API key
 export LOCAL_WHISPER_OPENAI_API_KEY=sk-...
-
-# Optional — override the default model (default: gpt-4o-mini)
-export LOCAL_WHISPER_COMMAND_MODEL=gpt-4o-mini
-
-# Optional — use a different provider (see below)
-export LOCAL_WHISPER_OPENAI_BASE_URL=https://...
 ```
 
-#### Providers
+Restart the service to pick up the new env var:
 
-Any OpenAI-compatible API works. Set `LOCAL_WHISPER_OPENAI_BASE_URL` to point at a different provider:
+```bash
+just stop && just start
+```
 
-**OpenAI (default — no base URL needed)**
+### Providers
+
+Any OpenAI-compatible API works.
+
+**OpenAI (default)**
 ```bash
 export LOCAL_WHISPER_OPENAI_API_KEY=sk-...
-export LOCAL_WHISPER_COMMAND_MODEL=gpt-4o-mini   # or gpt-4o, o4-mini, etc.
+export LOCAL_WHISPER_COMMAND_MODEL=gpt-5-nano      # fast and cheap
+# export LOCAL_WHISPER_COMMAND_MODEL=gpt-5-mini    # higher quality
 ```
 
 **Google Gemini (free tier available)**
@@ -87,28 +179,7 @@ export LOCAL_WHISPER_COMMAND_MODEL=llama3.2
 
 If `LOCAL_WHISPER_OPENAI_API_KEY` is not set, command mode falls back to pasting the raw transcription — no crash.
 
-### Day-to-day commands (requires [just](https://github.com/casey/just))
-
-```bash
-just install    # Install / reinstall service
-just uninstall  # Remove service completely
-just start      # Start service (without reinstalling)
-just stop       # Stop service (without uninstalling)
-just status     # Check if service is running
-just run        # Run in foreground — useful for debugging (Ctrl+C to quit)
-just logs       # Stream service logs
-```
-
-### Without just
-
-```bash
-bash setup.sh                                              # install
-launchctl stop com.local-whisper                           # stop
-launchctl start com.local-whisper                          # start
-launchctl unload ~/Library/LaunchAgents/com.local-whisper.plist && \
-  rm ~/Library/LaunchAgents/com.local-whisper.plist        # uninstall
-tail -f ~/Library/Logs/local-whisper.log                   # logs
-```
+</details>
 
 ## Roadmap
 
@@ -119,69 +190,8 @@ tail -f ~/Library/Logs/local-whisper.log                   # logs
 | 3 | Frosted-glass recording indicator overlay | ✅ v0.1 |
 | 4 | launchd auto-start + bash install script | ✅ v0.1 |
 | 5 | Snippet expansion (spoken keywords → predefined text) | ✅ v0.2 |
-| — | Personal dictionary (learned corrections) | v0.2 |
+| 6 | Personal corrections (fix consistent ASR mishearings) | ✅ v0.2 |
 | 7 | Command mode (apply spoken prompt to selected text) | ✅ v0.2 |
-
-## How-To
-
-<details>
-<summary><strong>Snippet expansion</strong> — spoken shorthand → predefined text</summary>
-
-### What it does
-
-After transcription, any spoken keywords matching entries in your snippets config are replaced with their predefined expansions before the text is pasted. Matching is case-insensitive and works anywhere within the transcription — not just as the full text.
-
-**Example:** say _"reach me at my email"_ → pastes _"reach me at you@example.com"_
-
-### Setup
-
-Create the config file (run once):
-
-```bash
-mkdir -p ~/.config/local-whisper && echo '[snippets]
-"my email" = "you@example.com"
-brb = "be right back"
-omw = "on my way"' > ~/.config/local-whisper/config.toml
-```
-
-Changes take effect immediately — no restart needed.
-
-### Config format
-
-All features share a single file: `~/.config/local-whisper/config.toml`
-
-```toml
-[snippets]
-# Single-word keys
-brb = "be right back"
-
-# Multi-word keys (use quotes)
-"my email" = "you@example.com"
-"my address" = "123 Main St, Springfield"
-
-# Keys with special characters (use quotes)
-"c++" = "C plus plus"
-
-[corrections]
-# Fix consistent ASR mishearings: wrong = "right"
-whisper = "Whisper"
-```
-
-Keys are matched **case-insensitively**. `BRB`, `brb`, and `Brb` all expand the same entry.
-
-### Extending
-
-- Add any number of `key = "value"` pairs under `[snippets]`
-- Values can be multi-line strings using TOML triple-quotes:
-  ```toml
-  "email sig" = """
-  Best regards,
-  Your Name
-  your@email.com"""
-  ```
-- No restart required — config reloads on every transcription
-
-</details>
 
 ## Troubleshooting
 
@@ -191,7 +201,7 @@ Keys are matched **case-insensitively**. `BRB`, `brb`, and `Brb` all expand the 
 Error: uv is not installed.
 ```
 
-Install uv, then re-run `bash setup.sh`:
+Install uv, then re-run the install command:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -210,47 +220,39 @@ Accessibility permission required.
   3. Re-run: uv run python -m local_whisper --run
 ```
 
-**Running via `just run` or terminal:** add Terminal (or iTerm2) to the Accessibility list.
+**Running as a service (default):** add the `uv` binary — launchd runs `uv` directly.
 
-**Running as a service (installed via `bash setup.sh`):** add the `uv` binary instead — launchd runs `uv` directly, not through a terminal.
-
-To find the uv binary path:
 ```bash
-which uv
+which uv   # find the path, then add it in System Settings
 ```
 
-Then in System Settings → Privacy & Security → Accessibility, click `+` and navigate to that path.
-
 After granting permission, restart the service:
+
 ```bash
 just stop && just start
 ```
 
 ---
 
-### Service installed but not running
+### Service not running
 
-Check status:
 ```bash
-launchctl list | grep local-whisper
+just status   # check if running
+just logs     # see recent output
+just run      # run in foreground for debugging (Ctrl+C to quit)
 ```
 
-Output format: `PID  ExitCode  Label`
+Common causes:
+- Accessibility permission not granted (see above)
+- `launchctl list | grep local-whisper` shows exit code `1`
 
-- `12345  0  com.local-whisper` — running normally
-- `-  1  com.local-whisper` — exited with error (likely Accessibility not granted)
-- Not listed — service not loaded (re-run `bash setup.sh`)
-
-Check logs for details:
-```bash
-just logs
-```
+Re-run `bash setup.sh` to reinstall the service cleanly.
 
 ---
 
 ### Model download hangs or fails
 
-The model (~1.5 GB) is downloaded once to `~/.cache/huggingface/hub/`. If download is interrupted, re-run:
+The model (~1.5 GB) downloads once to `~/.cache/huggingface/hub/`. If interrupted, re-run:
 
 ```bash
 bash setup.sh

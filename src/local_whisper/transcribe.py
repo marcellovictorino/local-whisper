@@ -22,6 +22,29 @@ def _model_is_cached(model: str) -> bool:
     )
 
 
+def _suppress_progress_bars() -> None:
+    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+    os.environ["TQDM_DISABLE"] = "1"
+
+
+def warm_up(model: str = "mlx-community/whisper-large-v3-turbo") -> None:
+    """Pre-load model and compile Metal shaders. Call once at startup in a background thread.
+
+    Args:
+        model: HuggingFace model ID to pre-load. Must already be cached locally.
+    """
+    if not _model_is_cached(model):
+        return  # skip if model not downloaded yet — first run handles it inline
+    _suppress_progress_bars()
+    import mlx_whisper
+    silence = np.zeros(int(0.5 * 16000), dtype="float32")
+    try:
+        mlx_whisper.transcribe(silence, path_or_hf_repo=model, verbose=False)
+        print("[local-whisper] Model ready.", file=sys.stderr, flush=True)
+    except Exception as exc:
+        print(f"[local-whisper] Warm-up failed (non-fatal): {exc}", file=sys.stderr, flush=True)
+
+
 def run(
     audio: np.ndarray,
     model: str = "mlx-community/whisper-large-v3-turbo",
@@ -38,10 +61,7 @@ def run(
     cached = _model_is_cached(model)
 
     if cached:
-        # Suppress huggingface_hub and tqdm progress bars — model already local,
-        # no download or verification progress needed.
-        os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
-        os.environ["TQDM_DISABLE"] = "1"
+        _suppress_progress_bars()
     else:
         print(
             f"First run: downloading model '{model}' ({_MODEL_SIZE_HINT}).\n"

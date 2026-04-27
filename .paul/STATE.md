@@ -5,19 +5,19 @@
 See: .paul/PROJECT.md (updated 2026-04-27 after Phase 2)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.1 MVP — COMPLETE
+**Current focus:** v0.2 Enhancements — COMPLETE
 
 ## Current Position
 
-Milestone: v0.1 MVP — ✅ COMPLETE
-Phase: 4 of 4 (Distribution) — Complete
-Plan: 04-01 — Complete
-Status: Milestone complete — all 4 phases shipped
-Last activity: 2026-04-27 — Phase 4 complete, v0.1.0 MVP shipped
+Milestone: v0.2 Enhancements — ✅ COMPLETE
+Phase: 7 of 7 (Command Mode) — Complete
+Plan: 07-01 — Complete
+Status: Milestone complete — all 3 v0.2 phases shipped
+Last activity: 2026-04-27 — Phase 7 complete, v0.2.0 shipped
 
 Progress:
 - Milestone: [██████████] 100%
-- Phase 4: [██████████] 100%
+- Phase 7: [██████████] 100%
 
 ## Loop Position
 
@@ -42,12 +42,15 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | setup.sh + justfile (not Makefile) | Phase 4 | setup.sh for one-shot git-clone install, justfile for day-to-day ops |
 | AXIsProcessTrusted() via ctypes | Phase 4 | No new deps; exits cleanly before pynput init if permission missing |
 | No KeepAlive in launchd plist | Phase 4 | Prevents restart loop when Accessibility not yet granted |
+| Single config.toml for snippets + corrections | Phase 5/6 | ~/.config/local-whisper/config.toml with [snippets] and [corrections] sections |
+| Env vars for command mode API config | Phase 7 | API keys unsuitable for config files; LOCAL_WHISPER_OPENAI_API_KEY, LOCAL_WHISPER_OPENAI_BASE_URL, LOCAL_WHISPER_COMMAND_MODEL |
+| Right ⌘ auto-detects mode via NSPasteboard.changeCount | Phase 7 → post-7 fix | Selection detected → command mode (⚡); no selection → dictation (⏺). Replaced Right ⌥ separate key to avoid hotkey conflicts. |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
 |-------|--------|--------|---------|
-| Accessibility permission onboarding is manual | Phase 2 | S | Phase 4 first-run setup |
-| No error recovery if record thread crashes mid-session | Phase 2 | S | Post-MVP polish |
+| Accessibility permission onboarding is manual | Phase 2 | S | Future polish |
+| No error recovery if record thread crashes mid-session | Phase 2 | S | Future polish |
 
 ### Blockers/Concerns
 | Concern | Detail |
@@ -57,8 +60,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 ## Session Continuity
 
 Last session: 2026-04-27
-Stopped at: v0.1 MVP complete — all 4 phases shipped and verified
-Next action: Start v0.2 milestone (/paul:plan) or pause
+Stopped at: v0.2 Enhancements complete — all 7 phases shipped and verified
+Next action: Start v0.3 milestone (/paul:plan) or pause
 Resume file: .paul/ROADMAP.md
 
 ---

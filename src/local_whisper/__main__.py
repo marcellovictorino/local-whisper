@@ -1,5 +1,6 @@
 import argparse
 import sys
+import threading
 
 from local_whisper import audio, transcribe
 
@@ -32,7 +33,8 @@ def main() -> None:
         action="store_true",
         help=(
             "Start the background listener. "
-            "Hold Right ⌘ to dictate; hold Right ⌥ for command mode "
+            "Hold Right ⌘ to dictate. "
+            "Select text first, then hold Right ⌘ to apply a voice command to the selection "
             "(requires LOCAL_WHISPER_OPENAI_API_KEY and `uv sync --extra command`)."
         ),
     )
@@ -68,6 +70,9 @@ def main() -> None:
         overlay = RecordingOverlay()
         app = App(overlay=overlay)
         app.start()  # starts pynput listener in daemon thread (non-blocking)
+
+        # Pre-load model and compile Metal shaders so first keypress is instant.
+        threading.Thread(target=transcribe.warm_up, daemon=True).start()
 
         try:
             overlay.run()  # AppKit event loop on main thread — blocks until quit()
