@@ -29,9 +29,20 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.run:
-        from local_whisper.app import App  # lazy import — avoids loading pynput on --test
+        from local_whisper.app import App
+        from local_whisper.overlay import RecordingOverlay
 
-        App().run()
+        overlay = RecordingOverlay()
+        app = App(overlay=overlay)
+        app.start()  # starts pynput listener in daemon thread (non-blocking)
+
+        try:
+            overlay.run()  # AppKit event loop on main thread — blocks until quit()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            app.stop()
+            overlay.quit()
     elif args.test:
         print(f"Speak now — recording for {args.duration}s...", file=sys.stderr)
         audio_data = audio.record(duration=args.duration)

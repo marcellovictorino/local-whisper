@@ -31,13 +31,9 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 
 ### Active (In Progress)
 
-- [ ] Visual recording indicator overlay — Phase 3
+- [x] Visual recording indicator overlay (NSPanel frosted-glass pill, top-center, no dock icon) — Phase 3
 
 ### Planned (Next)
-
-**Phase 3 (Overlay UI):**
-- [ ] Small visual overlay/bubble indicating recording in progress
-- [ ] Auto-dismiss on transcription complete
 
 **Phase 4 (Distribution):**
 - [ ] macOS app packaging (.app or launchd service)
@@ -88,6 +84,9 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | stdout=transcript, stderr=progress | Clean Unix tool behaviour, allows piping output | 2026-04-27 | Active |
 | Hold-to-record (not toggle) | Simpler state, push-to-talk ergonomic, less edge cases | 2026-04-27 | Active |
 | osascript for paste | Works across all apps, no AXUIElement permission needed | 2026-04-27 | Active |
+| PyObjC for overlay (not tkinter) | Native macOS frosted-glass NSPanel, no dock icon, AppKit-native | 2026-04-27 | Active |
+| Skip applicationDidFinishLaunching_ delegate | pynput consumes notification before delegate attaches — build panel directly in run() | 2026-04-27 | Active |
+| orderFrontRegardless() + setHidesOnDeactivate_(False) | Accessory apps never become "active"; standard window show methods are no-ops | 2026-04-27 | Active |
 
 ## Success Metrics
 
@@ -107,9 +106,9 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | Inference | mlx-whisper | Apple Silicon native via MLX (ANE/GPU) |
 | Audio Capture | sounddevice | NumPy-native, 16kHz float32 |
 | Global Hotkey | pynput | Requires macOS Accessibility permission |
-| Overlay UI | TBD (Phase 3) | tkinter / rumps / PyObjC |
+| Overlay UI | PyObjC (NSPanel + NSVisualEffectView) | Frosted-glass pill, always-on-top, no dock icon |
 | Clipboard | pyperclip + osascript | Write + paste at cursor |
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-04-27 after Phase 2 (Hotkey + Clipboard)*
+*Last updated: 2026-04-27 after Phase 3 (Visual Overlay)*

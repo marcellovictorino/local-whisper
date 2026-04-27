@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import sys
 import threading
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from local_whisper import audio, clipboard, transcribe
 from local_whisper.hotkey import HotkeyListener
+
+if TYPE_CHECKING:
+    from local_whisper.overlay import RecordingOverlay
 
 
 class App:
@@ -15,7 +21,8 @@ class App:
     background listener until interrupted.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, overlay: RecordingOverlay | None = None) -> None:
+        self._overlay = overlay
         self._stop_event = threading.Event()
         self._recording = False
         self._listener = HotkeyListener(
@@ -23,20 +30,28 @@ class App:
             on_deactivate=self._on_key_release,
         )
 
-    def run(self) -> None:
-        """Start the app. Blocks until Ctrl+C."""
+    def start(self) -> None:
+        """Start the keyboard listener in a daemon thread. Non-blocking."""
         self._listener.start()
         print(
             "local-whisper running. Hold Right ⌘ to dictate. Ctrl+C to quit.",
             file=sys.stderr,
             flush=True,
         )
+
+    def stop(self) -> None:
+        """Stop the keyboard listener."""
+        self._listener.stop()
+
+    def run(self) -> None:
+        """Start listener and block until Ctrl+C. Use when running without overlay."""
+        self.start()
         try:
-            threading.Event().wait()  # block main thread forever
+            threading.Event().wait()
         except KeyboardInterrupt:
             pass
         finally:
-            self._listener.stop()
+            self.stop()
             print("\nStopped.", file=sys.stderr)
 
     def _on_key_press(self) -> None:
@@ -45,6 +60,8 @@ class App:
             return  # already recording — debounce
         self._recording = True
         self._stop_event.clear()
+        if self._overlay:
+            self._overlay.show()
         threading.Thread(target=self._record_and_process, daemon=True).start()
 
     def _on_key_release(self) -> None:
@@ -67,3 +84,5 @@ class App:
             print(f"[local-whisper] Error: {exc}", file=sys.stderr)
         finally:
             self._recording = False
+            if self._overlay:
+                self._overlay.hide()

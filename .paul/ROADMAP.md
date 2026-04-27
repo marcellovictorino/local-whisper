@@ -8,7 +8,7 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 
 **v0.1 MVP** (v0.1.0)
 Status: In progress
-Phases: 2 of 4 complete
+Phases: 3 of 4 complete
 
 ## Phases
 
@@ -16,7 +16,7 @@ Phases: 2 of 4 complete
 |-------|------|-------|--------|-----------|
 | 1 | Core Pipeline | 1/1 | ✅ Complete | 2026-04-27 |
 | 2 | Hotkey + Clipboard | 1/1 | ✅ Complete | 2026-04-27 |
-| 3 | Visual Overlay | 1 | Not started | - |
+| 3 | Visual Overlay | 1/1 | ✅ Complete | 2026-04-27 |
 | 4 | Distribution | 1 | Not started | - |
 
 ## Phase Details
@@ -62,7 +62,7 @@ Phases: 2 of 4 complete
 - Non-blocking — runs in separate thread
 
 **Plans:**
-- [ ] 03-01: Recording indicator overlay
+- [x] 03-01: Recording indicator overlay
 
 ### Phase 4: Distribution
 
@@ -80,4 +80,4 @@ Phases: 2 of 4 complete
 
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-04-27*
+*Last updated: 2026-04-27 after Phase 3 complete*
