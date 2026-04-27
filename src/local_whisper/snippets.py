@@ -1,6 +1,6 @@
 """Snippet expansion: replace spoken shorthand with predefined text.
 
-Config: ~/.config/local-whisper/snippets.toml
+Config: ~/.config/local-whisper/config.toml
 
     [snippets]
     "my email" = "you@example.com"
@@ -16,7 +16,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-_CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "snippets.toml"
+_CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
 
 
 def _load(path: Path) -> dict[str, str]:

@@ -138,19 +138,17 @@ After transcription, any spoken keywords matching entries in your snippets confi
 Create the config file (run once):
 
 ```bash
-mkdir -p ~/.config/local-whisper && cat > ~/.config/local-whisper/snippets.toml << 'EOF'
-[snippets]
+mkdir -p ~/.config/local-whisper && echo '[snippets]
 "my email" = "you@example.com"
 brb = "be right back"
-omw = "on my way"
-EOF
+omw = "on my way"' > ~/.config/local-whisper/config.toml
 ```
 
 Changes take effect immediately — no restart needed.
 
 ### Config format
 
-`~/.config/local-whisper/snippets.toml`
+All features share a single file: `~/.config/local-whisper/config.toml`
 
 ```toml
 [snippets]
@@ -163,6 +161,10 @@ brb = "be right back"
 
 # Keys with special characters (use quotes)
 "c++" = "C plus plus"
+
+[corrections]
+# Fix consistent ASR mishearings: wrong = "right"
+whisper = "Whisper"
 ```
 
 Keys are matched **case-insensitively**. `BRB`, `brb`, and `Brb` all expand the same entry.
@@ -177,7 +179,7 @@ Keys are matched **case-insensitively**. `BRB`, `brb`, and `Brb` all expand the 
   Your Name
   your@email.com"""
   ```
-- No restart required — snippets reload on every transcription
+- No restart required — config reloads on every transcription
 
 </details>
 
