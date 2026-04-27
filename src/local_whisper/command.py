@@ -8,13 +8,33 @@ import time
 
 import pyperclip
 
+try:
+    from AppKit import NSPasteboard as _NSPasteboard
+    _HAS_APPKIT = True
+except Exception:
+    _NSPasteboard = None
+    _HAS_APPKIT = False
 
-def copy_selection() -> str:
-    """Copy the active selection to clipboard and return it.
 
-    Sends Cmd+C to the frontmost app via osascript, then reads the clipboard.
-    Returns empty string on failure.
+def get_selection() -> str:
+    """Return the current text selection, or empty string if nothing is selected.
+
+    Uses NSPasteboard.changeCount() to detect whether Cmd+C actually wrote to
+    the pasteboard — unlike string comparison, this correctly handles the case
+    where the selected text is identical to what was already in the clipboard
+    (e.g. immediately after dictation).
+
+    Falls back to string comparison if AppKit is unavailable.
+
+    Returns:
+        Selected text, or empty string if nothing is selected or on failure.
     """
+    if _HAS_APPKIT:
+        pb = _NSPasteboard.generalPasteboard()
+        count_before = pb.changeCount()
+    else:
+        previous = pyperclip.paste()
+
     try:
         subprocess.run(
             [
@@ -25,11 +45,18 @@ def copy_selection() -> str:
             check=True,
             capture_output=True,
         )
-        time.sleep(0.1)  # give target app time to write the clipboard
-        return pyperclip.paste()
+        time.sleep(0.1)
     except Exception as exc:
-        print(f"[local-whisper] copy_selection failed: {exc}", file=sys.stderr)
+        print(f"[local-whisper] get_selection failed: {exc}", file=sys.stderr)
         return ""
+
+    if _HAS_APPKIT:
+        if pb.changeCount() > count_before:
+            return pb.stringForType_("public.utf8-plain-text") or ""
+        return ""
+
+    current = pyperclip.paste()
+    return current if current != previous else ""
 
 
 def apply_command(selected_text: str, voice_command: str) -> str:
@@ -88,7 +115,7 @@ def apply_command(selected_text: str, voice_command: str) -> str:
                     "content": f"{voice_command}\n\n{selected_text}",
                 },
             ],
-            max_tokens=4096,  # generous ceiling for long-form edits
+            max_completion_tokens=4096,  # max_tokens rejected by o-series and newer models
         )
         return response.choices[0].message.content or voice_command
     except Exception as exc:
