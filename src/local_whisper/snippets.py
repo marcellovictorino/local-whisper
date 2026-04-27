@@ -26,8 +26,8 @@ def _load(path: Path) -> dict[str, str]:
         path: Path to the TOML config file.
 
     Returns:
-        Mapping of shorthand → expansion (keys lowercased), or empty dict if
-        file absent.
+        Mapping of shorthand → expansion (keys casefolded), or empty dict if
+        file absent or malformed.
     """
     try:
         with open(path, "rb") as f:
@@ -42,6 +42,14 @@ def _load(path: Path) -> dict[str, str]:
         return {}
 
     raw = data.get("snippets", {})
+    if not isinstance(raw, dict):
+        print(
+            "[local-whisper] Snippets config: 'snippets' must be a table; ignoring",
+            file=sys.stderr,
+            flush=True,
+        )
+        return {}
+
     invalid = [k for k, v in raw.items() if not isinstance(v, str)]
     if invalid:
         print(
@@ -49,7 +57,21 @@ def _load(path: Path) -> dict[str, str]:
             file=sys.stderr,
             flush=True,
         )
-    return {k.lower(): v for k, v in raw.items() if isinstance(v, str)}
+
+    # Filter empty/whitespace-only keys — they match everywhere and blow up output.
+    result: dict[str, str] = {}
+    for k, v in raw.items():
+        if not isinstance(v, str):
+            continue
+        if not k.strip():
+            print(
+                f"[local-whisper] Snippets config: empty/whitespace key ignored: {k!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+            continue
+        result[k.casefold()] = v
+    return result
 
 
 def expand(text: str, config_path: Path = _CONFIG_PATH) -> str:
@@ -65,19 +87,32 @@ def expand(text: str, config_path: Path = _CONFIG_PATH) -> str:
 
     Returns:
         Text with all matching snippet keys replaced by their values.
+        Returns original text unchanged if expansion fails for any reason.
     """
     mapping = _load(config_path)
     if not mapping:
         return text
 
-    # Longer keys first so "my email address" wins over "my email" on overlap.
-    keys = sorted(mapping, key=len, reverse=True)
-    pattern = re.compile("|".join(re.escape(k) for k in keys), flags=re.IGNORECASE)
-    expanded = pattern.sub(lambda m: mapping[m.group(0).lower()], text)
+    try:
+        # Longer keys first so "my email address" wins over "my email" on overlap.
+        keys = sorted(mapping, key=len, reverse=True)
+        pattern = re.compile("|".join(re.escape(k) for k in keys), flags=re.IGNORECASE)
 
-    if expanded != text:
+        matched_keys: list[str] = []
+
+        def _replace(match: re.Match[str]) -> str:
+            key = match.group(0).casefold()
+            matched_keys.append(key)
+            return mapping[key]
+
+        expanded = pattern.sub(_replace, text)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[local-whisper] Snippet expansion failed: {exc}", file=sys.stderr, flush=True)
+        return text
+
+    if matched_keys:
         print(
-            f"[local-whisper] Snippet expanded: {text!r} → {expanded!r}",
+            f"[local-whisper] Snippet expanded using keys: {matched_keys!r}",
             file=sys.stderr,
             flush=True,
         )

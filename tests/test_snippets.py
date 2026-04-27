@@ -108,3 +108,21 @@ def test_non_string_values_are_ignored(tmp_path: Path) -> None:
     config = _write_config(tmp_path, "[snippets]\nbrb = 42\nomw = \"on my way\"\n")
     result = snippets.expand("brb omw", config_path=config)
     assert result == "brb on my way"
+
+
+def test_snippets_not_a_table_returns_text_unchanged(tmp_path: Path) -> None:
+    config = _write_config(tmp_path, 'snippets = "not a table"\n')
+    result = snippets.expand("hello world", config_path=config)
+    assert result == "hello world"
+
+
+def test_empty_key_is_ignored(tmp_path: Path) -> None:
+    config = _write_config(tmp_path, '[snippets]\n"" = "boom"\nomw = "on my way"\n')
+    result = snippets.expand("omw", config_path=config)
+    assert result == "on my way"
+
+
+def test_whitespace_only_key_is_ignored(tmp_path: Path) -> None:
+    config = _write_config(tmp_path, '[snippets]\n"   " = "boom"\nomw = "on my way"\n')
+    result = snippets.expand("omw", config_path=config)
+    assert result == "on my way"
