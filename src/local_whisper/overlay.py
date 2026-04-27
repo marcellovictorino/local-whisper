@@ -41,6 +41,7 @@ class _OverlayController(NSObject):
     def setup(self, cmd_queue: queue.Queue[str]) -> None:
         self._queue = cmd_queue
         self._panel: NSPanel | None = None
+        self._label: NSTextField | None = None
 
     def pollQueue_(self, _timer: object) -> None:
         try:
@@ -48,6 +49,8 @@ class _OverlayController(NSObject):
                 cmd = self._queue.get_nowait()
                 if cmd == "show":
                     self._fade_in()
+                elif cmd == "show_command":
+                    self._fade_in("⚡ ...")
                 elif cmd == "hide":
                     self._fade_out()
                 elif cmd == "quit":
@@ -123,14 +126,23 @@ class _OverlayController(NSObject):
         effect.addSubview_(label)
 
         self._panel = panel
+        self._label = label
 
     @objc.python_method
-    def _fade_in(self) -> None:
+    def _fade_in(self, label: str = "⏺ ...") -> None:
         # Lazy build: NSScreen.mainScreen() is only reliable after app.run() starts.
         if self._panel is None:
             self._build_panel()
         if self._panel is None:
             return
+        if self._label is not None:
+            self._label.setStringValue_(label)
+            self._label.sizeToFit()
+            nat = self._label.frame()
+            bounds = self._panel.contentView().frame()
+            lx = (bounds.size.width - nat.size.width) / 2
+            ly = (bounds.size.height - nat.size.height) / 2
+            self._label.setFrame_(NSMakeRect(lx, ly, nat.size.width, nat.size.height))
         # orderFrontRegardless() is required for NSApplicationActivationPolicyAccessory
         # apps — they are never "active", so orderFront_(None) is a silent no-op.
         self._panel.orderFrontRegardless()
@@ -156,8 +168,12 @@ class RecordingOverlay:
         self._controller: _OverlayController | None = None  # strong ref — prevents GC
 
     def show(self) -> None:
-        """Fade in the overlay. Thread-safe."""
+        """Fade in the overlay (dictate mode indicator). Thread-safe."""
         self._queue.put("show")
+
+    def show_command(self) -> None:
+        """Fade in the overlay (command mode indicator). Thread-safe."""
+        self._queue.put("show_command")
 
     def hide(self) -> None:
         """Fade out the overlay. Thread-safe."""

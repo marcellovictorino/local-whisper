@@ -5,11 +5,12 @@ from pynput import keyboard
 
 
 class HotkeyListener:
-    """Listen for Right Command key hold/release globally.
+    """Listen for Right Command and Right Option keys globally.
 
-    Calls on_activate when Right Command is pressed,
-    on_deactivate when it is released. Debounced — repeated
-    press events while held do not re-trigger on_activate.
+    Right Command (hold/release): on_activate / on_deactivate — dictate mode.
+    Right Option (hold/release): on_command_activate / on_command_deactivate — command mode.
+
+    Both are debounced — repeated press events while held do not re-trigger.
 
     Requires macOS Accessibility permission for the running
     terminal app (System Settings → Privacy & Security →
@@ -20,16 +21,23 @@ class HotkeyListener:
         self,
         on_activate: Callable[[], None],
         on_deactivate: Callable[[], None],
+        on_command_activate: Callable[[], None] | None = None,
+        on_command_deactivate: Callable[[], None] | None = None,
     ) -> None:
         """Initialise the listener.
 
         Args:
             on_activate: Called once when Right Command is pressed.
             on_deactivate: Called once when Right Command is released.
+            on_command_activate: Called once when Right Option is pressed.
+            on_command_deactivate: Called once when Right Option is released.
         """
         self._on_activate = on_activate
         self._on_deactivate = on_deactivate
+        self._on_command_activate = on_command_activate
+        self._on_command_deactivate = on_command_deactivate
         self._pressed = False
+        self._command_pressed = False
         self._listener: keyboard.Listener | None = None
 
     def start(self) -> None:
@@ -60,8 +68,14 @@ class HotkeyListener:
         if key == keyboard.Key.cmd_r and not self._pressed:
             self._pressed = True
             self._on_activate()
+        elif key == keyboard.Key.alt_r and not self._command_pressed and self._on_command_activate:
+            self._command_pressed = True
+            self._on_command_activate()
 
     def _handle_release(self, key: keyboard.Key | keyboard.KeyCode) -> None:
         if key == keyboard.Key.cmd_r and self._pressed:
             self._pressed = False
             self._on_deactivate()
+        elif key == keyboard.Key.alt_r and self._command_pressed and self._on_command_deactivate:
+            self._command_pressed = False
+            self._on_command_deactivate()

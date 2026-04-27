@@ -13,6 +13,9 @@ dependencies = [
 [project.scripts]
 local-whisper = "local_whisper.__main__:main"
 
+[project.optional-dependencies]
+command = ["openai>=1.0"]
+
 [dependency-groups]
 dev = ["pytest>=8"]
 
