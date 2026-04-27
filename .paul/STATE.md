@@ -5,26 +5,26 @@
 See: .paul/PROJECT.md (updated 2026-04-27 after Phase 2)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.1 MVP — Phase 3: Visual Overlay
+**Current focus:** v0.1 MVP — COMPLETE
 
 ## Current Position
 
-Milestone: v0.1 MVP
-Phase: 4 of 4 (Distribution) — Ready to plan
-Plan: not started
-Status: Ready for Phase 4 planning
-Last activity: 2026-04-27 — Phase 3 complete, overlay verified working
+Milestone: v0.1 MVP — ✅ COMPLETE
+Phase: 4 of 4 (Distribution) — Complete
+Plan: 04-01 — Complete
+Status: Milestone complete — all 4 phases shipped
+Last activity: 2026-04-27 — Phase 4 complete, v0.1.0 MVP shipped
 
 Progress:
-- Milestone: [███████░░░] 75%
-- Phase 4: [░░░░░░░░░░] 0%
+- Milestone: [██████████] 100%
+- Phase 4: [██████████] 100%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Phase 3 complete — ready for Phase 4 PLAN]
+  ✓        ✓        ✓     [Milestone complete]
 ```
 
 ## Accumulated Context
@@ -39,6 +39,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | PyObjC NSPanel for overlay | Phase 3 | Native frosted-glass, no dock icon |
 | orderFrontRegardless() + setHidesOnDeactivate_(False) | Phase 3 | Required for NSApplicationActivationPolicyAccessory apps |
 | Lazy panel build in _fade_in | Phase 3 | NSScreen.mainScreen() unreliable before app.run() |
+| setup.sh + justfile (not Makefile) | Phase 4 | setup.sh for one-shot git-clone install, justfile for day-to-day ops |
+| AXIsProcessTrusted() via ctypes | Phase 4 | No new deps; exits cleanly before pynput init if permission missing |
+| No KeepAlive in launchd plist | Phase 4 | Prevents restart loop when Accessibility not yet granted |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
@@ -49,13 +52,13 @@ PLAN ──▶ APPLY ──▶ UNIFY
 ### Blockers/Concerns
 | Concern | Detail |
 |---------|--------|
-| Leaked semaphore warning on exit | multiprocessing/resource_tracker warning — likely pynput or sounddevice cleanup. Non-blocking. Deferred to Phase 4. |
+| Leaked semaphore warning on exit | Suppressed via PYTHONWARNINGS in launchd plist. Still visible in --run foreground mode. Non-blocking. |
 
 ## Session Continuity
 
 Last session: 2026-04-27
-Stopped at: Phase 3 complete — all 4 phases verified, overlay pill working
-Next action: /paul:plan for Phase 4 (Distribution)
+Stopped at: v0.1 MVP complete — all 4 phases shipped and verified
+Next action: Start v0.2 milestone (/paul:plan) or pause
 Resume file: .paul/ROADMAP.md
 
 ---

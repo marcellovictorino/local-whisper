@@ -12,8 +12,8 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 
 | Attribute | Value |
 |-----------|-------|
-| Version | 0.1.0-dev |
-| Status | Prototype |
+| Version | 0.1.0 |
+| Status | MVP Complete |
 | Last Updated | 2026-04-27 |
 
 ## Requirements
@@ -29,15 +29,13 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 - [x] Persistent background listener: `python -m local_whisper --run` — Phase 2
 - [x] First-run model download notice — Phase 2
 
-### Active (In Progress)
-
 - [x] Visual recording indicator overlay (NSPanel frosted-glass pill, top-center, no dock icon) — Phase 3
+- [x] Accessibility permission check on startup with actionable error — Phase 4
+- [x] launchd user agent: auto-starts on login via `bash setup.sh` — Phase 4
+- [x] Model pre-download at install time (snapshot_download, ~1.5GB, once) — Phase 4
+- [x] `justfile` day-to-day ops: install/uninstall/start/stop/status/run/logs — Phase 4
 
 ### Planned (Next)
-
-**Phase 4 (Distribution):**
-- [ ] macOS app packaging (.app or launchd service)
-- [ ] First-run setup (permissions guide, model download)
 
 **v0.2 Enhancements (future):**
 - [ ] Snippet expansion — spoken keywords map to predefined text (e.g. "calendly link" → URL)
@@ -87,6 +85,9 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | PyObjC for overlay (not tkinter) | Native macOS frosted-glass NSPanel, no dock icon, AppKit-native | 2026-04-27 | Active |
 | Skip applicationDidFinishLaunching_ delegate | pynput consumes notification before delegate attaches — build panel directly in run() | 2026-04-27 | Active |
 | orderFrontRegardless() + setHidesOnDeactivate_(False) | Accessory apps never become "active"; standard window show methods are no-ops | 2026-04-27 | Active |
+| setup.sh + justfile (not Makefile) | setup.sh for git-clone pipe install pattern; justfile for day-to-day ops | 2026-04-27 | Active |
+| AXIsProcessTrusted() via ctypes for Accessibility check | No new deps (stdlib ctypes); early exit before pynput/AppKit init | 2026-04-27 | Active |
+| No KeepAlive in launchd plist | Prevents restart loop when Accessibility not yet granted to uv binary | 2026-04-27 | Active |
 
 ## Success Metrics
 
@@ -111,4 +112,4 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-04-27 after Phase 3 (Visual Overlay)*
+*Last updated: 2026-04-27 after Phase 4 (Distribution) — v0.1 MVP complete*

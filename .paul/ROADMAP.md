@@ -7,8 +7,8 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 ## Current Milestone
 
 **v0.1 MVP** (v0.1.0)
-Status: In progress
-Phases: 3 of 4 complete
+Status: Complete
+Phases: 4 of 4 complete
 
 ## Phases
 
@@ -17,7 +17,7 @@ Phases: 3 of 4 complete
 | 1 | Core Pipeline | 1/1 | ✅ Complete | 2026-04-27 |
 | 2 | Hotkey + Clipboard | 1/1 | ✅ Complete | 2026-04-27 |
 | 3 | Visual Overlay | 1/1 | ✅ Complete | 2026-04-27 |
-| 4 | Distribution | 1 | Not started | - |
+| 4 | Distribution | 1/1 | ✅ Complete | 2026-04-27 |
 
 ## Phase Details
 
@@ -80,4 +80,4 @@ Phases: 3 of 4 complete
 
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-04-27 after Phase 3 complete*
+*Last updated: 2026-04-27 — v0.1 MVP complete (all 4 phases)*
