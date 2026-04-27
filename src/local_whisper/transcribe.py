@@ -14,8 +14,12 @@ def _model_is_cached(model: str) -> bool:
     snapshots = Path.home() / ".cache" / "huggingface" / "hub" / model_dir / "snapshots"
     if not snapshots.exists():
         return False
-    # At least one non-empty snapshot directory must exist
-    return any(p.is_dir() and any(p.iterdir()) for p in snapshots.iterdir())
+    # Require at least one .safetensors weight file — partial/interrupted downloads
+    # may leave only metadata (config.json etc.) which passes an any(iterdir()) check.
+    return any(
+        p.is_dir() and any(p.glob("*.safetensors"))
+        for p in snapshots.iterdir()
+    )
 
 
 def run(

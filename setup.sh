@@ -84,8 +84,8 @@ cat > "$PLIST_DEST" <<PLIST
 </plist>
 PLIST
 
-launchctl unload "$PLIST_DEST" 2>/dev/null || true
-launchctl load -w "$PLIST_DEST"
+launchctl bootout "gui/$(id -u)" "$PLIST_DEST" 2>/dev/null || true
+launchctl bootstrap "gui/$(id -u)" "$PLIST_DEST"
 
 # --- Done ---
 
@@ -98,4 +98,4 @@ echo "  Add and enable the process running local-whisper"
 echo "  (Terminal, or the uv binary: $UV_BIN)"
 echo ""
 echo "Logs: $LOG_FILE"
-echo "To uninstall: just uninstall  (or: launchctl unload $PLIST_DEST && rm $PLIST_DEST)"
+echo "To uninstall: just uninstall  (or: launchctl bootout gui/$(id -u) $PLIST_DEST && rm $PLIST_DEST)"

@@ -12,7 +12,7 @@ install:
 # Remove the background service
 [group('setup')]
 uninstall:
-    launchctl unload {{plist_dest}} 2>/dev/null || true
+    launchctl bootout "gui/$(id -u)" {{plist_dest}} 2>/dev/null || true
     rm -f {{plist_dest}}
     @echo "local-whisper uninstalled."
 

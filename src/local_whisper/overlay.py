@@ -59,6 +59,10 @@ class _OverlayController(NSObject):
     @objc.python_method
     def _build_panel(self) -> None:
         screen = NSScreen.mainScreen()
+        if screen is None:
+            # Display sleeping, headless login, or no screen attached — skip build.
+            # _fade_in() checks self._panel is None and returns safely.
+            return
         full = screen.frame()
         visible = screen.visibleFrame()  # excludes menu bar + dock
         sw = full.size.width
