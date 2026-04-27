@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from local_whisper import audio, clipboard, command, corrections, transcribe
+from local_whisper import audio, clipboard, command, corrections, snippets, transcribe
 from local_whisper.hotkey import HotkeyListener
 
 if TYPE_CHECKING:
@@ -93,6 +93,7 @@ class App:
                 print("[local-whisper] Empty transcription.", file=sys.stderr)
                 return
             text = corrections.apply(text, self._corrections)
+            text = snippets.expand(text)
             clipboard.write_and_paste(text)
         except Exception as exc:  # noqa: BLE001
             print(f"[local-whisper] Error: {exc}", file=sys.stderr)
