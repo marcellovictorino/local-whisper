@@ -2,15 +2,31 @@
 
 ## Overview
 
-Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start with a working transcription pipeline (Phase 1), add the keyboard trigger and clipboard paste (Phase 2), then add a visual recording indicator (Phase 3). Phase 4 covers distribution and packaging for real-world use.
+Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start with a working transcription pipeline (Phase 1), add the keyboard trigger and clipboard paste (Phase 2), then add a visual recording indicator (Phase 3). Phase 4 covers distribution and packaging for real-world use. v0.2 adds power-user features: snippets, corrections, and command mode.
 
 ## Current Milestone
 
+**v0.2 Enhancements** (v0.2.0)
+Status: Planning
+Phases: 0 of 3 complete
+
+---
+
 **v0.1 MVP** (v0.1.0)
-Status: Complete
+Status: ✅ Complete
 Phases: 4 of 4 complete
 
 ## Phases
+
+### v0.2 Enhancements
+
+| Phase | Name | Plans | Status | GitHub Issue | Agent-ready |
+|-------|------|-------|--------|--------------|-------------|
+| 5 | Snippet Expansion | 1 | Planning | #2 | ✅ Yes |
+| 6 | Personal Corrections | 1 | Planning | #3 | ✅ Yes |
+| 7 | Command Mode | 1 | Design | #4 | ❌ Needs design |
+
+### v0.1 MVP
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
@@ -80,4 +96,4 @@ Phases: 4 of 4 complete
 
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-04-27 — v0.1 MVP complete (all 4 phases)*
+*Last updated: 2026-04-27 — v0.2 milestone planned; phases 5+6 agent-ready*
