@@ -35,10 +35,10 @@ def copy_selection() -> str:
 def apply_command(selected_text: str, voice_command: str) -> str:
     """Apply voice command to selected text using an OpenAI-compatible API.
 
-    Reads OPENAI_API_KEY from the environment. Optionally reads OPENAI_BASE_URL
-    (for Gemini or other OpenAI-compatible providers) and LOCAL_WHISPER_MODEL
-    to override the default model. Falls back to returning voice_command unchanged
-    if the key is absent or the request fails.
+    Reads LOCAL_WHISPER_OPENAI_API_KEY from the environment. Optionally reads
+    LOCAL_WHISPER_OPENAI_BASE_URL (for Gemini or other OpenAI-compatible providers)
+    and LOCAL_WHISPER_COMMAND_MODEL to override the default model. Falls back to returning
+    voice_command unchanged if the key is absent or the request fails.
 
     Args:
         selected_text: Text from the active selection (may be empty).
@@ -47,10 +47,10 @@ def apply_command(selected_text: str, voice_command: str) -> str:
     Returns:
         Transformed text, or voice_command if API is unavailable.
     """
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = os.environ.get("LOCAL_WHISPER_OPENAI_API_KEY")
     if not api_key:
         print(
-            "[local-whisper] OPENAI_API_KEY not set — command mode unavailable.",
+            "[local-whisper] LOCAL_WHISPER_OPENAI_API_KEY not set — command mode unavailable.",
             file=sys.stderr,
         )
         return voice_command
@@ -59,13 +59,14 @@ def apply_command(selected_text: str, voice_command: str) -> str:
         import openai
     except ImportError:
         print(
-            "[local-whisper] openai package not installed. Run: uv add openai",
+            "[local-whisper] command mode dependencies not installed."
+            " Run: uv sync --extra command",
             file=sys.stderr,
         )
         return voice_command
 
-    model = os.environ.get("LOCAL_WHISPER_MODEL", "gpt-4o-mini")
-    base_url = os.environ.get("OPENAI_BASE_URL")
+    model = os.environ.get("LOCAL_WHISPER_COMMAND_MODEL", "gpt-4o-mini")
+    base_url = os.environ.get("LOCAL_WHISPER_OPENAI_BASE_URL")
 
     try:
         client = openai.OpenAI(

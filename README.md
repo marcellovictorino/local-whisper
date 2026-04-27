@@ -31,8 +31,61 @@ Once installed, local-whisper runs in the background automatically.
 
 | Action | Result |
 |--------|--------|
-| Hold Right ⌘ | Recording pill appears at top of screen |
+| Hold Right ⌘ | Recording pill (⏺) appears — dictation mode |
 | Release Right ⌘ | Transcription runs, text pastes at cursor |
+| Hold Right ⌥ | Recording pill (⚡) appears — command mode |
+| Release Right ⌥ | Voice instruction applied to selected text, result pastes |
+
+### Command mode
+
+Command mode lets you speak an instruction and apply it to whatever text you have selected. Select a paragraph, hold Right ⌥, say "fix the grammar", release — done.
+
+Requires the `command` optional dependency and an API key:
+
+```bash
+uv sync --extra command
+```
+
+Set these environment variables (add to `~/.zshrc` or `~/.bash_profile`):
+
+```bash
+# Required — your API key
+export LOCAL_WHISPER_OPENAI_API_KEY=sk-...
+
+# Optional — override the default model (default: gpt-4o-mini)
+export LOCAL_WHISPER_COMMAND_MODEL=gpt-4o-mini
+
+# Optional — use a different provider (see below)
+export LOCAL_WHISPER_OPENAI_BASE_URL=https://...
+```
+
+#### Providers
+
+Any OpenAI-compatible API works. Set `LOCAL_WHISPER_OPENAI_BASE_URL` to point at a different provider:
+
+**OpenAI (default — no base URL needed)**
+```bash
+export LOCAL_WHISPER_OPENAI_API_KEY=sk-...
+export LOCAL_WHISPER_COMMAND_MODEL=gpt-4o-mini   # or gpt-4o, o4-mini, etc.
+```
+
+**Google Gemini (free tier available)**
+```bash
+# Get a free key at aistudio.google.com
+export LOCAL_WHISPER_OPENAI_API_KEY=AIza...
+export LOCAL_WHISPER_OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+export LOCAL_WHISPER_COMMAND_MODEL=gemini-2.0-flash
+```
+
+**Ollama (fully local, no API key needed)**
+```bash
+# Start Ollama first: ollama serve
+export LOCAL_WHISPER_OPENAI_API_KEY=ollama   # any non-empty string
+export LOCAL_WHISPER_OPENAI_BASE_URL=http://localhost:11434/v1
+export LOCAL_WHISPER_COMMAND_MODEL=llama3.2
+```
+
+If `LOCAL_WHISPER_OPENAI_API_KEY` is not set, command mode falls back to pasting the raw transcription — no crash.
 
 ### Day-to-day commands (requires [just](https://github.com/casey/just))
 
@@ -67,7 +120,7 @@ tail -f ~/Library/Logs/local-whisper.log                   # logs
 | 4 | launchd auto-start + bash install script | ✅ v0.1 |
 | — | Snippet expansion (spoken keywords → predefined text) | v0.2 |
 | — | Personal dictionary (learned corrections) | v0.2 |
-| — | Command mode (apply spoken prompt to selected text) | v0.2 |
+| 7 | Command mode (apply spoken prompt to selected text) | ✅ v0.2 |
 
 ## Troubleshooting
 

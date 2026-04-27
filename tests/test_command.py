@@ -25,13 +25,13 @@ def _mock_openai(text: str) -> tuple[MagicMock, MagicMock]:
 
 
 def test_apply_command_returns_voice_command_when_no_api_key(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
     result = apply_command("hello world", "make this uppercase")
     assert result == "make this uppercase"
 
 
 def test_apply_command_calls_api_and_returns_text(monkeypatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
     mock_openai, mock_client = _mock_openai("HELLO WORLD")
 
     with patch.dict("sys.modules", {"openai": mock_openai}):
@@ -47,8 +47,8 @@ def test_apply_command_calls_api_and_returns_text(monkeypatch):
 
 
 def test_apply_command_uses_custom_model(monkeypatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-    monkeypatch.setenv("LOCAL_WHISPER_MODEL", "gpt-4o")
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("LOCAL_WHISPER_COMMAND_MODEL", "gpt-4o")
     mock_openai, mock_client = _mock_openai("HELLO WORLD")
 
     with patch.dict("sys.modules", {"openai": mock_openai}):
@@ -59,8 +59,8 @@ def test_apply_command_uses_custom_model(monkeypatch):
 
 
 def test_apply_command_uses_custom_base_url(monkeypatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-    monkeypatch.setenv("OPENAI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
     mock_openai, _ = _mock_openai("result")
 
     with patch.dict("sys.modules", {"openai": mock_openai}):
@@ -70,8 +70,15 @@ def test_apply_command_uses_custom_base_url(monkeypatch):
     assert call_kwargs["base_url"] == "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 
+def test_apply_command_returns_voice_command_on_import_error(monkeypatch):
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
+    with patch.dict("sys.modules", {"openai": None}):
+        result = apply_command("hello world", "make this uppercase")
+    assert result == "make this uppercase"
+
+
 def test_apply_command_returns_voice_command_on_api_error(monkeypatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
 
     mock_client = MagicMock()
     mock_client.chat.completions.create.side_effect = Exception("API error")
@@ -86,7 +93,7 @@ def test_apply_command_returns_voice_command_on_api_error(monkeypatch):
 
 
 def test_apply_command_handles_empty_selection(monkeypatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
     mock_openai, _ = _mock_openai("A cat sat in the sun")
 
     with patch.dict("sys.modules", {"openai": mock_openai}):

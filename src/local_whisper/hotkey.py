@@ -68,14 +68,16 @@ class HotkeyListener:
         if key == keyboard.Key.cmd_r and not self._pressed:
             self._pressed = True
             self._on_activate()
-        elif key == keyboard.Key.alt_r and not self._command_pressed and self._on_command_activate:
+        elif key == keyboard.Key.alt_r and not self._command_pressed:
             self._command_pressed = True
-            self._on_command_activate()
+            if self._on_command_activate is not None:
+                self._on_command_activate()
 
     def _handle_release(self, key: keyboard.Key | keyboard.KeyCode) -> None:
         if key == keyboard.Key.cmd_r and self._pressed:
             self._pressed = False
             self._on_deactivate()
-        elif key == keyboard.Key.alt_r and self._command_pressed and self._on_command_deactivate:
+        elif key == keyboard.Key.alt_r and self._command_pressed:
             self._command_pressed = False
-            self._on_command_deactivate()
+            if self._on_command_deactivate is not None:
+                self._on_command_deactivate()

@@ -30,7 +30,11 @@ def main() -> None:
     parser.add_argument(
         "--run",
         action="store_true",
-        help="Start the background listener (hold Right ⌘ to dictate).",
+        help=(
+            "Start the background listener. "
+            "Hold Right ⌘ to dictate; hold Right ⌥ for command mode "
+            "(requires LOCAL_WHISPER_OPENAI_API_KEY and `uv sync --extra command`)."
+        ),
     )
     parser.add_argument(
         "--test",
