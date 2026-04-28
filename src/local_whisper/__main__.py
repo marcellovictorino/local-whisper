@@ -35,7 +35,7 @@ def main() -> None:
             "Start the background listener. "
             "Hold Right ⌘ to dictate. "
             "Select text first, then hold Right ⌘ to apply a voice command to the selection "
-            "(requires LOCAL_WHISPER_OPENAI_API_KEY and `uv sync --extra command`)."
+            "(requires LOCAL_WHISPER_OPENAI_API_KEY env var)."
         ),
     )
     parser.add_argument(

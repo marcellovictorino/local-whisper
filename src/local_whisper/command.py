@@ -86,8 +86,7 @@ def apply_command(selected_text: str, voice_command: str) -> str:
         import openai
     except ImportError:
         print(
-            "[local-whisper] command mode dependencies not installed."
-            " Run: uv sync --extra command",
+            "[local-whisper] openai package not found. Run: uv sync",
             file=sys.stderr,
         )
         return voice_command

@@ -1,3 +1,5 @@
+set shell := ["bash", "-c"]
+
 project_dir := justfile_directory()
 uv          := `which uv`
 plist_name  := "com.local-whisper"
@@ -34,7 +36,7 @@ status:
 # Run in foreground (for debugging — Ctrl+C to quit)
 [group('dev')]
 run:
-    {{uv}} run python -m local_whisper --run
+    {{uv}} run python -m local_whisper --run 2> >(grep -v "MallocStackLogging" >&2)
 
 # Stream service logs
 [group('dev')]

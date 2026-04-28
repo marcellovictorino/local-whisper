@@ -8,13 +8,11 @@ dependencies = [
     "numpy>=1.26",
     "pyperclip>=1.8",
     "pynput>=1.7",
+    "openai>=1.0",
 ]
 
 [project.scripts]
 local-whisper = "local_whisper.__main__:main"
-
-[project.optional-dependencies]
-command = ["openai>=1.0"]
 
 [dependency-groups]
 dev = ["pytest>=8"]
