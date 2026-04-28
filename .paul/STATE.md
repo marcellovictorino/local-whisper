@@ -2,29 +2,29 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-04-28 after Phase 8)
+See: .paul/PROJECT.md (updated 2026-04-28 after Phase 9)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.3 Polish — COMPLETE
+**Current focus:** v0.4 Auto-Adapt — COMPLETE
 
 ## Current Position
 
-Milestone: v0.3 Polish — ✅ COMPLETE
-Phase: 8 of 8 (Auto-Cleanup) — Complete
-Plan: 08-01 — Complete
-Status: Milestone complete — v0.3.0 shipped
-Last activity: 2026-04-28 — Phase 8 complete, v0.3.0 shipped
+Milestone: v0.4 Auto-Adapt — Complete
+Phase: 9 of 9 (Auto-Adapt) — Complete
+Plan: 09-01 complete
+Status: Milestone complete — all phases unified
+Last activity: 2026-04-28 — Phase 9 (Auto-Adapt) shipped, v0.4.0 complete
 
 Progress:
-- Milestone: [██████████] 100%
-- Phase 8: [██████████] 100%
+- v0.4 Auto-Adapt: [██████████] 100%
+- Phase 9: [██████████] 100%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Milestone complete]
+  ✓        ✓        ✓     [Loop complete — milestone complete]
 ```
 
 ## Accumulated Context
@@ -44,14 +44,18 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | Right ⌘ auto-detects mode via NSPasteboard.changeCount | Phase 7 | Selection → command mode (⚡); no selection → dictation (⏺) |
 | auto_cleanup config read per call (no App state) | Phase 8 | Consistent with snippets; changes take effect immediately |
 | Conservative filler set: um/uh/er/ah/hmm/you know | Phase 8 | Avoids false positives on "like"/"so"/"right" |
+| auto_adapt opt-in (enabled = false default) | Phase 9 | Reshaping changes output significantly — user must explicitly enable |
+| App captured at press time in _on_key_press | Phase 9 | Focus may change during recording; correct app is the one at key press |
+| openai module-level import (try/except) | Phase 9 | Lazy import inside function is not patchable via unittest.mock.patch |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
 |-------|--------|--------|---------|
 | Accessibility permission onboarding is manual | Phase 2 | S | Future polish |
 | No error recovery if record thread crashes mid-session | Phase 2 | S | Future polish |
-| Filler list not user-configurable | Phase 8 | S | v0.4+ |
-| LLM-based cleanup (higher quality, ~1s overhead) | Phase 8 | M | v0.4+ |
+| Filler list not user-configurable | Phase 8 | S | v0.5+ |
+| LLM-based cleanup (higher quality, ~1s overhead) | Phase 8 | M | v0.5+ |
+| auto_adapt uses same COMMAND_MODEL env var as command mode | Phase 9 | S | v0.5+ |
 
 ### Blockers/Concerns
 | Concern | Detail |
@@ -61,8 +65,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 ## Session Continuity
 
 Last session: 2026-04-28
-Stopped at: v0.3 Polish complete — all phases shipped and verified
-Next action: Start v0.4 milestone (/paul:discuss or /paul:plan) or pause
+Stopped at: v0.4 milestone complete — all 9 phases unified
+Next action: Start v0.5 milestone or release tagging
 Resume file: .paul/ROADMAP.md
 
 ---

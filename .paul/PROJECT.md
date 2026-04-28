@@ -12,7 +12,7 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 
 | Attribute | Value |
 |-----------|-------|
-| Version | 0.3.0 |
+| Version | 0.4.0 |
 | Status | Active |
 | Last Updated | 2026-04-28 |
 
@@ -36,11 +36,13 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 - [x] `justfile` day-to-day ops: install/uninstall/start/stop/status/run/logs — Phase 4
 
 - [x] Auto-cleanup: filler word removal + immediate repetition collapse (opt-out via config) — Phase 8
+- [x] Auto-adapt: app-aware LLM text reshaping with per-app prompts + built-in Slack/Mail presets (opt-in via config) — Phase 9
 
 ### Planned (Next)
 
-**v0.3+ ideas:**
+**v0.4+ ideas:**
 - [ ] LLM-based cleanup — higher quality transcript polish (1-2s overhead, OpenAI-compatible)
+- [ ] User-configurable filler list (deferred from Phase 8)
 
 ### Out of Scope
 - Cloud-based transcription — must run fully offline
@@ -88,6 +90,9 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | setup.sh + justfile (not Makefile) | setup.sh for git-clone pipe install pattern; justfile for day-to-day ops | 2026-04-27 | Active |
 | AXIsProcessTrusted() via ctypes for Accessibility check | No new deps (stdlib ctypes); early exit before pynput/AppKit init | 2026-04-27 | Active |
 | No KeepAlive in launchd plist | Prevents restart loop when Accessibility not yet granted to uv binary | 2026-04-27 | Active |
+| auto_adapt opt-in (enabled = false default) | Reshaping changes output significantly — user must explicitly enable | 2026-04-28 | Active |
+| App captured at press time (not process time) | Focus may change during recording; correct app is the one at key press | 2026-04-28 | Active |
+| openai module-level import (try/except) | Lazy import inside function is not patchable via unittest.mock.patch | 2026-04-28 | Active |
 
 ## Success Metrics
 
@@ -112,4 +117,4 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-04-28 after Phase 8 (Auto-Cleanup) — v0.3.0*
+*Last updated: 2026-04-28 after Phase 9 (Auto-Adapt) — v0.4.0*
