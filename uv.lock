@@ -561,14 +561,10 @@ source = { editable = "." }
 dependencies = [
     { name = "mlx-whisper" },
     { name = "numpy" },
+    { name = "openai" },
     { name = "pynput" },
     { name = "pyperclip" },
     { name = "sounddevice" },
-]
-
-[package.optional-dependencies]
-command = [
-    { name = "openai" },
 ]
 
 [package.dev-dependencies]
@@ -580,7 +576,7 @@ dev = [
 requires-dist = [
     { name = "mlx-whisper", specifier = ">=0.4.0" },
     { name = "numpy", specifier = ">=1.26" },
-    { name = "openai", marker = "extra == 'command'", specifier = ">=1.0" },
+    { name = "openai", specifier = ">=1.0" },
     { name = "pynput", specifier = ">=1.7" },
     { name = "pyperclip", specifier = ">=1.8" },
     { name = "sounddevice", specifier = ">=0.4.7" },

@@ -9,22 +9,22 @@ See: .paul/PROJECT.md (updated 2026-04-27 after Phase 2)
 
 ## Current Position
 
-Milestone: v0.2 Enhancements — ✅ COMPLETE
-Phase: 7 of 7 (Command Mode) — Complete
-Plan: 07-01 — Complete
-Status: Milestone complete — all 3 v0.2 phases shipped
-Last activity: 2026-04-27 — Phase 7 complete, v0.2.0 shipped
+Milestone: v0.3 Polish — 🔄 In progress
+Phase: 8 of 8 (Animated Waveform Overlay) — In progress
+Plan: 08-01 — Applying
+Status: Implementation complete, awaiting verification
+Last activity: 2026-04-27 — Phase 8 waveform animation implemented
 
 Progress:
-- Milestone: [██████████] 100%
-- Phase 7: [██████████] 100%
+- Milestone: [░░░░░░░░░░] 0% (phase in progress)
+- Phase 8: [████████░░] 80%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Milestone complete]
+  ✓        ✓        ○     [Applied, needs verification]
 ```
 
 ## Accumulated Context
@@ -60,9 +60,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 ## Session Continuity
 
 Last session: 2026-04-27
-Stopped at: v0.2 Enhancements complete — all 7 phases shipped and verified
-Next action: Start v0.3 milestone (/paul:plan) or pause
-Resume file: .paul/ROADMAP.md
+Stopped at: Phase 8 implementation applied — needs live testing
+Next action: Test overlay animation with `just run`, verify bars animate with voice
+Resume file: .paul/phases/08-animated-overlay/08-01-PLAN.md
 
 ---
 *STATE.md — Updated after every significant action*
