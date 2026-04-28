@@ -47,3 +47,14 @@ logs:
 [group('dev')]
 test:
     {{uv}} run pytest tests/ -v
+
+# Run linter + formatter check
+[group('dev')]
+lint:
+    {{uv}} run ruff check src/ tests/
+    {{uv}} run ruff format --check src/ tests/
+
+# Install pre-commit hooks (run once after cloning)
+[group('dev')]
+hooks:
+    {{uv}} run pre-commit install
