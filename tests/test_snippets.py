@@ -1,4 +1,5 @@
 """Tests for snippets.expand — pure filesystem, no side effects."""
+
 from pathlib import Path
 
 from local_whisper import snippets
@@ -35,7 +36,7 @@ def test_key_expands_inline(tmp_path: Path) -> None:
 
 def test_case_insensitive_match(tmp_path: Path) -> None:
     # uppercase key in config, mixed-case text — both must expand
-    config = _write_config(tmp_path, "[snippets]\nBRB = \"be right back\"\n")
+    config = _write_config(tmp_path, '[snippets]\nBRB = "be right back"\n')
     assert snippets.expand("brb", config_path=config) == "be right back"
     assert snippets.expand("BRB", config_path=config) == "be right back"
 
@@ -50,13 +51,13 @@ def test_multiple_snippets_expanded(tmp_path: Path) -> None:
 
 
 def test_no_match_returns_unchanged(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, "[snippets]\nbrb = \"be right back\"\n")
+    config = _write_config(tmp_path, '[snippets]\nbrb = "be right back"\n')
     result = snippets.expand("hello world", config_path=config)
     assert result == "hello world"
 
 
 def test_repeated_key_in_text_all_expanded(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, "[snippets]\nbrb = \"be right back\"\n")
+    config = _write_config(tmp_path, '[snippets]\nbrb = "be right back"\n')
     result = snippets.expand("brb and then brb again", config_path=config)
     assert result == "be right back and then be right back again"
 
@@ -95,6 +96,7 @@ def test_malformed_toml_returns_text_unchanged(tmp_path: Path) -> None:
 
 def test_unreadable_file_returns_text_unchanged(tmp_path: Path) -> None:
     import os
+
     config = _write_config(tmp_path, '[snippets]\nbrb = "be right back"\n')
     os.chmod(config, 0o000)
     try:
@@ -105,7 +107,7 @@ def test_unreadable_file_returns_text_unchanged(tmp_path: Path) -> None:
 
 
 def test_non_string_values_are_ignored(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, "[snippets]\nbrb = 42\nomw = \"on my way\"\n")
+    config = _write_config(tmp_path, '[snippets]\nbrb = 42\nomw = "on my way"\n')
     result = snippets.expand("brb omw", config_path=config)
     assert result == "brb on my way"
 

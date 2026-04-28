@@ -1,4 +1,5 @@
 """Tests for audio.record_until_event — output contract."""
+
 import threading
 from unittest.mock import MagicMock, patch
 

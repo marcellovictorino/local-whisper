@@ -1,4 +1,5 @@
 """Command mode — apply spoken prompt to selected text via OpenAI-compatible API."""
+
 from __future__ import annotations
 
 import os
@@ -10,6 +11,7 @@ import pyperclip
 
 try:
     from AppKit import NSPasteboard as _NSPasteboard
+
     _HAS_APPKIT = True
 except Exception:
     _NSPasteboard = None

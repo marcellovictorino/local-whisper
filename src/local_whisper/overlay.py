@@ -147,10 +147,7 @@ class _OverlayController(NSObject):
         panel.setIgnoresMouseEvents_(True)
         panel.setHasShadow_(True)
         panel.setHidesOnDeactivate_(False)
-        panel.setCollectionBehavior_(
-            NSWindowCollectionBehaviorCanJoinAllSpaces
-            | NSWindowCollectionBehaviorStationary
-        )
+        panel.setCollectionBehavior_(NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorStationary)
 
         effect = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, _PILL_W, _PILL_H))
         effect.setMaterial_(_HUD_MATERIAL)
@@ -160,9 +157,7 @@ class _OverlayController(NSObject):
         effect.layer().setCornerRadius_(_PILL_H / 2)
         effect.layer().setMasksToBounds_(True)
         effect.layer().setBorderWidth_(1.0)
-        effect.layer().setBorderColor_(
-            NSColor.colorWithWhite_alpha_(0.1, 1.0).CGColor()
-        )
+        effect.layer().setBorderColor_(NSColor.colorWithWhite_alpha_(0.1, 1.0).CGColor())
         panel.setContentView_(effect)
 
         CALayer = objc.lookUpClass("CALayer")

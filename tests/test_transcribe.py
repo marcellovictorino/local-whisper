@@ -1,4 +1,5 @@
 """Tests for transcribe._model_is_cached — pure filesystem logic."""
+
 from pathlib import Path
 
 from local_whisper.transcribe import _model_is_cached
@@ -20,10 +21,7 @@ def test_not_cached_when_snapshots_empty(tmp_path: Path, monkeypatch: object) ->
 
 def test_cached_when_snapshot_has_weights(tmp_path: Path, monkeypatch: object) -> None:
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    snapshot_dir = (
-        tmp_path
-        / ".cache/huggingface/hub/models--mlx-community--whisper-large-v3-turbo/snapshots/abc123"
-    )
+    snapshot_dir = tmp_path / ".cache/huggingface/hub/models--mlx-community--whisper-large-v3-turbo/snapshots/abc123"
     snapshot_dir.mkdir(parents=True)
     (snapshot_dir / "model.safetensors").write_bytes(b"")
     assert _model_is_cached(MODEL) is True
@@ -32,10 +30,7 @@ def test_cached_when_snapshot_has_weights(tmp_path: Path, monkeypatch: object) -
 def test_not_cached_when_only_metadata_present(tmp_path: Path, monkeypatch: object) -> None:
     """Partial/interrupted download: config.json exists but no weight files."""
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    snapshot_dir = (
-        tmp_path
-        / ".cache/huggingface/hub/models--mlx-community--whisper-large-v3-turbo/snapshots/abc123"
-    )
+    snapshot_dir = tmp_path / ".cache/huggingface/hub/models--mlx-community--whisper-large-v3-turbo/snapshots/abc123"
     snapshot_dir.mkdir(parents=True)
     (snapshot_dir / "config.json").write_text("{}")
     (snapshot_dir / "tokenizer.json").write_text("{}")
@@ -44,10 +39,7 @@ def test_not_cached_when_only_metadata_present(tmp_path: Path, monkeypatch: obje
 
 def test_not_cached_when_snapshot_subdirs_are_empty(tmp_path: Path, monkeypatch: object) -> None:
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    snapshot_dir = (
-        tmp_path
-        / ".cache/huggingface/hub/models--mlx-community--whisper-large-v3-turbo/snapshots/abc123"
-    )
+    snapshot_dir = tmp_path / ".cache/huggingface/hub/models--mlx-community--whisper-large-v3-turbo/snapshots/abc123"
     snapshot_dir.mkdir(parents=True)
     # directory exists but is empty
     assert _model_is_cached(MODEL) is False
