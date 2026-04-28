@@ -8,16 +8,22 @@ dependencies = [
     "numpy>=1.26",
     "pyperclip>=1.8",
     "pynput>=1.7",
+    "openai>=1.0",
 ]
 
 [project.scripts]
 local-whisper = "local_whisper.__main__:main"
 
-[project.optional-dependencies]
-command = ["openai>=1.0"]
-
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "ruff>=0.4", "pre-commit>=3"]
+
+[tool.ruff]
+src = ["src"]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ARG"]
+ignore = ["BLE001"]
 
 [build-system]
 requires = ["hatchling"]

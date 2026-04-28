@@ -9,6 +9,7 @@ Config: ~/.config/local-whisper/config.toml
 Keys are matched case-insensitively anywhere within the transcribed text.
 Longer keys take precedence over shorter ones on overlap.
 """
+
 from __future__ import annotations
 
 import re

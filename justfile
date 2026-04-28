@@ -1,3 +1,5 @@
+set shell := ["bash", "-c"]
+
 project_dir := justfile_directory()
 uv          := `which uv`
 plist_name  := "com.local-whisper"
@@ -34,7 +36,7 @@ status:
 # Run in foreground (for debugging — Ctrl+C to quit)
 [group('dev')]
 run:
-    {{uv}} run python -m local_whisper --run
+    {{uv}} run python -m local_whisper --run 2> >(grep -v "MallocStackLogging" >&2)
 
 # Stream service logs
 [group('dev')]
@@ -45,3 +47,14 @@ logs:
 [group('dev')]
 test:
     {{uv}} run pytest tests/ -v
+
+# Run linter + formatter check
+[group('dev')]
+lint:
+    {{uv}} run ruff check src/ tests/
+    {{uv}} run ruff format --check src/ tests/
+
+# Install pre-commit hooks (run once after cloning)
+[group('dev')]
+hooks:
+    {{uv}} run pre-commit install

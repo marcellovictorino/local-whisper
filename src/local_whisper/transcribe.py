@@ -16,10 +16,7 @@ def _model_is_cached(model: str) -> bool:
         return False
     # Require at least one .safetensors weight file — partial/interrupted downloads
     # may leave only metadata (config.json etc.) which passes an any(iterdir()) check.
-    return any(
-        p.is_dir() and any(p.glob("*.safetensors"))
-        for p in snapshots.iterdir()
-    )
+    return any(p.is_dir() and any(p.glob("*.safetensors")) for p in snapshots.iterdir())
 
 
 def _suppress_progress_bars() -> None:
@@ -37,6 +34,7 @@ def warm_up(model: str = "mlx-community/whisper-large-v3-turbo") -> None:
         return  # skip if model not downloaded yet — first run handles it inline
     _suppress_progress_bars()
     import mlx_whisper
+
     silence = np.zeros(int(0.5 * 16000), dtype="float32")
     try:
         mlx_whisper.transcribe(silence, path_or_hf_repo=model, verbose=False)

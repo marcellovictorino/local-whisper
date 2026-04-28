@@ -1,4 +1,5 @@
 """Tests for command.get_selection and command.apply_command."""
+
 from unittest.mock import MagicMock, patch
 
 from local_whisper.command import apply_command, get_selection
@@ -36,19 +37,26 @@ def _mock_pasteboard(count_before: int, count_after: int, text: str) -> MagicMoc
 
 # --- get_selection: NSPasteboard changeCount path ---
 
+
 def test_get_selection_returns_text_when_count_increments():
     mock_NS = _mock_pasteboard(5, 6, "selected text")
-    with patch("local_whisper.command._HAS_APPKIT", True), \
-         patch("local_whisper.command._NSPasteboard", mock_NS), \
-         patch("subprocess.run"), patch("time.sleep"):
+    with (
+        patch("local_whisper.command._HAS_APPKIT", True),
+        patch("local_whisper.command._NSPasteboard", mock_NS),
+        patch("subprocess.run"),
+        patch("time.sleep"),
+    ):
         assert get_selection() == "selected text"
 
 
 def test_get_selection_returns_empty_when_count_unchanged():
     mock_NS = _mock_pasteboard(5, 5, "whatever")
-    with patch("local_whisper.command._HAS_APPKIT", True), \
-         patch("local_whisper.command._NSPasteboard", mock_NS), \
-         patch("subprocess.run"), patch("time.sleep"):
+    with (
+        patch("local_whisper.command._HAS_APPKIT", True),
+        patch("local_whisper.command._NSPasteboard", mock_NS),
+        patch("subprocess.run"),
+        patch("time.sleep"),
+    ):
         assert get_selection() == ""
 
 
@@ -56,9 +64,12 @@ def test_get_selection_detects_selection_when_text_equals_prior_clipboard():
     """Bug-fix: selected text identical to prior clipboard must still activate command mode."""
     # Simulates: dictated "my long thoughts", then user selects that exact text
     mock_NS = _mock_pasteboard(10, 11, "my long thoughts")
-    with patch("local_whisper.command._HAS_APPKIT", True), \
-         patch("local_whisper.command._NSPasteboard", mock_NS), \
-         patch("subprocess.run"), patch("time.sleep"):
+    with (
+        patch("local_whisper.command._HAS_APPKIT", True),
+        patch("local_whisper.command._NSPasteboard", mock_NS),
+        patch("subprocess.run"),
+        patch("time.sleep"),
+    ):
         assert get_selection() == "my long thoughts"
 
 
@@ -68,45 +79,60 @@ def test_get_selection_returns_empty_when_stringForType_returns_none():
     mock_pb.stringForType_.return_value = None
     mock_NS = MagicMock()
     mock_NS.generalPasteboard.return_value = mock_pb
-    with patch("local_whisper.command._HAS_APPKIT", True), \
-         patch("local_whisper.command._NSPasteboard", mock_NS), \
-         patch("subprocess.run"), patch("time.sleep"):
+    with (
+        patch("local_whisper.command._HAS_APPKIT", True),
+        patch("local_whisper.command._NSPasteboard", mock_NS),
+        patch("subprocess.run"),
+        patch("time.sleep"),
+    ):
         assert get_selection() == ""
 
 
 def test_get_selection_returns_empty_on_subprocess_error_appkit():
     mock_NS = MagicMock()
     mock_NS.generalPasteboard.return_value.changeCount.return_value = 1
-    with patch("local_whisper.command._HAS_APPKIT", True), \
-         patch("local_whisper.command._NSPasteboard", mock_NS), \
-         patch("subprocess.run", side_effect=Exception("osascript failed")):
+    with (
+        patch("local_whisper.command._HAS_APPKIT", True),
+        patch("local_whisper.command._NSPasteboard", mock_NS),
+        patch("subprocess.run", side_effect=Exception("osascript failed")),
+    ):
         assert get_selection() == ""
 
 
 # --- get_selection: string comparison fallback (no AppKit) ---
 
+
 def test_get_selection_fallback_returns_text_when_clipboard_changed():
-    with patch("local_whisper.command._HAS_APPKIT", False), \
-         patch("pyperclip.paste", side_effect=["old text", "selected text"]), \
-         patch("subprocess.run"), patch("time.sleep"):
+    with (
+        patch("local_whisper.command._HAS_APPKIT", False),
+        patch("pyperclip.paste", side_effect=["old text", "selected text"]),
+        patch("subprocess.run"),
+        patch("time.sleep"),
+    ):
         assert get_selection() == "selected text"
 
 
 def test_get_selection_fallback_returns_empty_when_clipboard_unchanged():
-    with patch("local_whisper.command._HAS_APPKIT", False), \
-         patch("pyperclip.paste", return_value="same text"), \
-         patch("subprocess.run"), patch("time.sleep"):
+    with (
+        patch("local_whisper.command._HAS_APPKIT", False),
+        patch("pyperclip.paste", return_value="same text"),
+        patch("subprocess.run"),
+        patch("time.sleep"),
+    ):
         assert get_selection() == ""
 
 
 def test_get_selection_fallback_returns_empty_on_subprocess_error():
-    with patch("local_whisper.command._HAS_APPKIT", False), \
-         patch("pyperclip.paste", return_value="old"), \
-         patch("subprocess.run", side_effect=Exception("osascript failed")):
+    with (
+        patch("local_whisper.command._HAS_APPKIT", False),
+        patch("pyperclip.paste", return_value="old"),
+        patch("subprocess.run", side_effect=Exception("osascript failed")),
+    ):
         assert get_selection() == ""
 
 
 # --- apply_command ---
+
 
 def test_apply_command_returns_voice_command_when_no_api_key(monkeypatch):
     monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)

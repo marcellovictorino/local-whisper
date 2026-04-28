@@ -1,4 +1,5 @@
 """Tests for corrections.load() and corrections.apply()."""
+
 from pathlib import Path
 
 from local_whisper.corrections import apply, load

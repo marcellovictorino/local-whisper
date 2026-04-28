@@ -98,7 +98,10 @@ class App:
     def _record_and_process(self) -> None:
         """Record until stop_event, then transcribe and paste."""
         try:
-            audio_data: np.ndarray = audio.record_until_event(self._stop_event)
+            on_amp = self._overlay.update_amplitude if self._overlay else None
+            audio_data: np.ndarray = audio.record_until_event(self._stop_event, on_amplitude=on_amp)
+            if self._overlay:
+                self._overlay.set_processing()
             if audio_data.size == 0:
                 print("[local-whisper] No audio captured.", file=sys.stderr)
                 return
@@ -119,7 +122,10 @@ class App:
     def _command_record_and_process(self) -> None:
         """Record until stop_event, transcribe, apply voice command via API, paste."""
         try:
-            audio_data: np.ndarray = audio.record_until_event(self._command_stop_event)
+            on_amp = self._overlay.update_amplitude if self._overlay else None
+            audio_data: np.ndarray = audio.record_until_event(self._command_stop_event, on_amplitude=on_amp)
+            if self._overlay:
+                self._overlay.set_processing()
             if audio_data.size == 0:
                 print("[local-whisper] No audio captured.", file=sys.stderr)
                 return

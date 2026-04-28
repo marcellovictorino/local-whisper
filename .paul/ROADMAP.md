@@ -6,6 +6,12 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 
 ## Current Milestone
 
+**v0.3 Polish** (v0.3.0)
+Status: 🔄 In progress
+Phases: 0 of 1 complete
+
+---
+
 **v0.2 Enhancements** (v0.2.0)
 Status: ✅ Complete
 Phases: 3 of 3 complete
@@ -17,6 +23,12 @@ Status: ✅ Complete
 Phases: 4 of 4 complete
 
 ## Phases
+
+### v0.3 Polish
+
+| Phase | Name | Plans | Status | Completed |
+|-------|------|-------|--------|-----------|
+| 8 | Animated Waveform Overlay | 1 | 🔄 In progress | — |
 
 ### v0.2 Enhancements
 

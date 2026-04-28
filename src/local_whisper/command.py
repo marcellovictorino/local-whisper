@@ -1,4 +1,5 @@
 """Command mode — apply spoken prompt to selected text via OpenAI-compatible API."""
+
 from __future__ import annotations
 
 import os
@@ -10,6 +11,7 @@ import pyperclip
 
 try:
     from AppKit import NSPasteboard as _NSPasteboard
+
     _HAS_APPKIT = True
 except Exception:
     _NSPasteboard = None
@@ -86,8 +88,7 @@ def apply_command(selected_text: str, voice_command: str) -> str:
         import openai
     except ImportError:
         print(
-            "[local-whisper] command mode dependencies not installed."
-            " Run: uv sync --extra command",
+            "[local-whisper] openai package not found. Run: uv sync",
             file=sys.stderr,
         )
         return voice_command

@@ -1,11 +1,11 @@
 """Word-level corrections — fixes consistent ASR mishearings."""
+
 from __future__ import annotations
 
 import re
 import sys
 import tomllib
 from pathlib import Path
-
 
 _CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
 
@@ -50,7 +50,7 @@ def apply(text: str, corrections: dict[str, str]) -> str:
     for wrong, right in corrections.items():
         text = re.sub(
             rf"(?<![\w-]){re.escape(wrong)}(?![\w-])",
-            lambda _: right,
+            lambda _, r=right: r,
             text,
             flags=re.IGNORECASE,
         )
