@@ -1,3 +1,4 @@
+import math
 import sys
 import threading
 from collections.abc import Callable
@@ -57,7 +58,8 @@ def record_until_event(
             print(f"[audio] {status}", file=sys.stderr)
         chunks.append(indata.copy())
         if on_amplitude is not None:
-            rms = float(np.sqrt(np.mean(indata**2)))
+            flat = indata[:, 0]
+            rms = math.sqrt(float(np.dot(flat, flat)) / len(flat))
             on_amplitude(rms)
 
     print("Recording...", file=sys.stderr, flush=True)

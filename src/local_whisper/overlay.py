@@ -72,12 +72,15 @@ class _Mode(StrEnum):
     PROCESSING = "processing"
 
 
+_QueueItem = str | tuple[str, float]
+
+
 class _OverlayController(NSObject):
     """Manages the NSPanel with animated waveform bars. Drains command queue via NSTimer."""
 
     @objc.python_method
-    def setup(self, cmd_queue: queue.Queue) -> None:
-        self._queue = cmd_queue
+    def setup(self, cmd_queue: queue.Queue[_QueueItem]) -> None:
+        self._queue: queue.Queue[_QueueItem] = cmd_queue
         self._panel: NSPanel | None = None
         self._bars: list = []
         self._amplitude: float = 0.0
@@ -85,6 +88,7 @@ class _OverlayController(NSObject):
         self._mode: _Mode = _Mode.DICTATION
         self._was_idle: bool = True
         self._last_active_t: float = 0.0  # monotonic time of last above-threshold frame
+        self._last_normalized: float = 0.0  # normalized amplitude at last active frame
         self._CATransaction = objc.lookUpClass("CATransaction")
 
     def pollQueue_(self, _timer: object) -> None:
@@ -196,7 +200,8 @@ class _OverlayController(NSObject):
     def _fade_out(self) -> None:
         self._active = False  # defensive — ensure bars stop even if called directly
         self._was_idle = True  # reset so next show starts with static bars
-        self._last_active_t = 0.0  # reset hold timer
+        self._last_active_t = 0.0
+        self._last_normalized = 0.0
         if self._panel is None:
             return
         self._panel.setAlphaValue_(0.0)
@@ -231,6 +236,7 @@ class _OverlayController(NSObject):
                 self._last_active_t = t
                 self._was_idle = False
                 normalized = min(1.0, math.sqrt(amp * 20.0))
+                self._last_normalized = normalized
                 for i, bar in enumerate(self._bars):
                     phase = _BAR_PHASES[i]
                     osc = 0.65 + 0.35 * math.sin(t * 6.0 - phase)
@@ -238,11 +244,11 @@ class _OverlayController(NSObject):
                     by = (_PILL_H - bar_h) / 2
                     bar.setFrame_(((_BAR_X_POSITIONS[i], by), (_BAR_W, bar_h)))
             else:
-                # Silence: hold wave for _HOLD_SECS then snap to static.
+                # Silence: decay from last active level over _HOLD_SECS then snap to static.
                 hold_elapsed = t - self._last_active_t
                 if hold_elapsed < _HOLD_SECS:
                     decay = 1.0 - hold_elapsed / _HOLD_SECS
-                    normalized = min(1.0, math.sqrt(_IDLE_THRESHOLD * decay * 20.0))
+                    normalized = self._last_normalized * decay
                     for i, bar in enumerate(self._bars):
                         phase = _BAR_PHASES[i]
                         osc = 0.65 + 0.35 * math.sin(t * 6.0 - phase)
@@ -266,7 +272,7 @@ class RecordingOverlay:
     """
 
     def __init__(self) -> None:
-        self._queue: queue.Queue = queue.Queue()
+        self._queue: queue.Queue[_QueueItem] = queue.Queue()
         self._controller: _OverlayController | None = None
 
     def show(self) -> None:
