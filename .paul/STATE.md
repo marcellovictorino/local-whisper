@@ -2,29 +2,29 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-04-27 after Phase 2)
+See: .paul/PROJECT.md (updated 2026-04-28 after Phase 8)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.2 Enhancements — COMPLETE
+**Current focus:** v0.3 Polish — COMPLETE
 
 ## Current Position
 
-Milestone: v0.3 Polish — 🔄 In progress
-Phase: 8 of 8 (Animated Waveform Overlay) — In progress
-Plan: 08-01 — Applying
-Status: Implementation complete, awaiting verification
-Last activity: 2026-04-27 — Phase 8 waveform animation implemented
+Milestone: v0.3 Polish — ✅ COMPLETE
+Phase: 8 of 8 (Auto-Cleanup) — Complete
+Plan: 08-01 — Complete
+Status: Milestone complete — v0.3.0 shipped
+Last activity: 2026-04-28 — Phase 8 complete, v0.3.0 shipped
 
 Progress:
-- Milestone: [░░░░░░░░░░] 0% (phase in progress)
-- Phase 8: [████████░░] 80%
+- Milestone: [██████████] 100%
+- Phase 8: [██████████] 100%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ○     [Applied, needs verification]
+  ✓        ✓        ✓     [Milestone complete]
 ```
 
 ## Accumulated Context
@@ -38,19 +38,20 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | osascript for paste | Phase 2 | Works across all apps, no extra permission |
 | PyObjC NSPanel for overlay | Phase 3 | Native frosted-glass, no dock icon |
 | orderFrontRegardless() + setHidesOnDeactivate_(False) | Phase 3 | Required for NSApplicationActivationPolicyAccessory apps |
-| Lazy panel build in _fade_in | Phase 3 | NSScreen.mainScreen() unreliable before app.run() |
 | setup.sh + justfile (not Makefile) | Phase 4 | setup.sh for one-shot git-clone install, justfile for day-to-day ops |
-| AXIsProcessTrusted() via ctypes | Phase 4 | No new deps; exits cleanly before pynput init if permission missing |
-| No KeepAlive in launchd plist | Phase 4 | Prevents restart loop when Accessibility not yet granted |
 | Single config.toml for snippets + corrections | Phase 5/6 | ~/.config/local-whisper/config.toml with [snippets] and [corrections] sections |
 | Env vars for command mode API config | Phase 7 | API keys unsuitable for config files; LOCAL_WHISPER_OPENAI_API_KEY, LOCAL_WHISPER_OPENAI_BASE_URL, LOCAL_WHISPER_COMMAND_MODEL |
-| Right ⌘ auto-detects mode via NSPasteboard.changeCount | Phase 7 → post-7 fix | Selection detected → command mode (⚡); no selection → dictation (⏺). Replaced Right ⌥ separate key to avoid hotkey conflicts. |
+| Right ⌘ auto-detects mode via NSPasteboard.changeCount | Phase 7 | Selection → command mode (⚡); no selection → dictation (⏺) |
+| auto_cleanup config read per call (no App state) | Phase 8 | Consistent with snippets; changes take effect immediately |
+| Conservative filler set: um/uh/er/ah/hmm/you know | Phase 8 | Avoids false positives on "like"/"so"/"right" |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
 |-------|--------|--------|---------|
 | Accessibility permission onboarding is manual | Phase 2 | S | Future polish |
 | No error recovery if record thread crashes mid-session | Phase 2 | S | Future polish |
+| Filler list not user-configurable | Phase 8 | S | v0.4+ |
+| LLM-based cleanup (higher quality, ~1s overhead) | Phase 8 | M | v0.4+ |
 
 ### Blockers/Concerns
 | Concern | Detail |
@@ -59,10 +60,10 @@ PLAN ──▶ APPLY ──▶ UNIFY
 
 ## Session Continuity
 
-Last session: 2026-04-27
-Stopped at: Phase 8 implementation applied — needs live testing
-Next action: Test overlay animation with `just run`, verify bars animate with voice
-Resume file: .paul/phases/08-animated-overlay/08-01-PLAN.md
+Last session: 2026-04-28
+Stopped at: v0.3 Polish complete — all phases shipped and verified
+Next action: Start v0.4 milestone (/paul:discuss or /paul:plan) or pause
+Resume file: .paul/ROADMAP.md
 
 ---
 *STATE.md — Updated after every significant action*

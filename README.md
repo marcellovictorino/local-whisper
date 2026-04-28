@@ -181,6 +181,14 @@ If `LOCAL_WHISPER_OPENAI_API_KEY` is not set, command mode falls back to pasting
 
 </details>
 
+## Model
+
+Uses **whisper-large-v3-turbo** via [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) — MLX-native, runs on Apple Neural Engine + GPU.
+
+**Alternatives evaluated:**
+- **Parakeet** (NVIDIA NeMo) — CUDA-optimized; CPU-only on Apple Silicon, no ANE/GPU acceleration → slower
+- **distil-whisper** variants — MLX-native, ~6× faster with minor accuracy tradeoff; candidate for future config option
+
 ## Roadmap
 
 | Phase | Feature | Status |

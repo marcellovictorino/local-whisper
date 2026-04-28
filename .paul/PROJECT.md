@@ -12,9 +12,9 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 
 | Attribute | Value |
 |-----------|-------|
-| Version | 0.1.0 |
-| Status | MVP Complete |
-| Last Updated | 2026-04-27 |
+| Version | 0.3.0 |
+| Status | Active |
+| Last Updated | 2026-04-28 |
 
 ## Requirements
 
@@ -35,12 +35,12 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 - [x] Model pre-download at install time (snapshot_download, ~1.5GB, once) — Phase 4
 - [x] `justfile` day-to-day ops: install/uninstall/start/stop/status/run/logs — Phase 4
 
+- [x] Auto-cleanup: filler word removal + immediate repetition collapse (opt-out via config) — Phase 8
+
 ### Planned (Next)
 
-**v0.2 Enhancements (future):**
-- [ ] Snippet expansion — spoken keywords map to predefined text (e.g. "calendly link" → URL)
-- [ ] Personal dictionary — learns corrections to avoid repeating manual fixes
-- [ ] Command mode — apply spoken prompt over currently selected text
+**v0.3+ ideas:**
+- [ ] LLM-based cleanup — higher quality transcript polish (1-2s overhead, OpenAI-compatible)
 
 ### Out of Scope
 - Cloud-based transcription — must run fully offline
@@ -112,4 +112,4 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-04-27 after Phase 4 (Distribution) — v0.1 MVP complete*
+*Last updated: 2026-04-28 after Phase 8 (Auto-Cleanup) — v0.3.0*
