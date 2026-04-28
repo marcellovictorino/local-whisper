@@ -14,11 +14,9 @@ except Exception:
     _HAS_APPKIT = False
 
 try:
-    import openai as openai
-    _HAS_OPENAI = True
+    import openai
 except ImportError:
     openai = None  # type: ignore[assignment]
-    _HAS_OPENAI = False
 
 
 _CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
@@ -79,12 +77,12 @@ def _is_enabled(path: Path = _CONFIG_PATH) -> bool:
     Returns:
         True if auto-adapt is explicitly enabled.
     """
-    if not path.exists():
-        return False
     try:
         with path.open("rb") as f:
             data = tomllib.load(f)
         return data.get("auto_adapt", {}).get("enabled", False)
+    except FileNotFoundError:
+        return False
     except Exception as exc:
         print(f"[local-whisper] auto_adapt config error: {exc}", file=sys.stderr)
         return False
@@ -104,17 +102,20 @@ def apply(text: str, app_name: str = "", path: Path = _CONFIG_PATH) -> str:
     Returns:
         Reshaped text, or original text if disabled, unmatched, or on error.
     """
-    if not _is_enabled(path):
-        return text
     if not app_name:
         return text
 
     try:
         with path.open("rb") as f:
             data = tomllib.load(f)
-        section = data.get("auto_adapt", {})
+    except FileNotFoundError:
+        return text
     except Exception as exc:
-        print(f"[local-whisper] auto_adapt config read error: {exc}", file=sys.stderr)
+        print(f"[local-whisper] auto_adapt config error: {exc}", file=sys.stderr)
+        return text
+
+    section = data.get("auto_adapt", {})
+    if not section.get("enabled", False):
         return text
 
     prompt = _get_prompt(app_name, section)

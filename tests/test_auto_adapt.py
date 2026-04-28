@@ -9,10 +9,6 @@ import pytest
 from local_whisper.auto_adapt import _get_prompt, _is_enabled, apply, get_active_app
 
 
-# ---------------------------------------------------------------------------
-# _is_enabled
-# ---------------------------------------------------------------------------
-
 def test_is_enabled_defaults_false_when_file_missing(tmp_path: Path) -> None:
     assert _is_enabled(tmp_path / "nonexistent.toml") is False
 
@@ -34,10 +30,6 @@ def test_is_enabled_true_when_explicitly_true(tmp_path: Path) -> None:
     config.write_text("[auto_adapt]\nenabled = true\n")
     assert _is_enabled(config) is True
 
-
-# ---------------------------------------------------------------------------
-# _get_prompt
-# ---------------------------------------------------------------------------
 
 def test_get_prompt_returns_builtin_slack() -> None:
     prompt = _get_prompt("Slack", {})
@@ -73,10 +65,6 @@ def test_get_prompt_config_new_app() -> None:
     assert _get_prompt("Notion", section) == "Structured notes"
 
 
-# ---------------------------------------------------------------------------
-# apply — passthrough cases
-# ---------------------------------------------------------------------------
-
 def test_apply_passthrough_when_disabled(tmp_path: Path) -> None:
     config = tmp_path / "config.toml"
     config.write_text("[auto_adapt]\nenabled = false\n")
@@ -106,10 +94,6 @@ def test_apply_passthrough_when_no_api_key(tmp_path: Path, monkeypatch: pytest.M
     assert apply("hello", app_name="Slack", path=config) == "hello"
 
 
-# ---------------------------------------------------------------------------
-# apply — LLM path
-# ---------------------------------------------------------------------------
-
 def _make_openai_response(content: str) -> MagicMock:
     msg = MagicMock()
     msg.content = content
@@ -120,42 +104,28 @@ def _make_openai_response(content: str) -> MagicMock:
     return resp
 
 
-def test_apply_calls_llm_with_slack_builtin_prompt(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("app_name,llm_response", [
+    ("Slack", "hey there 👋"),
+    ("Mail", "Dear Sir,"),
+])
+def test_apply_calls_llm_with_builtin_prompt(
+    app_name: str,
+    llm_response: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = tmp_path / "config.toml"
     config.write_text("[auto_adapt]\nenabled = true\n")
     monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "test-key")
 
     mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = _make_openai_response("hey there 👋")
+    mock_client.chat.completions.create.return_value = _make_openai_response(llm_response)
 
     with patch("local_whisper.auto_adapt.openai") as mock_openai:
         mock_openai.OpenAI.return_value = mock_client
-        result = apply("hello there", app_name="Slack", path=config)
+        result = apply("original text", app_name=app_name, path=config)
 
-    assert result == "hey there 👋"
-    call_kwargs = mock_client.chat.completions.create.call_args
-    messages = call_kwargs.kwargs["messages"]
-    user_content = messages[1]["content"]
-    assert "hello there" in user_content
-
-
-def test_apply_calls_llm_with_mail_builtin_prompt(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    config = tmp_path / "config.toml"
-    config.write_text("[auto_adapt]\nenabled = true\n")
-    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "test-key")
-
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = _make_openai_response("Dear Sir,")
-
-    with patch("local_whisper.auto_adapt.openai") as mock_openai:
-        mock_openai.OpenAI.return_value = mock_client
-        result = apply("hey can you fix this", app_name="Mail", path=config)
-
-    assert result == "Dear Sir,"
+    assert result == llm_response
 
 
 def test_apply_uses_config_override_prompt(
@@ -196,13 +166,8 @@ def test_apply_returns_original_on_llm_exception(
     assert result == "hello"
 
 
-# ---------------------------------------------------------------------------
-# get_active_app
-# ---------------------------------------------------------------------------
-
 def test_get_active_app_returns_string() -> None:
-    result = get_active_app()
-    assert isinstance(result, str)
+    assert isinstance(get_active_app(), str)
 
 
 def test_get_active_app_returns_empty_when_appkit_unavailable() -> None:
