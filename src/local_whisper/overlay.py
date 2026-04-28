@@ -4,6 +4,7 @@ import math
 import queue
 import signal
 import time
+from enum import StrEnum
 
 import objc
 from AppKit import (
@@ -56,6 +57,21 @@ _BAR_X_POSITIONS = [_BAR_X_START + i * (_BAR_W + _BAR_GAP) for i in range(_N_BAR
 _BAR_PHASES = [i * 0.5 for i in range(_N_BARS)]
 
 
+class _Cmd(StrEnum):
+    SHOW = "show"
+    SHOW_COMMAND = "show_command"
+    PROCESSING = "processing"
+    HIDE = "hide"
+    QUIT = "quit"
+    AMP = "amp"
+
+
+class _Mode(StrEnum):
+    DICTATION = "dictation"
+    COMMAND = "command"
+    PROCESSING = "processing"
+
+
 class _OverlayController(NSObject):
     """Manages the NSPanel with animated waveform bars. Drains command queue via NSTimer."""
 
@@ -66,7 +82,7 @@ class _OverlayController(NSObject):
         self._bars: list = []
         self._amplitude: float = 0.0
         self._active: bool = False
-        self._mode: str = "dictation"
+        self._mode: _Mode = _Mode.DICTATION
         self._was_idle: bool = True
         self._last_active_t: float = 0.0  # monotonic time of last above-threshold frame
         self._CATransaction = objc.lookUpClass("CATransaction")
@@ -75,27 +91,27 @@ class _OverlayController(NSObject):
         try:
             while True:
                 cmd = self._queue.get_nowait()
-                if cmd == "show":
+                if cmd == _Cmd.SHOW:
                     self._active = True
-                    self._mode = "dictation"
+                    self._mode = _Mode.DICTATION
                     self._fade_in()
-                elif cmd == "show_command":
+                elif cmd == _Cmd.SHOW_COMMAND:
                     self._active = True
-                    self._mode = "command"
+                    self._mode = _Mode.COMMAND
                     self._fade_in()
-                elif cmd == "processing":
+                elif cmd == _Cmd.PROCESSING:
                     # Recording stopped — switch to processing animation without hiding.
-                    self._mode = "processing"
+                    self._mode = _Mode.PROCESSING
                     self._amplitude = 0.0
                     self._was_idle = True
-                elif cmd == "hide":
+                elif cmd == _Cmd.HIDE:
                     self._active = False
                     self._amplitude = 0.0
                     self._fade_out()
-                elif cmd == "quit":
+                elif cmd == _Cmd.QUIT:
                     NSApplication.sharedApplication().terminate_(None)
                     return
-                elif isinstance(cmd, tuple) and cmd[0] == "amp":
+                elif isinstance(cmd, tuple) and cmd[0] == _Cmd.AMP:
                     raw = cmd[1]
                     self._amplitude = _AMP_EMA_ALPHA * raw + (1 - _AMP_EMA_ALPHA) * self._amplitude
         except queue.Empty:
@@ -166,12 +182,13 @@ class _OverlayController(NSObject):
             return
         color = (
             NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.34, 1.0)
-            if self._mode == "command"
+            if self._mode == _Mode.COMMAND
             else NSColor.whiteColor()
         )
         cgcolor = color.CGColor()
         for bar in self._bars:
             bar.setBackgroundColor_(cgcolor)
+        self._last_active_t = time.monotonic()
         self._panel.orderFrontRegardless()
         self._panel.setAlphaValue_(0.95)
 
@@ -200,7 +217,7 @@ class _OverlayController(NSObject):
         CT.begin()
         CT.setDisableActions_(True)
         try:
-            if self._mode == "processing":
+            if self._mode == _Mode.PROCESSING:
                 # Transcription in progress: small bars, slow left-to-right wave.
                 # Max ~45% of pill height — clearly smaller than active recording.
                 for i, bar in enumerate(self._bars):
@@ -254,27 +271,27 @@ class RecordingOverlay:
 
     def show(self) -> None:
         """Fade in the overlay (dictation mode). Thread-safe."""
-        self._queue.put("show")
+        self._queue.put(_Cmd.SHOW)
 
     def show_command(self) -> None:
         """Fade in the overlay (command mode, amber bars). Thread-safe."""
-        self._queue.put("show_command")
+        self._queue.put(_Cmd.SHOW_COMMAND)
 
     def set_processing(self) -> None:
         """Switch to processing animation after recording stops. Thread-safe."""
-        self._queue.put("processing")
+        self._queue.put(_Cmd.PROCESSING)
 
     def hide(self) -> None:
         """Fade out the overlay. Thread-safe."""
-        self._queue.put("hide")
+        self._queue.put(_Cmd.HIDE)
 
     def update_amplitude(self, value: float) -> None:
         """Feed audio RMS amplitude to the waveform animation. Thread-safe."""
-        self._queue.put(("amp", value))
+        self._queue.put((_Cmd.AMP, value))
 
     def quit(self) -> None:
         """Exit the AppKit event loop. Thread-safe."""
-        self._queue.put("quit")
+        self._queue.put(_Cmd.QUIT)
 
     def run(self) -> None:
         """Start AppKit event loop on main thread. Blocks until quit() is called."""
