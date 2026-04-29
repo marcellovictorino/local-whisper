@@ -87,7 +87,10 @@ class App:
             self._recording = True
             self._stop_event.clear()
             if self._overlay:
-                self._overlay.show()
+                if auto_adapt.is_active(self._active_app):
+                    self._overlay.show_adapt()
+                else:
+                    self._overlay.show()
             threading.Thread(target=self._record_and_process, daemon=True).start()
 
     def _on_key_release(self) -> None:

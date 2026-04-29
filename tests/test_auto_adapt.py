@@ -1,4 +1,5 @@
 """Tests for auto_adapt module — opt-in gate, preset matching, LLM path, passthrough."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,29 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from local_whisper.auto_adapt import _get_prompt, _is_enabled, apply, get_active_app
-
-
-def test_is_enabled_defaults_false_when_file_missing(tmp_path: Path) -> None:
-    assert _is_enabled(tmp_path / "nonexistent.toml") is False
-
-
-def test_is_enabled_false_when_section_absent(tmp_path: Path) -> None:
-    config = tmp_path / "config.toml"
-    config.write_text("[auto_cleanup]\nenabled = true\n")
-    assert _is_enabled(config) is False
-
-
-def test_is_enabled_false_when_explicitly_false(tmp_path: Path) -> None:
-    config = tmp_path / "config.toml"
-    config.write_text("[auto_adapt]\nenabled = false\n")
-    assert _is_enabled(config) is False
-
-
-def test_is_enabled_true_when_explicitly_true(tmp_path: Path) -> None:
-    config = tmp_path / "config.toml"
-    config.write_text("[auto_adapt]\nenabled = true\n")
-    assert _is_enabled(config) is True
+from local_whisper.auto_adapt import _get_prompt, apply, get_active_app
 
 
 def test_get_prompt_returns_builtin_slack() -> None:
@@ -65,6 +44,14 @@ def test_get_prompt_config_new_app() -> None:
     assert _get_prompt("Notion", section) == "Structured notes"
 
 
+def test_get_prompt_config_apps_list_matches_any() -> None:
+    section = {"email": {"apps": ["Mail", "Notion Mail", "Mimestream"], "prompt": "Email prompt"}}
+    assert _get_prompt("Mail", section) == "Email prompt"
+    assert _get_prompt("Notion Mail", section) == "Email prompt"
+    assert _get_prompt("Mimestream", section) == "Email prompt"
+    assert _get_prompt("Finder", section) is None
+
+
 def test_apply_passthrough_when_disabled(tmp_path: Path) -> None:
     config = tmp_path / "config.toml"
     config.write_text("[auto_adapt]\nenabled = false\n")
@@ -91,7 +78,24 @@ def test_apply_passthrough_when_no_api_key(tmp_path: Path, monkeypatch: pytest.M
     config = tmp_path / "config.toml"
     config.write_text("[auto_adapt]\nenabled = true\n")
     monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     assert apply("hello", app_name="Slack", path=config) == "hello"
+
+
+def test_apply_falls_back_to_openai_env_var(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = tmp_path / "config.toml"
+    config.write_text("[auto_adapt]\nenabled = true\n")
+    monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "fallback-key")
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = _make_openai_response("reshaped")
+
+    with patch("local_whisper.auto_adapt.openai") as mock_openai:
+        mock_openai.OpenAI.return_value = mock_client
+        result = apply("original", app_name="Slack", path=config)
+
+    assert result == "reshaped"
 
 
 def _make_openai_response(content: str) -> MagicMock:
@@ -104,10 +108,13 @@ def _make_openai_response(content: str) -> MagicMock:
     return resp
 
 
-@pytest.mark.parametrize("app_name,llm_response", [
-    ("Slack", "hey there 👋"),
-    ("Mail", "Dear Sir,"),
-])
+@pytest.mark.parametrize(
+    "app_name,llm_response",
+    [
+        ("Slack", "hey there 👋"),
+        ("Mail", "Dear Sir,"),
+    ],
+)
 def test_apply_calls_llm_with_builtin_prompt(
     app_name: str,
     llm_response: str,
@@ -128,13 +135,9 @@ def test_apply_calls_llm_with_builtin_prompt(
     assert result == llm_response
 
 
-def test_apply_uses_config_override_prompt(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_apply_uses_config_override_prompt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config = tmp_path / "config.toml"
-    config.write_text(
-        "[auto_adapt]\nenabled = true\n\n[auto_adapt.miro]\napp = \"Miro\"\nprompt = \"Bullet list\"\n"
-    )
+    config.write_text('[auto_adapt]\nenabled = true\n\n[auto_adapt.miro]\napp = "Miro"\nprompt = "Bullet list"\n')
     monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "test-key")
 
     mock_client = MagicMock()
@@ -146,12 +149,10 @@ def test_apply_uses_config_override_prompt(
 
     assert result == "• item one"
     messages = mock_client.chat.completions.create.call_args.kwargs["messages"]
-    assert "Bullet list" in messages[1]["content"]
+    assert "Bullet list" in messages[0]["content"]
 
 
-def test_apply_returns_original_on_llm_exception(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_apply_returns_original_on_llm_exception(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config = tmp_path / "config.toml"
     config.write_text("[auto_adapt]\nenabled = true\n")
     monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "test-key")

@@ -30,10 +30,12 @@ Once installed, local-whisper runs in the background automatically.
 
 | Action | Result |
 |--------|--------|
-| Hold Right ⌘ | Recording pill (⏺) appears — dictation mode |
-| Release Right ⌘ | Transcription runs, text pastes at cursor |
-| Select text, then hold Right ⌘ | Recording pill (⚡) appears — command mode |
+| Hold Right ⌘ | White pill — dictation mode |
+| Release Right ⌘ | Transcription pastes at cursor |
+| Hold Right ⌘ (text selected) | Amber pill — command mode |
 | Release Right ⌘ | Voice instruction applied to selection, result pastes |
+| Hold Right ⌘ (in supported app, auto-adapt enabled) | Cyan pill — auto-adapt mode |
+| Release Right ⌘ | Transcription reshaped for the app, pastes at cursor |
 
 **Command mode** activates automatically when you have text selected — no separate key to remember. Select a paragraph, hold Right ⌘, say "fix the grammar", release — done.
 
@@ -119,6 +121,31 @@ kill -HUP $(pgrep -f local_whisper)
 </details>
 
 <details>
+<summary><strong>Auto-cleanup</strong> — remove filler words and repeated phrases</summary>
+
+### What it does
+
+After transcription, filler words and immediate word repetitions are stripped before pasting.
+
+- Removes: _um, uh, er, ah, hmm, you know_
+- Collapses: _"the the meeting"_ → _"the meeting"_
+
+Enabled by default — no setup needed.
+
+### Disable
+
+Add to `~/.config/local-whisper/config.toml`:
+
+```toml
+[auto_cleanup]
+enabled = false
+```
+
+Changes take effect immediately — no restart needed.
+
+</details>
+
+<details>
 <summary><strong>Command mode</strong> — apply a voice instruction to selected text</summary>
 
 ### What it does
@@ -181,6 +208,63 @@ If `LOCAL_WHISPER_OPENAI_API_KEY` is not set, command mode falls back to pasting
 
 </details>
 
+<details>
+<summary><strong>Auto-adapt</strong> — reshape transcription based on the frontmost app</summary>
+
+### What it does
+
+After transcription, text is reshaped by an LLM using a per-app prompt before pasting. Slack messages come out casual with emojis; emails come out formal and structured — automatically, based on which app is in focus when you press Right ⌘.
+
+The recording pill turns **cyan** when auto-adapt will fire.
+
+### Setup
+
+Requires the same dependency and API key as command mode. If command mode is already set up, nothing extra is needed.
+
+```bash
+uv sync --extra command
+export LOCAL_WHISPER_OPENAI_API_KEY=sk-...   # or OPENAI_API_KEY
+```
+
+Enable in `~/.config/local-whisper/config.toml`:
+
+```toml
+[auto_adapt]
+enabled = true
+```
+
+Changes take effect immediately — no restart needed.
+
+### Built-in presets
+
+| App | Behaviour |
+|-----|-----------|
+| Slack | Casual tone, bullet points, short sentences, natural emojis |
+| Mail, Notion Mail, Mimestream, Spark, Superhuman, Airmail 5 | Professional email, fixed grammar, clear paragraphs |
+
+### Custom prompts
+
+Override a built-in or add any new app:
+
+```toml
+[auto_adapt]
+enabled = true
+
+# Single app
+[auto_adapt.notion]
+app = "Notion"
+prompt = "Structured notes with headers and bullet points."
+
+# Multiple apps sharing one prompt
+[auto_adapt.email]
+apps = ["Mail", "Notion Mail", "Mimestream"]
+prompt = "Formal French email. Fix grammar, clear paragraphs."
+```
+
+`apps = [...]` applies one prompt to multiple apps. Config overrides always win over built-in presets.
+
+</details>
+
 ## Model
 
 Uses **whisper-large-v3-turbo** via [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) — MLX-native, runs on Apple Neural Engine + GPU.
@@ -200,6 +284,8 @@ Uses **whisper-large-v3-turbo** via [mlx-whisper](https://github.com/ml-explore/
 | 5 | Snippet expansion (spoken keywords → predefined text) | ✅ v0.2 |
 | 6 | Personal corrections (fix consistent ASR mishearings) | ✅ v0.2 |
 | 7 | Command mode (apply spoken prompt to selected text) | ✅ v0.2 |
+| 8 | Auto-cleanup (filler word removal, repetition collapse) | ✅ v0.3 |
+| 9 | Auto-adapt (app-aware LLM text reshaping, cyan pill) | ✅ v0.4 |
 
 ## Troubleshooting
 

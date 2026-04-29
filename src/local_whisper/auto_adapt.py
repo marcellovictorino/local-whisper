@@ -1,4 +1,5 @@
 """Auto-adapt: reshape transcription via LLM based on frontmost macOS app."""
+
 from __future__ import annotations
 
 import os
@@ -8,6 +9,7 @@ from pathlib import Path
 
 try:
     from AppKit import NSWorkspace as _NSWorkspace
+
     _HAS_APPKIT = True
 except Exception:
     _NSWorkspace = None
@@ -21,9 +23,16 @@ except ImportError:
 
 _CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
 
+_EMAIL_PROMPT = "Professional email. Fix grammar, clear paragraphs, formal tone."
+
 _BUILTIN_PROMPTS: dict[str, str] = {
-    "Slack": "Rewrite as casual Slack message. Use emojis where natural. Short sentences.",
-    "Mail": "Rewrite as formal professional email. Correct grammar, clear paragraphs, no casual language.",
+    "Slack": "Casual Slack message. Bullet points, short sentences, natural emojis.",
+    "Mail": _EMAIL_PROMPT,
+    "Notion Mail": _EMAIL_PROMPT,
+    "Mimestream": _EMAIL_PROMPT,
+    "Spark": _EMAIL_PROMPT,
+    "Superhuman": _EMAIL_PROMPT,
+    "Airmail 5": _EMAIL_PROMPT,
 }
 
 
@@ -58,7 +67,8 @@ def _get_prompt(app_name: str, section: dict) -> str | None:
     for value in section.values():
         if not isinstance(value, dict):
             continue
-        if value.get("app", "").lower() == app_name.lower():
+        apps = value.get("apps") or ([value.get("app")] if value.get("app") else [])
+        if any(a.lower() == app_name.lower() for a in apps):
             prompt = value.get("prompt", "")
             if prompt:
                 return prompt
@@ -66,26 +76,32 @@ def _get_prompt(app_name: str, section: dict) -> str | None:
     return _BUILTIN_PROMPTS.get(app_name)
 
 
-def _is_enabled(path: Path = _CONFIG_PATH) -> bool:
-    """Return True only if [auto_adapt] enabled = true in config.
+def is_active(app_name: str, path: Path = _CONFIG_PATH) -> bool:
+    """Return True if auto-adapt will reshape output for this app.
 
-    Defaults to False (opt-in) when file or section is absent.
+    Reads config at call time. Used to pick overlay colour at press time.
 
     Args:
+        app_name: Localised name of the frontmost app.
         path: Path to config.toml.
 
     Returns:
-        True if auto-adapt is explicitly enabled.
+        True if auto-adapt is enabled and a prompt exists for this app.
     """
+    if not app_name:
+        return False
     try:
         with path.open("rb") as f:
             data = tomllib.load(f)
-        return data.get("auto_adapt", {}).get("enabled", False)
     except FileNotFoundError:
         return False
     except Exception as exc:
         print(f"[local-whisper] auto_adapt config error: {exc}", file=sys.stderr)
         return False
+    section = data.get("auto_adapt", {})
+    if not section.get("enabled", False):
+        return False
+    return _get_prompt(app_name, section) is not None
 
 
 def apply(text: str, app_name: str = "", path: Path = _CONFIG_PATH) -> str:
@@ -122,25 +138,23 @@ def apply(text: str, app_name: str = "", path: Path = _CONFIG_PATH) -> str:
     if prompt is None:
         return text
 
-    api_key = os.environ.get("LOCAL_WHISPER_OPENAI_API_KEY")
+    api_key = os.environ.get("LOCAL_WHISPER_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
         print(
-            "[local-whisper] LOCAL_WHISPER_OPENAI_API_KEY not set — auto-adapt unavailable.",
+            "[local-whisper] No OpenAI API key found. Set LOCAL_WHISPER_OPENAI_API_KEY or OPENAI_API_KEY env var.",
             file=sys.stderr,
         )
         return text
 
     if openai is None:
         print(
-            "[local-whisper] command mode dependencies not installed."
-            " Run: uv sync --extra command",
+            "[local-whisper] command mode dependencies not installed. Run: uv sync --extra command",
             file=sys.stderr,
         )
         return text
 
-    model = os.environ.get("LOCAL_WHISPER_COMMAND_MODEL", "gpt-4o-mini")
+    model = os.environ.get("LOCAL_WHISPER_COMMAND_MODEL", "gpt-5-nano")
     base_url = os.environ.get("LOCAL_WHISPER_OPENAI_BASE_URL")
-
     try:
         client = openai.OpenAI(
             api_key=api_key,
@@ -151,17 +165,14 @@ def apply(text: str, app_name: str = "", path: Path = _CONFIG_PATH) -> str:
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "Reformat the following transcription. "
-                        "Return only the reformatted text — no explanation, no preamble."
-                    ),
+                    "content": (f"{prompt} Return only the reformatted text — no explanation, no preamble."),
                 },
                 {
                     "role": "user",
-                    "content": f"{prompt}\n\n{text}",
+                    "content": f"<text>{text}</text>",
                 },
             ],
-            max_completion_tokens=1024,
+            max_completion_tokens=4096,
         )
         return response.choices[0].message.content or text
     except Exception as exc:
