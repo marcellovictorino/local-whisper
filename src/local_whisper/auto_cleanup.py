@@ -1,11 +1,11 @@
 """Auto-cleanup: remove filler words and collapse immediate word repetitions."""
+
 from __future__ import annotations
 
 import re
 import sys
 import tomllib
 from pathlib import Path
-
 
 _CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
 
