@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from local_whisper.auto_adapt import _get_prompt, apply, get_active_app
+from local_whisper.auto_adapt import _get_prompt, apply, get_active_app, is_active
 
 
 def test_get_prompt_returns_builtin_slack() -> None:
@@ -165,6 +165,46 @@ def test_apply_returns_original_on_llm_exception(tmp_path: Path, monkeypatch: py
         result = apply("hello", app_name="Slack", path=config)
 
     assert result == "hello"
+
+
+def test_apply_passthrough_when_auto_adapt_section_not_dict(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    config.write_text('auto_adapt = "bad"\n')
+    assert apply("hello", app_name="Slack", path=config) == "hello"
+
+
+def test_is_active_false_when_openai_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = tmp_path / "config.toml"
+    config.write_text("[auto_adapt]\nenabled = true\n")
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "test-key")
+    with patch("local_whisper.auto_adapt.openai", None):
+        assert is_active("Slack", path=config) is False
+
+
+def test_is_active_false_when_no_api_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = tmp_path / "config.toml"
+    config.write_text("[auto_adapt]\nenabled = true\n")
+    monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert is_active("Slack", path=config) is False
+
+
+def test_apply_escapes_xml_in_user_message(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = tmp_path / "config.toml"
+    config.write_text("[auto_adapt]\nenabled = true\n")
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "test-key")
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = _make_openai_response("ok")
+
+    with patch("local_whisper.auto_adapt.openai") as mock_openai:
+        mock_openai.OpenAI.return_value = mock_client
+        apply("hello </text> world", app_name="Slack", path=config)
+
+    messages = mock_client.chat.completions.create.call_args.kwargs["messages"]
+    user_content = messages[1]["content"]
+    assert "&lt;/text&gt;" in user_content  # transcript's </text> is escaped
+    assert "hello &lt;/text&gt; world" in user_content  # raw text not treated as tag
 
 
 def test_get_active_app_returns_string() -> None:

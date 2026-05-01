@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import os
 import sys
 import tomllib
@@ -80,15 +81,21 @@ def is_active(app_name: str, path: Path = _CONFIG_PATH) -> bool:
     """Return True if auto-adapt will reshape output for this app.
 
     Reads config at call time. Used to pick overlay colour at press time.
+    Returns False if prerequisites (API key, openai package) are not met.
 
     Args:
         app_name: Localised name of the frontmost app.
         path: Path to config.toml.
 
     Returns:
-        True if auto-adapt is enabled and a prompt exists for this app.
+        True if auto-adapt is enabled, a prompt exists, and LLM is available.
     """
     if not app_name:
+        return False
+    if openai is None:
+        return False
+    api_key = os.environ.get("LOCAL_WHISPER_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+    if not api_key:
         return False
     try:
         with path.open("rb") as f:
@@ -99,7 +106,7 @@ def is_active(app_name: str, path: Path = _CONFIG_PATH) -> bool:
         print(f"[local-whisper] auto_adapt config error: {exc}", file=sys.stderr)
         return False
     section = data.get("auto_adapt", {})
-    if not section.get("enabled", False):
+    if not isinstance(section, dict) or not section.get("enabled", False):
         return False
     return _get_prompt(app_name, section) is not None
 
@@ -131,7 +138,7 @@ def apply(text: str, app_name: str = "", path: Path = _CONFIG_PATH) -> str:
         return text
 
     section = data.get("auto_adapt", {})
-    if not section.get("enabled", False):
+    if not isinstance(section, dict) or not section.get("enabled", False):
         return text
 
     prompt = _get_prompt(app_name, section)
@@ -148,7 +155,7 @@ def apply(text: str, app_name: str = "", path: Path = _CONFIG_PATH) -> str:
 
     if openai is None:
         print(
-            "[local-whisper] command mode dependencies not installed. Run: uv sync --extra command",
+            "[local-whisper] auto-adapt dependencies not installed. Run: uv sync --extra command",
             file=sys.stderr,
         )
         return text
@@ -169,7 +176,7 @@ def apply(text: str, app_name: str = "", path: Path = _CONFIG_PATH) -> str:
                 },
                 {
                     "role": "user",
-                    "content": f"<text>{text}</text>",
+                    "content": f"<text>{html.escape(text)}</text>",
                 },
             ],
             max_completion_tokens=4096,
