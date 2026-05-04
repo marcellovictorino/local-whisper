@@ -6,6 +6,12 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 
 ## Current Milestone
 
+**v0.5 Model Selection** (v0.5.0)
+Status: 🔄 In progress
+Phases: 0 of 1 complete
+
+---
+
 **v0.4 Auto-Adapt** (v0.4.0)
 Status: ✅ Complete
 Phases: 1 of 1 complete
@@ -29,6 +35,12 @@ Status: ✅ Complete
 Phases: 4 of 4 complete
 
 ## Phases
+
+### v0.5 Model Selection
+
+| Phase | Name | Plans | Status | GitHub Issue | Completed |
+|-------|------|-------|--------|--------------|-----------|
+| 10 | Model Selection | 1 | 🔄 Planning | - | - |
 
 ### v0.4 Auto-Adapt
 
@@ -151,6 +163,22 @@ Phases: 4 of 4 complete
 **Plans:**
 - [ ] 08-01: Auto-cleanup module + config integration
 
+### Phase 10: Model Selection
+
+**Goal:** Make `mlx-community/distil-whisper-large-v3` the default model (~2× faster than turbo at runtime, same ~1.5 GB download, <1% WER on English). Allow users to override via `[whisper] model` in config.toml. Document `mlx-community/whisper-large-v3-turbo` as the switch for multilingual support or higher accuracy.
+**Depends on:** Phase 1 (transcribe module)
+**Research:** Not needed (mlx-whisper already accepts any HF model ID)
+
+**Scope:**
+- Change default model to `mlx-community/distil-whisper-large-v3`
+- `transcribe.get_model()` reads `[whisper] model` from config, falls back to default
+- Dynamic size hint per model in first-run download message
+- `App` and `__main__` resolve model once at startup, pass through to `warm_up()` and `run()`
+- 4 new unit tests for `get_model()`
+
+**Plans:**
+- [ ] 10-01: get_model() + default change + App wiring + tests
+
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-04-28 — v0.4 milestone started; Phase 9 (Auto-Adapt) added*
+*Last updated: 2026-05-04 — v0.5 milestone started; Phase 10 (Model Selection) added*
