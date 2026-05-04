@@ -2,7 +2,7 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-04-28 after Phase 9)
+See: .paul/PROJECT.md (updated 2026-05-04 after Phase 10)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
 **Current focus:** v0.6 Speed — Phase 11 (Backend Selection) ready to plan

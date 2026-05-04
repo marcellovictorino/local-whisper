@@ -53,14 +53,23 @@ def _suppress_progress_bars() -> None:
 
 
 def warm_up(model: str = DEFAULT_MODEL) -> None:
-    """Pre-load model and compile Metal shaders. Call once at startup in a background thread.
+    """Download (if needed) and pre-load model, compiling Metal shaders.
+
+    Runs at startup in a background thread so the first keypress is instant.
+    Shows download progress when model is not yet cached.
 
     Args:
-        model: HuggingFace model ID to pre-load. Must already be cached locally.
+        model: HuggingFace model ID to pre-load.
     """
     if not _model_is_cached(model):
-        return  # skip if model not downloaded yet — first run handles it inline
-    _suppress_progress_bars()
+        print(
+            f"[local-whisper] Downloading model '{model}' ({_MODEL_SIZES.get(model, 'unknown size')})...",
+            file=sys.stderr,
+            flush=True,
+        )
+    else:
+        _suppress_progress_bars()
+
     import mlx_whisper
 
     silence = np.zeros(int(0.5 * 16000), dtype="float32")
@@ -84,17 +93,8 @@ def run(
     Returns:
         Transcribed text string, stripped of leading/trailing whitespace.
     """
-    cached = _model_is_cached(model)
-
-    if cached:
+    if _model_is_cached(model):
         _suppress_progress_bars()
-    else:
-        print(
-            f"First run: downloading model '{model}' ({_MODEL_SIZES.get(model, 'unknown size')}).\n"
-            "  This only happens once — subsequent runs are instant.",
-            file=sys.stderr,
-            flush=True,
-        )
 
     import mlx_whisper  # lazy import — avoids slow startup cost
 

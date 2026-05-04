@@ -1,0 +1,36 @@
+READING SCRIPT — local-whisper accuracy test
+Target: ~30 seconds at natural speaking pace
+
+---
+
+My workflow lives in Tmux, with NeoVim as the editor and dbt for data transformations.
+
+[pause 2s]
+
+Um... the staging models run nightly, and — uh — the lineage graph shows three layers: raw, intermediate, and mart.
+
+[pause 2s]
+
+There's a certain joie de vivre in having fast tooling. Latency below five hundred milliseconds feels — hmm — almost instant.
+
+[pause 1s]
+
+The parakeet model targets English; turbo handles multilingual input.
+
+---
+
+EXPECTED TRANSCRIPT (ground truth — compare against app output):
+
+My workflow lives in Tmux, with NeoVim as the editor and dbt for data transformations.
+The staging models run nightly, and the lineage graph shows three layers: raw, intermediate, and mart.
+There's a certain joie de vivre in having fast tooling. Latency below five hundred milliseconds feels almost instant.
+The parakeet model targets English; turbo handles multilingual input.
+
+---
+
+WHAT TO LOOK FOR:
+- Tmux / NeoVim / dbt → correct capitalisation
+- "joie de vivre" → correct French phrase
+- Filler words (um, uh, hmm) → removed by auto_cleanup
+- Dashes/pauses → not transcribed as noise
+- Numbers → "five hundred milliseconds" (not "500ms")

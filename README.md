@@ -2,7 +2,7 @@
 
 Offline speech-to-text on macOS. Hold Right ⌘, speak, release — transcribed text pastes at your cursor. No cloud, no subscription, no internet required.
 
-Built on [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) (whisper-large-v3-turbo) running natively on Apple Silicon via MLX.
+Built on [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) running natively on Apple Silicon via MLX. Default model: distil-whisper-large-v3 (English, ~600 MB, fastest).
 
 ## Requirements
 
@@ -19,7 +19,7 @@ git clone https://github.com/marcellovictorino/local-whisper && cd local-whisper
 
 `setup.sh` does everything in one shot:
 1. Installs Python dependencies via `uv sync`
-2. Pre-downloads the model (~1.5 GB, only happens once)
+2. Pre-downloads the model (~600 MB default, only happens once)
 3. Installs a launchd service that starts local-whisper automatically on login
 
 After install, grant Accessibility permission when prompted — see [Accessibility permission](#accessibility-permission) below.
@@ -267,11 +267,47 @@ prompt = "Formal French email. Fix grammar, clear paragraphs."
 
 ## Model
 
-Uses **whisper-large-v3-turbo** via [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) — MLX-native, runs on Apple Neural Engine + GPU.
+Uses [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) — MLX-native, runs on Apple Neural Engine + GPU.
 
-**Alternatives evaluated:**
-- **Parakeet** (NVIDIA NeMo) — CUDA-optimized; CPU-only on Apple Silicon, no ANE/GPU acceleration → slower
-- **distil-whisper** variants — MLX-native, ~6× faster with minor accuracy tradeoff; candidate for future config option
+Default: **distil-whisper-large-v3** (~600 MB, English only, ~2× faster than turbo).
+
+### Changing the model
+
+Add a `[whisper]` section to `~/.config/local-whisper/config.toml`:
+
+```toml
+[whisper]
+model = "mlx-community/whisper-large-v3-turbo"
+```
+
+Restart the service to apply:
+
+```bash
+just stop && just start
+```
+
+### Supported models
+
+| Model | Size | Languages | Speed | Accuracy | Best for |
+|-------|------|-----------|-------|----------|----------|
+| `mlx-community/distil-whisper-large-v3` *(default)* | ~600 MB | English only | ⚡⚡ fastest | ★★★★ | English dictation, lowest latency |
+| `mlx-community/whisper-large-v3-turbo` | ~1.5 GB | 99 languages | ⚡ fast | ★★★★★ | Multilingual, mixed-language, highest accuracy |
+
+To switch to multilingual/higher accuracy:
+
+```toml
+[whisper]
+model = "mlx-community/whisper-large-v3-turbo"
+```
+
+To switch back to the fast default, remove the `[whisper]` section or set it explicitly:
+
+```toml
+[whisper]
+model = "mlx-community/distil-whisper-large-v3"
+```
+
+Models download automatically on first use (once, to `~/.cache/huggingface/hub/`).
 
 ## Roadmap
 
@@ -286,6 +322,7 @@ Uses **whisper-large-v3-turbo** via [mlx-whisper](https://github.com/ml-explore/
 | 7 | Command mode (apply spoken prompt to selected text) | ✅ v0.2 |
 | 8 | Auto-cleanup (filler word removal, repetition collapse) | ✅ v0.3 |
 | 9 | Auto-adapt (app-aware LLM text reshaping, cyan pill) | ✅ v0.4 |
+| 10 | Configurable model — distil-whisper default, config override | ✅ v0.5 |
 
 ## Troubleshooting
 
@@ -346,7 +383,7 @@ Re-run `bash setup.sh` to reinstall the service cleanly.
 
 ### Model download hangs or fails
 
-The model (~1.5 GB) downloads once to `~/.cache/huggingface/hub/`. If interrupted, re-run:
+The model downloads once to `~/.cache/huggingface/hub/` (default: ~600 MB). If interrupted, re-run:
 
 ```bash
 bash setup.sh
