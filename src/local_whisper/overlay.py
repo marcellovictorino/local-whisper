@@ -60,6 +60,7 @@ _BAR_PHASES = [i * 0.5 for i in range(_N_BARS)]
 class _Cmd(StrEnum):
     SHOW = "show"
     SHOW_COMMAND = "show_command"
+    SHOW_ADAPT = "show_adapt"
     PROCESSING = "processing"
     HIDE = "hide"
     QUIT = "quit"
@@ -69,6 +70,7 @@ class _Cmd(StrEnum):
 class _Mode(StrEnum):
     DICTATION = "dictation"
     COMMAND = "command"
+    ADAPT = "adapt"
     PROCESSING = "processing"
 
 
@@ -102,6 +104,10 @@ class _OverlayController(NSObject):
                 elif cmd == _Cmd.SHOW_COMMAND:
                     self._active = True
                     self._mode = _Mode.COMMAND
+                    self._fade_in()
+                elif cmd == _Cmd.SHOW_ADAPT:
+                    self._active = True
+                    self._mode = _Mode.ADAPT
                     self._fade_in()
                 elif cmd == _Cmd.PROCESSING:
                     # Recording stopped — switch to processing animation without hiding.
@@ -179,11 +185,12 @@ class _OverlayController(NSObject):
             self._build_panel()
         if self._panel is None:
             return
-        color = (
-            NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.34, 1.0)
-            if self._mode == _Mode.COMMAND
-            else NSColor.whiteColor()
-        )
+        if self._mode == _Mode.COMMAND:
+            color = NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.34, 1.0)  # amber
+        elif self._mode == _Mode.ADAPT:
+            color = NSColor.colorWithRed_green_blue_alpha_(0.0, 0.85, 1.0, 1.0)  # electric cyan
+        else:
+            color = NSColor.whiteColor()
         cgcolor = color.CGColor()
         for bar in self._bars:
             bar.setBackgroundColor_(cgcolor)
@@ -277,6 +284,10 @@ class RecordingOverlay:
     def show_command(self) -> None:
         """Fade in the overlay (command mode, amber bars). Thread-safe."""
         self._queue.put(_Cmd.SHOW_COMMAND)
+
+    def show_adapt(self) -> None:
+        """Fade in the overlay (auto-adapt mode, cyan bars). Thread-safe."""
+        self._queue.put(_Cmd.SHOW_ADAPT)
 
     def set_processing(self) -> None:
         """Switch to processing animation after recording stops. Thread-safe."""

@@ -6,9 +6,15 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 
 ## Current Milestone
 
+**v0.4 Auto-Adapt** (v0.4.0)
+Status: ✅ Complete
+Phases: 1 of 1 complete
+
+---
+
 **v0.3 Polish** (v0.3.0)
-Status: 🔄 In progress
-Phases: 0 of 1 complete
+Status: ✅ Complete
+Phases: 1 of 1 complete
 
 ---
 
@@ -24,11 +30,17 @@ Phases: 4 of 4 complete
 
 ## Phases
 
+### v0.4 Auto-Adapt
+
+| Phase | Name | Plans | Status | GitHub Issue | Completed |
+|-------|------|-------|--------|--------------|-----------|
+| 9 | Auto-Adapt | 1 | ✅ Complete | - | 2026-04-28 |
+
 ### v0.3 Polish
 
-| Phase | Name | Plans | Status | Completed |
-|-------|------|-------|--------|-----------|
-| 8 | Animated Waveform Overlay | 1 | 🔄 In progress | — |
+| Phase | Name | Plans | Status | GitHub Issue | Completed |
+|-------|------|-------|--------|--------------|-----------|
+| 8 | Auto-Cleanup | 1 | ✅ Complete | - | 2026-04-28 |
 
 ### v0.2 Enhancements
 
@@ -106,6 +118,39 @@ Phases: 4 of 4 complete
 **Plans:**
 - [ ] 04-01: macOS distribution packaging
 
+### Phase 9: Auto-Adapt
+
+**Goal:** Detect the frontmost macOS app at key press time and automatically reshape the transcription via LLM using a per-app prompt before pasting. Opt-in via config; command mode takes full priority.
+**Depends on:** Phase 7 (command mode / OpenAI client established)
+**Research:** Unlikely (NSWorkspace already available via PyObjC, reuses existing LLM infra)
+
+**Scope:**
+- App detection: `NSWorkspace.sharedWorkspace().frontmostApplication().localizedName()` at press time
+- Config: `[auto_adapt]` section with `enabled = false` default + per-app sub-sections (`[auto_adapt.email]`, `[auto_adapt.slack]`)
+- Two built-in presets: email (formal) + Slack (casual, emojis, bullets)
+- Pipeline: after `auto_cleanup`, before `corrections` + `snippets` — replaces text when rule matches
+- Command mode (text selected) takes full priority — auto-adapt skipped
+- Fallback: unrecognised app → passthrough
+- README: latency/cost note, config examples
+
+**Plans:**
+- [ ] 09-01: auto_adapt module + config + pipeline integration + README
+
+### Phase 8: Auto-Cleanup
+
+**Goal:** Post-process every transcription to remove filler words and immediate repetitions before paste. Always-on by default, opt-out via config.
+**Depends on:** Phase 7 (pipeline established)
+**Research:** Unlikely (rule-based, no new deps)
+
+**Scope:**
+- Filler word removal (`um`, `uh`, `like`, `you know`, etc.)
+- Immediate repetition collapse (`I I need` → `I need`)
+- Config: `[auto_cleanup] enabled = true` in `config.toml`
+- Pipeline position: transcribe → auto-cleanup → snippets → corrections → paste
+
+**Plans:**
+- [ ] 08-01: Auto-cleanup module + config integration
+
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-04-27 — v0.2 milestone complete; all 3 phases shipped*
+*Last updated: 2026-04-28 — v0.4 milestone started; Phase 9 (Auto-Adapt) added*

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from local_whisper import audio, clipboard, command, corrections, snippets, transcribe
+from local_whisper import audio, auto_adapt, auto_cleanup, clipboard, command, corrections, snippets, transcribe
 from local_whisper.hotkey import HotkeyListener
 
 if TYPE_CHECKING:
@@ -28,6 +28,7 @@ class App:
         self._overlay = overlay
         self._stop_event = threading.Event()
         self._recording = False
+        self._active_app: str = ""
         self._corrections: dict[str, str] = corrections.load()
         self._command_stop_event = threading.Event()
         self._command_recording = False
@@ -72,6 +73,7 @@ class App:
         if self._recording or self._command_recording:
             return  # already recording — debounce
 
+        self._active_app = auto_adapt.get_active_app()
         selection = command.get_selection()
 
         if selection:
@@ -85,7 +87,10 @@ class App:
             self._recording = True
             self._stop_event.clear()
             if self._overlay:
-                self._overlay.show()
+                if auto_adapt.is_active(self._active_app):
+                    self._overlay.show_adapt()
+                else:
+                    self._overlay.show()
             threading.Thread(target=self._record_and_process, daemon=True).start()
 
     def _on_key_release(self) -> None:
@@ -109,6 +114,8 @@ class App:
             if not text:
                 print("[local-whisper] Empty transcription.", file=sys.stderr)
                 return
+            text = auto_cleanup.apply(text)
+            text = auto_adapt.apply(text, self._active_app)
             text = corrections.apply(text, self._corrections)
             text = snippets.expand(text)
             clipboard.write_and_paste(text)
