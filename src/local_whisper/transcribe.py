@@ -15,6 +15,7 @@ DEFAULT_MODEL = "mlx-community/distil-whisper-large-v3"
 _MODEL_SIZES: dict[str, str] = {
     "mlx-community/whisper-large-v3-turbo": "~1.5 GB",
     "mlx-community/distil-whisper-large-v3": "~600 MB",
+    "mlx-community/parakeet-tdt-0.6b-v2": "~600 MB",
 }
 
 
@@ -24,17 +25,15 @@ class KnownModel(StrEnum):
     Add new models here to register them. Unknown IDs fall back to mlx-whisper.
     """
 
-    DISTIL_WHISPER = "mlx-community/distil-whisper-large-v3"
-    WHISPER_TURBO = "mlx-community/whisper-large-v3-turbo"
-    PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # English
-    PARAKEET_V3 = "mlx-community/parakeet-tdt-0.6b-v3"  # 25 European languages
+    DISTIL_WHISPER = "mlx-community/distil-whisper-large-v3"  # default; fast English
+    WHISPER_TURBO = "mlx-community/whisper-large-v3-turbo"  # multilingual, accurate
+    PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # fastest; English only
 
 
 _BACKEND_MAP: dict[str, str] = {
     KnownModel.DISTIL_WHISPER: "mlx-whisper",
     KnownModel.WHISPER_TURBO: "mlx-whisper",
     KnownModel.PARAKEET_V2: "parakeet-mlx",
-    KnownModel.PARAKEET_V3: "parakeet-mlx",
 }
 
 DEFAULT_BACKEND = "mlx-whisper"
@@ -86,6 +85,7 @@ def _model_is_cached(model: str) -> bool:
 def _suppress_progress_bars() -> None:
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
     os.environ["TQDM_DISABLE"] = "1"
+    os.environ["HF_HUB_OFFLINE"] = "1"  # model cached — skip HF network check
 
 
 def _run_mlx_whisper(audio: np.ndarray, model: str) -> str:
