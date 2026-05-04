@@ -26,6 +26,7 @@ import numpy as np
 DEFAULT_MODELS = [
     "mlx-community/distil-whisper-large-v3",
     "mlx-community/whisper-large-v3-turbo",
+    "mlx-community/parakeet-tdt-0.6b-v2",
 ]
 
 FILLER_PATTERN = re.compile(
@@ -40,10 +41,10 @@ def _extract_reference(path: Path) -> str:
     marker = "EXPECTED TRANSCRIPT"
     if marker in text:
         after = text.split(marker, 1)[1]
-        # Grab text between first two "---" separators
-        parts = after.split("---")
-        if len(parts) >= 2:
-            return parts[1].strip()
+        # Skip the "(ground truth...):" header line, take content before next "---"
+        if ":" in after:
+            after = after.split(":", 1)[1]
+        return after.split("---")[0].strip()
     return text.strip()
 
 
@@ -111,14 +112,16 @@ def _fillers_found(text: str) -> list[str]:
 def _run_model(audio: np.ndarray, model: str, reference: str) -> dict:
     from local_whisper import auto_cleanup, transcribe
 
+    backend = transcribe.get_backend(model)
+
     # Warm up
     t0 = time.perf_counter()
-    transcribe.warm_up(model)
+    transcribe.warm_up(model, backend=backend)
     warmup_s = round(time.perf_counter() - t0, 3)
 
     # Transcribe
     t0 = time.perf_counter()
-    raw = transcribe.run(audio, model=model)
+    raw = transcribe.run(audio, model=model, backend=backend)
     transcription_s = round(time.perf_counter() - t0, 3)
 
     cleaned = auto_cleanup.apply(raw)
@@ -129,6 +132,7 @@ def _run_model(audio: np.ndarray, model: str, reference: str) -> dict:
 
     return {
         "model": model,
+        "backend": backend,
         "warmup_s": warmup_s,
         "transcription_s": transcription_s,
         "raw_transcript": raw,
