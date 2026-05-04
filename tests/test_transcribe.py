@@ -1,8 +1,10 @@
-"""Tests for transcribe._model_is_cached and get_model — pure filesystem logic."""
+"""Tests for transcribe._model_is_cached, get_model, KnownModel, get_backend."""
 
+import sys
 from pathlib import Path
+from unittest.mock import patch
 
-from local_whisper.transcribe import DEFAULT_MODEL, _model_is_cached, get_model
+from local_whisper.transcribe import DEFAULT_MODEL, KnownModel, _model_is_cached, _run_parakeet, get_backend, get_model
 
 MODEL = "mlx-community/whisper-large-v3-turbo"
 
@@ -68,3 +70,44 @@ def test_get_model_returns_default_on_corrupt_config(tmp_path: Path) -> None:
     config = tmp_path / "config.toml"
     config.write_text("not valid toml = = = !!!")
     assert get_model(config) == DEFAULT_MODEL
+
+
+# --- KnownModel + get_backend() tests ---
+
+
+def test_known_model_values_match_hf_ids() -> None:
+    for member in KnownModel:
+        assert isinstance(member.value, str)
+        assert member.value.startswith("mlx-community/")
+
+
+def test_get_backend_returns_mlx_whisper_for_distil() -> None:
+    assert get_backend(KnownModel.DISTIL_WHISPER) == "mlx-whisper"
+
+
+def test_get_backend_returns_parakeet_for_parakeet_v2() -> None:
+    assert get_backend(KnownModel.PARAKEET_V2) == "parakeet-mlx"
+
+
+def test_get_backend_returns_parakeet_for_parakeet_v3() -> None:
+    assert get_backend(KnownModel.PARAKEET_V3) == "parakeet-mlx"
+
+
+def test_get_backend_returns_mlx_whisper_for_unknown_model() -> None:
+    assert get_backend("unknown/custom-model") == "mlx-whisper"
+
+
+def test_run_parakeet_falls_back_on_import_error(capsys: object) -> None:
+    import numpy as np
+
+    audio = np.zeros(8000, dtype="float32")
+    with (
+        patch.dict(sys.modules, {"parakeet_mlx": None}),
+        patch("local_whisper.transcribe._run_mlx_whisper", return_value="fallback text") as mock_mlx,
+    ):
+        result = _run_parakeet(audio, "mlx-community/parakeet-tdt-0.6b-v2")
+
+    mock_mlx.assert_called_once_with(audio, "mlx-community/parakeet-tdt-0.6b-v2")
+    assert result == "fallback text"
+    captured = capsys.readouterr()
+    assert "parakeet-mlx not installed" in captured.err

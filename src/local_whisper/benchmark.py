@@ -10,32 +10,34 @@ _SAMPLE_RATE = 16_000
 _DURATION_S = 30
 
 
-def run(model: str, runs: int = 3) -> dict:
+def run(model: str, backend: str = "mlx-whisper", runs: int = 3) -> dict:
     """Benchmark warm-up and transcription latency.
 
     Args:
         model: HuggingFace model ID to benchmark.
+        backend: Backend name ("mlx-whisper" or "parakeet-mlx").
         runs: Number of transcription runs (default 3).
 
     Returns:
-        Dict with keys: model, warmup_s, runs, mean_s, min_s, max_s, times_s.
+        Dict with keys: model, backend, warmup_s, runs, mean_s, min_s, max_s, times_s.
     """
     from local_whisper import transcribe
 
     audio = np.zeros(_SAMPLE_RATE * _DURATION_S, dtype="float32")
 
     t0 = time.perf_counter()
-    transcribe.warm_up(model)
+    transcribe.warm_up(model, backend=backend)
     warmup_s = time.perf_counter() - t0
 
     times: list[float] = []
     for _ in range(runs):
         t0 = time.perf_counter()
-        transcribe.run(audio, model=model)
+        transcribe.run(audio, model=model, backend=backend)
         times.append(time.perf_counter() - t0)
 
     return {
         "model": model,
+        "backend": backend,
         "audio_duration_s": _DURATION_S,
         "warmup_s": round(warmup_s, 3),
         "runs": runs,

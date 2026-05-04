@@ -24,9 +24,15 @@ class App:
     Runs as a persistent background listener until interrupted.
     """
 
-    def __init__(self, overlay: RecordingOverlay | None = None, model: str = transcribe.DEFAULT_MODEL) -> None:
+    def __init__(
+        self,
+        overlay: RecordingOverlay | None = None,
+        model: str = transcribe.DEFAULT_MODEL,
+        backend: str = transcribe.DEFAULT_BACKEND,
+    ) -> None:
         self._overlay = overlay
         self._model = model
+        self._backend = backend
         self._stop_event = threading.Event()
         self._recording = False
         self._active_app: str = ""
@@ -111,7 +117,7 @@ class App:
             if audio_data.size == 0:
                 print("[local-whisper] No audio captured.", file=sys.stderr)
                 return
-            text = transcribe.run(audio_data, model=self._model)
+            text = transcribe.run(audio_data, model=self._model, backend=self._backend)
             if not text:
                 print("[local-whisper] Empty transcription.", file=sys.stderr)
                 return
@@ -137,7 +143,7 @@ class App:
             if audio_data.size == 0:
                 print("[local-whisper] No audio captured.", file=sys.stderr)
                 return
-            voice_cmd = transcribe.run(audio_data, model=self._model)
+            voice_cmd = transcribe.run(audio_data, model=self._model, backend=self._backend)
             if not voice_cmd:
                 print("[local-whisper] Empty transcription.", file=sys.stderr)
                 return

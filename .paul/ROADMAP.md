@@ -7,8 +7,8 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 ## Current Milestone
 
 **v0.6 Speed** (v0.6.0)
-Status: 📋 Planned
-Phases: 0 of 2 complete
+Status: 🔵 In Progress
+Phases: 1 of 2 complete
 
 ---
 
@@ -46,7 +46,7 @@ Phases: 4 of 4 complete
 
 | Phase | Name | Plans | Status | GitHub Issue | Completed |
 |-------|------|-------|--------|--------------|-----------|
-| 11 | Backend Selection | 1 | 📋 Planned | - | - |
+| 11 | Backend Selection | 1 | ✅ Complete | - | 2026-05-04 |
 | 12 | CoreML Backend | 0 | 🔬 Research Required | - | - |
 
 ### v0.5 Model Selection
@@ -253,4 +253,4 @@ Python packages that include C/Swift/Rust code need platform-specific compiled `
 
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-05-04 — v0.6 Speed milestone added; Phases 11 (parakeet-mlx) and 12 (CoreML) planned*
+*Last updated: 2026-05-04 — Phase 11 (Backend Selection) complete; Phase 12 (CoreML) next*

@@ -74,12 +74,13 @@ def main() -> None:
         from local_whisper.overlay import RecordingOverlay
 
         model = transcribe.get_model()
+        backend = transcribe.get_backend(model)
         overlay = RecordingOverlay()
-        app = App(overlay=overlay, model=model)
+        app = App(overlay=overlay, model=model, backend=backend)
         app.start()  # starts pynput listener in daemon thread (non-blocking)
 
         # Pre-load model and compile Metal shaders so first keypress is instant.
-        threading.Thread(target=transcribe.warm_up, args=(model,), daemon=True).start()
+        threading.Thread(target=transcribe.warm_up, args=(model, backend), daemon=True).start()
 
         try:
             overlay.run()  # AppKit event loop on main thread — blocks until quit()
@@ -92,17 +93,19 @@ def main() -> None:
         from local_whisper import benchmark
 
         model = transcribe.get_model()
+        backend = transcribe.get_backend(model)
         print(
             f"Benchmarking {model} ({benchmark._DURATION_S}s audio, 3 runs)...",
             file=sys.stderr,
         )
-        results = benchmark.run(model)
+        results = benchmark.run(model, backend=backend)
         print(json.dumps(results, indent=2))
     elif args.test:
         model = transcribe.get_model()
+        backend = transcribe.get_backend(model)
         print(f"Speak now — recording for {args.duration}s...", file=sys.stderr)
         audio_data = audio.record(duration=args.duration)
-        text = transcribe.run(audio_data, model=model)
+        text = transcribe.run(audio_data, model=model, backend=backend)
         print(text)
     else:
         parser.print_help()

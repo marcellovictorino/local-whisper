@@ -5,26 +5,26 @@
 See: .paul/PROJECT.md (updated 2026-05-04 after Phase 10)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.6 Speed — Phase 11 (Backend Selection) ready to plan
+**Current focus:** v0.6 Speed — Phase 12 (CoreML Backend) — research required
 
 ## Current Position
 
 Milestone: v0.6 Speed — In progress
-Phase: 11 (Backend Selection) — Not started
+Phase: 12 (CoreML Backend) — Not started (Research Required)
 Plan: Not started
-Status: Ready to plan Phase 11
-Last activity: 2026-05-04 — Phase 10 complete (v0.5 shipped); transitioned to Phase 11
+Status: Ready to research Phase 12
+Last activity: 2026-05-04 — Phase 11 complete (parakeet-mlx backend added); transitioned to Phase 12
 
 Progress:
 - v0.5 Model Selection: [██████████] 100% (complete)
-- v0.6 Speed: [░░░░░░░░░░] 0% (Phase 11 not started)
+- v0.6 Speed: [█████░░░░░] 50% (Phase 11 complete, Phase 12 pending)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Phase 10 complete — Phase 11 ready to plan]
+  ✓        ✓        ✓     [Phase 11 complete — Phase 12 ready to research]
 ```
 
 ## Accumulated Context
@@ -49,6 +49,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | openai module-level import (try/except) | Phase 9 | Lazy import inside function is not patchable via unittest.mock.patch |
 | Default model → distil-whisper-large-v3 | Phase 10 | ~2× faster than turbo, ~600 MB; turbo still available via config |
 | get_model() reads config once at startup | Phase 10 | Model flows: config.toml → get_model() → warm_up() + App._model → run() |
+| KnownModel StrEnum + _BACKEND_MAP for backend dispatch | Phase 11 | Single source of truth; backend inferred from model ID; unknown IDs → mlx-whisper |
+| parakeet-mlx transcribe() requires file path + ffmpeg | Phase 11 | API discovery: writes numpy to temp WAV via soundfile, then cleans up |
+| parakeet-mlx as optional extra (--extra parakeet) | Phase 11 | Never required; graceful ImportError fallback to mlx-whisper |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
@@ -67,9 +70,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 ## Session Continuity
 
 Last session: 2026-05-04
-Stopped at: Phase 10 complete (v0.5 Model Selection shipped); Phase 11 plan exists and ready
-Next action: Run `/paul:apply .paul/phases/11-backend-selection/11-01-PLAN.md`
-Resume file: .paul/phases/11-backend-selection/11-01-PLAN.md
+Stopped at: Phase 11 complete (UNIFY done); Phase 12 research required before planning
+Next action: Run `/paul:research-phase` for Phase 12 (CoreML Backend)
+Resume file: .paul/ROADMAP.md
 
 ---
 *STATE.md — Updated after every significant action*

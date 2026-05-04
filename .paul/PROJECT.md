@@ -42,6 +42,11 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 - [x] Default model switched to `distil-whisper-large-v3` (~2× faster, ~600 MB) — Phase 10
 - [x] Benchmark module: warm-up + transcription timing, JSON output, `just benchmark` recipe — Phase 10
 
+- [x] `KnownModel` StrEnum: single source of truth for all supported model IDs + backend assignment — Phase 11
+- [x] `get_backend(model)` — pure lookup; backend auto-inferred from model ID, no second config key — Phase 11
+- [x] parakeet-mlx backend wired through `run()`, `warm_up()`, `App`, `__main__`, benchmark — Phase 11
+- [x] parakeet-mlx optional extra (`uv sync --extra parakeet`); graceful ImportError fallback to mlx-whisper — Phase 11
+
 ### Planned (Next)
 
 **v0.4+ ideas:**
@@ -100,6 +105,9 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | Default model → distil-whisper-large-v3 | ~2× faster than turbo at runtime, ~600 MB vs 1.5 GB, <1% WER delta on English | 2026-05-04 | Active |
 | get_model() takes explicit path param | Enables direct test isolation without monkeypatching Path.home() | 2026-05-04 | Active |
 | Config read once at startup, not per keypress | Model load is heavyweight; config change requires restart (consistent with expectations) | 2026-05-04 | Active |
+| KnownModel StrEnum + _BACKEND_MAP for backend dispatch | Single source of truth; adding future models = one line; unknown IDs fall back to mlx-whisper | 2026-05-04 | Active |
+| parakeet-mlx transcribe() takes file path, not numpy array | API spike finding: uses ffmpeg internally; _run_parakeet() writes temp WAV via soundfile | 2026-05-04 | Active |
+| parakeet-mlx optional extra; never required | Users install with `uv sync --extra parakeet`; default distil-whisper path unchanged | 2026-05-04 | Active |
 
 ## Success Metrics
 
@@ -115,8 +123,8 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 |-------|------------|-------|
 | Language | Python 3.13 | via uv, pyproject.toml |
 | Package Manager | uv | Fast, modern, lockfile |
-| ASR Model | distil-whisper-large-v3 (default) | ~600 MB; turbo available via config for multilingual/accuracy |
-| Inference | mlx-whisper | Apple Silicon native via MLX (ANE/GPU) |
+| ASR Model | distil-whisper-large-v3 (default) | ~600 MB; turbo available via config; parakeet-tdt-0.6b-v2/v3 for faster English |
+| Inference | mlx-whisper (default) / parakeet-mlx (optional) | Backend auto-inferred from model ID; parakeet ~0.3–0.5s vs ~0.5–0.7s |
 | Audio Capture | sounddevice | NumPy-native, 16kHz float32 |
 | Global Hotkey | pynput | Requires macOS Accessibility permission |
 | Overlay UI | PyObjC (NSPanel + NSVisualEffectView) | Frosted-glass pill, always-on-top, no dock icon |
@@ -124,4 +132,4 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-05-04 after Phase 10 (Model Selection) — v0.5.0*
+*Last updated: 2026-05-04 after Phase 11 (Backend Selection) — v0.6 in progress*
