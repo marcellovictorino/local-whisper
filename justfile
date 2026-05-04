@@ -54,6 +54,11 @@ lint:
     {{uv}} run ruff check src/ tests/
     {{uv}} run ruff format --check src/ tests/
 
+# Benchmark transcription latency (model from config or default)
+[group('dev')]
+benchmark:
+    {{uv}} run python -m local_whisper --benchmark
+
 # Install pre-commit hooks (run once after cloning)
 [group('dev')]
 hooks:

@@ -12,9 +12,9 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 
 | Attribute | Value |
 |-----------|-------|
-| Version | 0.4.0 |
+| Version | 0.5.0 |
 | Status | Active |
-| Last Updated | 2026-04-28 |
+| Last Updated | 2026-05-04 |
 
 ## Requirements
 
@@ -37,6 +37,10 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 
 - [x] Auto-cleanup: filler word removal + immediate repetition collapse (opt-out via config) — Phase 8
 - [x] Auto-adapt: app-aware LLM text reshaping with per-app prompts + built-in Slack/Mail presets (opt-in via config) — Phase 9
+
+- [x] Configurable Whisper model via `[whisper] model` in config.toml — Phase 10
+- [x] Default model switched to `distil-whisper-large-v3` (~2× faster, ~600 MB) — Phase 10
+- [x] Benchmark module: warm-up + transcription timing, JSON output, `just benchmark` recipe — Phase 10
 
 ### Planned (Next)
 
@@ -93,6 +97,9 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | auto_adapt opt-in (enabled = false default) | Reshaping changes output significantly — user must explicitly enable | 2026-04-28 | Active |
 | App captured at press time (not process time) | Focus may change during recording; correct app is the one at key press | 2026-04-28 | Active |
 | openai module-level import (try/except) | Lazy import inside function is not patchable via unittest.mock.patch | 2026-04-28 | Active |
+| Default model → distil-whisper-large-v3 | ~2× faster than turbo at runtime, ~600 MB vs 1.5 GB, <1% WER delta on English | 2026-05-04 | Active |
+| get_model() takes explicit path param | Enables direct test isolation without monkeypatching Path.home() | 2026-05-04 | Active |
+| Config read once at startup, not per keypress | Model load is heavyweight; config change requires restart (consistent with expectations) | 2026-05-04 | Active |
 
 ## Success Metrics
 
@@ -108,7 +115,7 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 |-------|------------|-------|
 | Language | Python 3.13 | via uv, pyproject.toml |
 | Package Manager | uv | Fast, modern, lockfile |
-| ASR Model | whisper-large-v3-turbo | ~1.5GB, downloaded once to ~/.cache/huggingface |
+| ASR Model | distil-whisper-large-v3 (default) | ~600 MB; turbo available via config for multilingual/accuracy |
 | Inference | mlx-whisper | Apple Silicon native via MLX (ANE/GPU) |
 | Audio Capture | sounddevice | NumPy-native, 16kHz float32 |
 | Global Hotkey | pynput | Requires macOS Accessibility permission |
@@ -117,4 +124,4 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-04-28 after Phase 9 (Auto-Adapt) — v0.4.0*
+*Last updated: 2026-05-04 after Phase 10 (Model Selection) — v0.5.0*

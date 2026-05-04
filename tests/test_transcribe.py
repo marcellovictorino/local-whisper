@@ -1,8 +1,8 @@
-"""Tests for transcribe._model_is_cached — pure filesystem logic."""
+"""Tests for transcribe._model_is_cached and get_model — pure filesystem logic."""
 
 from pathlib import Path
 
-from local_whisper.transcribe import _model_is_cached
+from local_whisper.transcribe import DEFAULT_MODEL, _model_is_cached, get_model
 
 MODEL = "mlx-community/whisper-large-v3-turbo"
 
@@ -43,3 +43,28 @@ def test_not_cached_when_snapshot_subdirs_are_empty(tmp_path: Path, monkeypatch:
     snapshot_dir.mkdir(parents=True)
     # directory exists but is empty
     assert _model_is_cached(MODEL) is False
+
+
+# --- get_model() tests ---
+
+
+def test_get_model_returns_default_when_no_config(tmp_path: Path) -> None:
+    assert get_model(tmp_path / "nonexistent.toml") == DEFAULT_MODEL
+
+
+def test_get_model_returns_default_when_section_absent(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    config.write_text("[snippets]\nfoo = 'bar'\n")
+    assert get_model(config) == DEFAULT_MODEL
+
+
+def test_get_model_returns_configured_model(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    config.write_text('[whisper]\nmodel = "mlx-community/whisper-large-v3-turbo"\n')
+    assert get_model(config) == "mlx-community/whisper-large-v3-turbo"
+
+
+def test_get_model_returns_default_on_corrupt_config(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    config.write_text("not valid toml = = = !!!")
+    assert get_model(config) == DEFAULT_MODEL

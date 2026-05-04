@@ -1,11 +1,39 @@
 import os
 import sys
 import time
+import tomllib
 from pathlib import Path
 
 import numpy as np
 
-_MODEL_SIZE_HINT = "~1.5 GB"
+_CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
+
+DEFAULT_MODEL = "mlx-community/distil-whisper-large-v3"
+
+_MODEL_SIZES: dict[str, str] = {
+    "mlx-community/whisper-large-v3-turbo": "~1.5 GB",
+    "mlx-community/distil-whisper-large-v3": "~600 MB",
+}
+
+
+def get_model(path: Path = _CONFIG_PATH) -> str:
+    """Read model ID from config.toml, falling back to DEFAULT_MODEL.
+
+    Args:
+        path: Path to config.toml file.
+
+    Returns:
+        HuggingFace model ID string.
+    """
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+        return data.get("whisper", {}).get("model", DEFAULT_MODEL)
+    except FileNotFoundError:
+        return DEFAULT_MODEL
+    except Exception as exc:
+        print(f"[local-whisper] whisper config error: {exc}", file=sys.stderr)
+        return DEFAULT_MODEL
 
 
 def _model_is_cached(model: str) -> bool:
@@ -24,7 +52,7 @@ def _suppress_progress_bars() -> None:
     os.environ["TQDM_DISABLE"] = "1"
 
 
-def warm_up(model: str = "mlx-community/whisper-large-v3-turbo") -> None:
+def warm_up(model: str = DEFAULT_MODEL) -> None:
     """Pre-load model and compile Metal shaders. Call once at startup in a background thread.
 
     Args:
@@ -45,7 +73,7 @@ def warm_up(model: str = "mlx-community/whisper-large-v3-turbo") -> None:
 
 def run(
     audio: np.ndarray,
-    model: str = "mlx-community/whisper-large-v3-turbo",
+    model: str = DEFAULT_MODEL,
 ) -> str:
     """Transcribe audio array to text using local MLX Whisper model.
 
@@ -62,7 +90,7 @@ def run(
         _suppress_progress_bars()
     else:
         print(
-            f"First run: downloading model '{model}' ({_MODEL_SIZE_HINT}).\n"
+            f"First run: downloading model '{model}' ({_MODEL_SIZES.get(model, 'unknown size')}).\n"
             "  This only happens once — subsequent runs are instant.",
             file=sys.stderr,
             flush=True,

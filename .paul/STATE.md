@@ -5,26 +5,26 @@
 See: .paul/PROJECT.md (updated 2026-04-28 after Phase 9)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.5 Model Selection — Phase 10 planning complete
+**Current focus:** v0.6 Speed — Phase 11 (Backend Selection) ready to plan
 
 ## Current Position
 
-Milestone: v0.5 Model Selection — In progress
-Phase: 10 (Model Selection) — Planning complete
-Plan: 10-01 approved, ready for APPLY
-Status: Plan ready — awaiting execution
-Last activity: 2026-05-04 — Phases 10 (planned), 11 (planned), 12 (research-required) added
+Milestone: v0.6 Speed — In progress
+Phase: 11 (Backend Selection) — Not started
+Plan: Not started
+Status: Ready to plan Phase 11
+Last activity: 2026-05-04 — Phase 10 complete (v0.5 shipped); transitioned to Phase 11
 
 Progress:
-- v0.5 Model Selection: [░░░░░░░░░░] 0% (plan approved)
-- Phase 10: [██░░░░░░░░] 20% (PLAN done, APPLY pending)
+- v0.5 Model Selection: [██████████] 100% (complete)
+- v0.6 Speed: [░░░░░░░░░░] 0% (Phase 11 not started)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ○        ○     [Phase 10 — ready to execute]
+  ✓        ✓        ✓     [Phase 10 complete — Phase 11 ready to plan]
 ```
 
 ## Accumulated Context
@@ -47,6 +47,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | auto_adapt opt-in (enabled = false default) | Phase 9 | Reshaping changes output significantly — user must explicitly enable |
 | App captured at press time in _on_key_press | Phase 9 | Focus may change during recording; correct app is the one at key press |
 | openai module-level import (try/except) | Phase 9 | Lazy import inside function is not patchable via unittest.mock.patch |
+| Default model → distil-whisper-large-v3 | Phase 10 | ~2× faster than turbo, ~600 MB; turbo still available via config |
+| get_model() reads config once at startup | Phase 10 | Model flows: config.toml → get_model() → warm_up() + App._model → run() |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
@@ -65,9 +67,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 ## Session Continuity
 
 Last session: 2026-05-04
-Stopped at: Phase 10 plan approved; Phases 11 (parakeet-mlx) and 12 (CoreML, research required) planned
-Next action: Run `/paul:apply .paul/phases/10-model-selection/10-01-PLAN.md`
-Resume file: .paul/phases/10-model-selection/10-01-PLAN.md
+Stopped at: Phase 10 complete (v0.5 Model Selection shipped); Phase 11 plan exists and ready
+Next action: Run `/paul:apply .paul/phases/11-backend-selection/11-01-PLAN.md`
+Resume file: .paul/phases/11-backend-selection/11-01-PLAN.md
 
 ---
 *STATE.md — Updated after every significant action*

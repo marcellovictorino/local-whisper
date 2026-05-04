@@ -13,8 +13,8 @@ Phases: 0 of 2 complete
 ---
 
 **v0.5 Model Selection** (v0.5.0)
-Status: 🔄 In progress
-Phases: 0 of 1 complete
+Status: ✅ Complete
+Phases: 1 of 1 complete
 
 ---
 
@@ -53,7 +53,7 @@ Phases: 4 of 4 complete
 
 | Phase | Name | Plans | Status | GitHub Issue | Completed |
 |-------|------|-------|--------|--------------|-----------|
-| 10 | Model Selection | 1 | 🔄 Planning | - | - |
+| 10 | Model Selection | 1 | ✅ Complete | - | 2026-05-04 |
 
 ### v0.4 Auto-Adapt
 

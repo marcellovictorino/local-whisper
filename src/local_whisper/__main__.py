@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 import threading
 
@@ -49,6 +50,11 @@ def main() -> None:
         default=5.0,
         help="Recording duration in seconds for --test mode (default: 5).",
     )
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Run latency benchmark and exit.",
+    )
     args = parser.parse_args()
 
     if args.run:
@@ -67,12 +73,13 @@ def main() -> None:
         from local_whisper.app import App
         from local_whisper.overlay import RecordingOverlay
 
+        model = transcribe.get_model()
         overlay = RecordingOverlay()
-        app = App(overlay=overlay)
+        app = App(overlay=overlay, model=model)
         app.start()  # starts pynput listener in daemon thread (non-blocking)
 
         # Pre-load model and compile Metal shaders so first keypress is instant.
-        threading.Thread(target=transcribe.warm_up, daemon=True).start()
+        threading.Thread(target=transcribe.warm_up, args=(model,), daemon=True).start()
 
         try:
             overlay.run()  # AppKit event loop on main thread — blocks until quit()
@@ -81,10 +88,21 @@ def main() -> None:
         finally:
             app.stop()
             overlay.quit()
+    elif args.benchmark:
+        from local_whisper import benchmark
+
+        model = transcribe.get_model()
+        print(
+            f"Benchmarking {model} ({benchmark._DURATION_S}s audio, 3 runs)...",
+            file=sys.stderr,
+        )
+        results = benchmark.run(model)
+        print(json.dumps(results, indent=2))
     elif args.test:
+        model = transcribe.get_model()
         print(f"Speak now — recording for {args.duration}s...", file=sys.stderr)
         audio_data = audio.record(duration=args.duration)
-        text = transcribe.run(audio_data)
+        text = transcribe.run(audio_data, model=model)
         print(text)
     else:
         parser.print_help()
