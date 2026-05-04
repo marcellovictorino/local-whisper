@@ -5,26 +5,26 @@
 See: .paul/PROJECT.md (updated 2026-04-28 after Phase 9)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.4 Auto-Adapt — COMPLETE
+**Current focus:** v0.5 Model Selection — Phase 10 planning complete
 
 ## Current Position
 
-Milestone: v0.4 Auto-Adapt — Complete
-Phase: 9 of 9 (Auto-Adapt) — Complete
-Plan: 09-01 complete
-Status: Milestone complete — all phases unified
-Last activity: 2026-04-28 — Phase 9 (Auto-Adapt) shipped, v0.4.0 complete
+Milestone: v0.5 Model Selection — In progress
+Phase: 10 (Model Selection) — Planning complete
+Plan: 10-01 approved, ready for APPLY
+Status: Plan ready — awaiting execution
+Last activity: 2026-05-04 — Phases 10 (planned), 11 (planned), 12 (research-required) added
 
 Progress:
-- v0.4 Auto-Adapt: [██████████] 100%
-- Phase 9: [██████████] 100%
+- v0.5 Model Selection: [░░░░░░░░░░] 0% (plan approved)
+- Phase 10: [██░░░░░░░░] 20% (PLAN done, APPLY pending)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop complete — milestone complete]
+  ✓        ○        ○     [Phase 10 — ready to execute]
 ```
 
 ## Accumulated Context
@@ -64,10 +64,10 @@ PLAN ──▶ APPLY ──▶ UNIFY
 
 ## Session Continuity
 
-Last session: 2026-04-28
-Stopped at: v0.4 milestone complete — all 9 phases unified
-Next action: Start v0.5 milestone or release tagging
-Resume file: .paul/ROADMAP.md
+Last session: 2026-05-04
+Stopped at: Phase 10 plan approved; Phases 11 (parakeet-mlx) and 12 (CoreML, research required) planned
+Next action: Run `/paul:apply .paul/phases/10-model-selection/10-01-PLAN.md`
+Resume file: .paul/phases/10-model-selection/10-01-PLAN.md
 
 ---
 *STATE.md — Updated after every significant action*
