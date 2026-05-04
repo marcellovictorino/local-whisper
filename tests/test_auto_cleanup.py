@@ -1,4 +1,5 @@
 """Tests for auto_cleanup._is_enabled() and auto_cleanup.apply()."""
+
 from pathlib import Path
 
 from local_whisper.auto_cleanup import _is_enabled, apply
@@ -16,7 +17,7 @@ def test_is_enabled_reads_false_from_config(tmp_path: Path) -> None:
 
 def test_is_enabled_defaults_true_when_section_absent(tmp_path: Path) -> None:
     config = tmp_path / "config.toml"
-    config.write_text("[snippets]\nbrb = \"be right back\"\n")
+    config.write_text('[snippets]\nbrb = "be right back"\n')
     assert _is_enabled(config) is True
 
 
