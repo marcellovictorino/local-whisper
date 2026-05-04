@@ -2,9 +2,15 @@
 
 ## Overview
 
-Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start with a working transcription pipeline (Phase 1), add the keyboard trigger and clipboard paste (Phase 2), then add a visual recording indicator (Phase 3). Phase 4 covers distribution and packaging for real-world use. v0.2 adds power-user features: snippets, corrections, and command mode.
+Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start with a working transcription pipeline (Phase 1), add the keyboard trigger and clipboard paste (Phase 2), then add a visual recording indicator (Phase 3). Phase 4 covers distribution and packaging for real-world use. v0.2 adds power-user features: snippets, corrections, and command mode. v0.5-v0.6 focus on speed: faster default model, then faster inference backend (parakeet-mlx → CoreML).
 
 ## Current Milestone
+
+**v0.6 Speed** (v0.6.0)
+Status: 📋 Planned
+Phases: 0 of 2 complete
+
+---
 
 **v0.5 Model Selection** (v0.5.0)
 Status: 🔄 In progress
@@ -35,6 +41,13 @@ Status: ✅ Complete
 Phases: 4 of 4 complete
 
 ## Phases
+
+### v0.6 Speed
+
+| Phase | Name | Plans | Status | GitHub Issue | Completed |
+|-------|------|-------|--------|--------------|-----------|
+| 11 | Backend Selection | 1 | 📋 Planned | - | - |
+| 12 | CoreML Backend | 0 | 🔬 Research Required | - | - |
 
 ### v0.5 Model Selection
 
@@ -130,6 +143,81 @@ Phases: 4 of 4 complete
 **Plans:**
 - [ ] 04-01: macOS distribution packaging
 
+### Phase 10: Model Selection
+
+**Goal:** Switch default model to `mlx-community/distil-whisper-large-v3` (~2× faster than turbo at runtime, same ~1.5 GB download, <1% WER on English). Allow users to override via `[whisper] model` in config.toml. Document `mlx-community/whisper-large-v3-turbo` as the switch for multilingual support or higher accuracy.
+**Depends on:** Phase 1 (transcribe module)
+**Research:** Not needed (mlx-whisper already accepts any HF model ID)
+
+**Scope:**
+- Change default model to `mlx-community/distil-whisper-large-v3`
+- `transcribe.get_model()` reads `[whisper] model` from config, falls back to default
+- Dynamic size hint per model in first-run download message
+- `App` and `__main__` resolve model once at startup, pass through to `warm_up()` and `run()`
+- `benchmark.py`: warm-up time + transcription mean/min/max over 3×30s synthetic audio runs
+- `--benchmark` CLI flag + `just benchmark` recipe — establishes baseline for tracking evolution
+- 4 new unit tests for `get_model()`
+
+**Plans:**
+- [ ] 10-01: get_model() + default change + App wiring + benchmark + tests
+
+### Phase 11: Backend Selection
+
+**Goal:** Add `parakeet-mlx` as a faster inference backend (~0.3–0.5s vs ~0.5–0.7s for distil-whisper). Backend is **inferred automatically from the model ID** — no separate config key. Users switch by setting `[whisper] model` to a parakeet model ID. A `KnownModel` StrEnum lists all supported models; adding future models = one line.
+**Depends on:** Phase 10 (`get_model()` abstraction, benchmark module)
+**Research:** Minimal — spike to verify parakeet-mlx API (Task 1) before coding
+
+**Scope:**
+- `KnownModel` StrEnum: all supported HF model IDs with their backend assignment
+- `_BACKEND_MAP: dict[str, str]` — maps model ID → `"mlx-whisper"` | `"parakeet-mlx"`
+- `get_backend(model: str) -> str` — pure lookup, no file I/O, no config read
+- `run()` and `warm_up()` accept `backend` param, dispatch to backend implementation
+- parakeet-mlx optional extra (`uv sync --extra parakeet`), graceful fallback if absent
+- benchmark.py updated to include `"backend"` in JSON output
+- Config stays simple: `[whisper] model = "mlx-community/parakeet-tdt-0.6b-v2"` → backend auto-inferred
+
+**Plans:**
+- [ ] 11-01: KnownModel StrEnum + get_backend() + dispatch + fallback + tests
+
+### Phase 12: CoreML Backend
+
+**Goal:** Maximum speed transcription (~80–250ms) via Apple CoreML/ANE — ~5× faster than mlx-whisper turbo, ~2-3× faster than parakeet-mlx. Trivial install (no native compilation). macOS M-series only (already the target).
+**Depends on:** Phase 11 (multi-backend dispatch infrastructure)
+**Research:** Required — three candidate paths with different trade-offs
+
+**Background — what "native compilation" means:**
+Python packages that include C/Swift/Rust code need platform-specific compiled `.so` files. When a pre-built wheel exists for macOS arm64: `uv add somepackage` works instantly, no tools required. When no arm64 wheel exists: pip tries to compile from source, which requires Xcode + cmake + (sometimes) Swift toolchain — fails silently or with cryptic errors for non-developer users. Phase 12 MUST use a path that ships pre-built arm64 wheels OR uses only system frameworks (CoreML is already on every macOS installation).
+
+**Candidate paths (research questions):**
+
+1. **`coremltools` + pre-converted WhisperKit/Parakeet CoreML models** *(lowest friction candidate)*
+   - Apple-maintained package; ships pre-built arm64 wheels — no compilation
+   - Uses system CoreML framework (zero extra install on macOS)
+   - Models: `argmaxinc/whisperkit-coreml-*` on HuggingFace (`.mlpackage` format, not `.safetensors`)
+   - Parakeet CoreML models may also be available via argmaxinc or NVIDIA
+   - Research: confirm `coremltools` arm64 wheels exist; confirm inference API for audio input; measure latency
+   - Risk: model format different from mlx (new download, different cache management)
+
+2. **`pywhispercpp` (whisper.cpp Python bindings)**
+   - whisper.cpp uses Metal Performance Shaders (GPU) — not CoreML/ANE, but still fast (~0.2–0.4s)
+   - Pre-built arm64 wheels available on PyPI
+   - GGML model format (single file, smaller than mlx snapshots)
+   - Research: confirm arm64 wheels; measure latency on M-series vs CoreML path
+   - Risk: MPS ≠ ANE — may be slower than true CoreML path
+
+3. **WhisperKit CLI binary (pre-compiled Swift, subprocess)**
+   - WhisperKit ships a macOS arm64 CLI binary (`whisperkit-cli`)
+   - Python calls it via subprocess — no Swift compilation needed by user
+   - Fastest path (~80–190ms), full CoreML/ANE utilisation
+   - Research: binary distribution mechanism (Homebrew? direct download?); subprocess interface; model download flow
+   - Risk: binary distribution adds complexity to setup.sh; subprocess adds latency overhead vs direct API
+
+**Recommended research order:** Start with `coremltools` (lowest friction, Apple-maintained). If latency is acceptable, no need to go further. Fall back to pywhispercpp if coremltools API is too low-level. Evaluate WhisperKit CLI only if target <100ms is required.
+
+**Plans:**
+- [ ] 12-00: Research — benchmark all three paths, document API, recommend winner
+- [ ] 12-01: Implement chosen backend + config key + tests (after research complete)
+
 ### Phase 9: Auto-Adapt
 
 **Goal:** Detect the frontmost macOS app at key press time and automatically reshape the transcription via LLM using a per-app prompt before pasting. Opt-in via config; command mode takes full priority.
@@ -163,22 +251,6 @@ Phases: 4 of 4 complete
 **Plans:**
 - [ ] 08-01: Auto-cleanup module + config integration
 
-### Phase 10: Model Selection
-
-**Goal:** Make `mlx-community/distil-whisper-large-v3` the default model (~2× faster than turbo at runtime, same ~1.5 GB download, <1% WER on English). Allow users to override via `[whisper] model` in config.toml. Document `mlx-community/whisper-large-v3-turbo` as the switch for multilingual support or higher accuracy.
-**Depends on:** Phase 1 (transcribe module)
-**Research:** Not needed (mlx-whisper already accepts any HF model ID)
-
-**Scope:**
-- Change default model to `mlx-community/distil-whisper-large-v3`
-- `transcribe.get_model()` reads `[whisper] model` from config, falls back to default
-- Dynamic size hint per model in first-run download message
-- `App` and `__main__` resolve model once at startup, pass through to `warm_up()` and `run()`
-- 4 new unit tests for `get_model()`
-
-**Plans:**
-- [ ] 10-01: get_model() + default change + App wiring + tests
-
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-05-04 — v0.5 milestone started; Phase 10 (Model Selection) added*
+*Last updated: 2026-05-04 — v0.6 Speed milestone added; Phases 11 (parakeet-mlx) and 12 (CoreML) planned*
