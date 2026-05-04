@@ -61,6 +61,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | Filler list not user-configurable | Phase 8 | S | v0.5+ |
 | LLM-based cleanup (higher quality, ~1s overhead) | Phase 8 | M | v0.5+ |
 | auto_adapt uses same COMMAND_MODEL env var as command mode | Phase 9 | S | v0.5+ |
+| parakeet-mlx re-loads model per call — cache instance in App for real speed gains | Phase 11 | M | v0.6+ |
 
 ### Blockers/Concerns
 | Concern | Detail |

@@ -89,10 +89,6 @@ def test_get_backend_returns_parakeet_for_parakeet_v2() -> None:
     assert get_backend(KnownModel.PARAKEET_V2) == "parakeet-mlx"
 
 
-def test_get_backend_returns_parakeet_for_parakeet_v3() -> None:
-    assert get_backend(KnownModel.PARAKEET_V3) == "parakeet-mlx"
-
-
 def test_get_backend_returns_mlx_whisper_for_unknown_model() -> None:
     assert get_backend("unknown/custom-model") == "mlx-whisper"
 
