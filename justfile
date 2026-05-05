@@ -54,6 +54,21 @@ lint:
     {{uv}} run ruff check src/ tests/
     {{uv}} run ruff format --check src/ tests/
 
+# Benchmark transcription latency (model from config or default)
+[group('dev')]
+benchmark:
+    {{uv}} run python -m local_whisper --benchmark
+
+# Record a 30s audio sample for accuracy comparison (reads from mic)
+[group('dev')]
+record-sample:
+    {{uv}} run python tests/record_sample.py
+
+# Compare accuracy + latency across models using recorded sample
+[group('dev')]
+compare:
+    {{uv}} run python tests/benchmark_compare.py --out tests/results.json
+
 # Install pre-commit hooks (run once after cloning)
 [group('dev')]
 hooks:
