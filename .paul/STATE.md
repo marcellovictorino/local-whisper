@@ -2,29 +2,29 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-05-04 after Phase 12)
+See: .paul/PROJECT.md (updated 2026-05-05 after Phase 13)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
 **Current focus:** v0.7 Sub-second ASR — Phase 14 implementation.
 
 ## Current Position
 
-Milestone: v0.7 Sub-second ASR — 🚧 In Progress
-Phase: 14 (SFSpeech Implementation) — Not started
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-05 — Phase 13 complete; transitioned to Phase 14
+Milestone: v0.7 Sub-second ASR — ✅ Complete
+Phase: 14 (SFSpeech Implementation) — ✅ Complete
+Plan: 14-01 complete
+Status: Milestone complete — ready for next milestone or release
+Last activity: 2026-05-05 — Phase 14 UNIFY complete; v0.7 milestone done
 
 Progress:
 - v0.6 Speed: [██████████] 100% (complete)
-- v0.7 Sub-second ASR: [█████░░░░░] 50% (1/2 phases)
+- v0.7 Sub-second ASR: [██████████] 100% (2/2 phases)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop closed — Phase 13 complete, ready for Phase 14 PLAN]
+  ✓        ✓        ✓     [Loop complete — Phase 14 done, v0.7 milestone complete]
 ```
 
 ## Accumulated Context
@@ -56,6 +56,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | _parakeet_cache module-level dict in transcribe.py | Phase 12 | warm_up() pre-loads model once; _run_parakeet() uses cache — eliminates 5s reload per keypress |
 | CoreML/ANE Python backend deferred | Phase 12 | No pip-installable Python CoreML Whisper package exists as of 2026-05-04 |
 | 2026-05-05: SFSpeechRecognizer viable for v0.7 | Phase 13 | 200–700ms warm latency, zero install, on-device; whisper.cpp spike skipped |
+| threading.Event for SFSpeech sync (not NSRunLoop) | Phase 14 | SFSpeech delivers on internal queue; threading.Event correct for background threads |
+| SFSpeech opt-in via config, not default | Phase 14 | Benchmark comparison deferred; distil-whisper-large-v3 remains default |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
@@ -66,6 +68,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | LLM-based cleanup (higher quality, ~1s overhead) | Phase 8 | M | v0.7+ |
 | auto_adapt uses same COMMAND_MODEL env var as command mode | Phase 9 | S | v0.7+ |
 | CoreML/ANE Python inference: no pip-installable package exists | Phase 12 | L | Revisit when argmaxinc publishes proper PyPI package |
+| SFSpeech default promotion: benchmark needed before changing DEFAULT_MODEL | Phase 14 | S | Run `just benchmark` with sfspeech + distil-whisper, compare WER + latency |
 
 ### Blockers/Concerns
 | Concern | Detail |
@@ -75,9 +78,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 ## Session Continuity
 
 Last session: 2026-05-05
-Stopped at: Phase 13 UNIFY complete — SFSpeechRecognizer confirmed, Phase 14 ready
-Next action: /paul:plan for Phase 14 (SFSpeech Implementation)
-Resume file: .paul/phases/13-sub-second-asr/13-00-RESEARCH.md
+Stopped at: v0.7 milestone complete — Phase 14 UNIFY done
+Next action: Benchmark SFSpeech vs distil-whisper-large-v3, then decide if SFSPEECH_EN becomes new default; or start next milestone
+Resume file: .paul/ROADMAP.md
 
 ---
 *STATE.md — Updated after every significant action*

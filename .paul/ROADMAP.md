@@ -7,8 +7,8 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 ## Current Milestone
 
 **v0.7 Sub-second ASR** (v0.7.0)
-Status: 🚧 In Progress
-Phases: 1 of 2 complete
+Status: ✅ Complete
+Phases: 2 of 2 complete
 
 ---
 
@@ -53,7 +53,7 @@ Phases: 4 of 4 complete
 | Phase | Name | Plans | Status | GitHub Issue | Completed |
 |-------|------|-------|--------|--------------|-----------|
 | 13 | Sub-second ASR Research | 1 | ✅ Complete | - | 2026-05-05 |
-| 14 | SFSpeech Implementation | TBD | Not started | - | - |
+| 14 | SFSpeech Implementation | 1 | ✅ Complete | - | 2026-05-05 |
 
 ### v0.6 Speed
 

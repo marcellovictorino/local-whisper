@@ -12,7 +12,7 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 
 | Attribute | Value |
 |-----------|-------|
-| Version | 0.6.0 |
+| Version | 0.7.0 |
 | Status | Active |
 | Last Updated | 2026-05-04 |
 
@@ -49,14 +49,13 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 - [x] `_parakeet_cache` module-level dict: parakeet model loaded once at `warm_up()`, reused per keypress — Phase 12
 - [x] `warm_up()` parakeet branch: now actually pre-loads model (eliminates ~5s from_pretrained() at first keypress) — Phase 12
 
-### Planned (Next)
+- [x] `Backend.SFSPEECH` + `KnownModel.SFSPEECH_EN = "macos/sfspeech-en-us"` added to `transcribe.py` — Phase 14
+- [x] `_run_sfspeech(audio, model)`: temp WAV → `SFSpeechURLRecognitionRequest` (requiresOnDeviceRecognition=True, addsPunctuation=True) → `threading.Event` drain → transcript — Phase 14
+- [x] `_sfspeech_recognizer_cache` module-level dict; `warm_up()` pre-creates recognizer — Phase 14
+- [x] `addsPunctuation = True` default for SFSpeech backend — Phase 14
+- [x] Graceful fallback to mlx-whisper if SFSpeechRecognizer unavailable (older macOS or auth failure) — Phase 14
 
-**v0.7 Sub-second ASR (implementation):**
-- [ ] `Backend.SFSPEECH` + `KnownModel.SFSPEECH_EN` added to `transcribe.py` — Phase 14
-- [ ] `_run_sfspeech(audio, model)` function: temp WAV → SFSpeechURLRecognitionRequest → transcript — Phase 14
-- [ ] `_sfspeech_recognizer_cache` module-level dict; warm_up() pre-creates recognizer — Phase 14
-- [ ] `addsPunctuation = True` default for SFSpeech backend — Phase 14
-- [ ] Graceful fallback if SFSpeechRecognizer unavailable (older macOS) — Phase 14
+### Planned (Next)
 
 **v0.4+ ideas:**
 - [ ] LLM-based cleanup — higher quality transcript polish (1-2s overhead, OpenAI-compatible)
@@ -122,6 +121,8 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | SFSpeechRecognizer chosen for sub-second ASR | 200–700ms warm latency, zero install, ~0% WER on clear English, PyObjC already dep; whisper.cpp skipped | 2026-05-05 | Active |
 | addsPunctuation=True default for SFSpeech | Natural output; +100–200ms overhead acceptable vs. unformatted transcript | 2026-05-05 | Active |
 | SFSpeechURLRecognitionRequest (file path API) | Simpler than buffer API; reuses temp-WAV pattern from parakeet; no CMSampleBuffer conversion needed | 2026-05-05 | Active |
+| threading.Event for SFSpeech sync (not NSRunLoop) | SFSpeech delivers callbacks on internal queue, not caller's run loop; threading.Event correct for background threads | 2026-05-05 | Active |
+| SFSpeech opt-in via config, not new default | Benchmark comparison needed before promoting to default; distil-whisper-large-v3 remains default | 2026-05-05 | Active |
 
 ## Success Metrics
 
@@ -137,8 +138,8 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 |-------|------------|-------|
 | Language | Python 3.13 | via uv, pyproject.toml |
 | Package Manager | uv | Fast, modern, lockfile |
-| ASR Model | distil-whisper-large-v3 (default) | ~600 MB; turbo available via config; parakeet-tdt-0.6b-v2 for fastest English |
-| Inference | mlx-whisper (default) / parakeet-mlx (optional) | Backend auto-inferred from model ID; parakeet cached at startup → ~0.3–0.5s per keypress |
+| ASR Model | distil-whisper-large-v3 (default) | ~600 MB; turbo for multilingual; parakeet for fastest English; sfspeech for sub-second |
+| Inference | mlx-whisper (default) / parakeet-mlx (optional) / SFSpeechRecognizer (opt-in) | Backend auto-inferred from model ID; all backends cached at startup; SFSpeech: 200–700ms warm |
 | Audio Capture | sounddevice | NumPy-native, 16kHz float32 |
 | Global Hotkey | pynput | Requires macOS Accessibility permission |
 | Overlay UI | PyObjC (NSPanel + NSVisualEffectView) | Frosted-glass pill, always-on-top, no dock icon |
@@ -146,4 +147,4 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-05-05 after Phase 13 (Sub-second ASR Research) — SFSpeechRecognizer chosen for v0.7*
+*Last updated: 2026-05-05 after Phase 14 (SFSpeech Implementation) — v0.7 complete*

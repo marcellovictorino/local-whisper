@@ -8,8 +8,38 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import objc
+from Foundation import NSURL, NSLocale
 
 _CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
+
+objc.loadBundle(
+    "Speech",
+    globals(),
+    bundle_path="/System/Library/Frameworks/Speech.framework",
+)
+
+# PyObjC cannot infer block signature from framework metadata for this selector.
+# Without this registration, recognitionTaskWithRequest:resultHandler: silently
+# fails to call the Python block.
+objc.registerMetaDataForSelector(
+    b"SFSpeechRecognizer",
+    b"recognitionTaskWithRequest:resultHandler:",
+    {
+        "arguments": {
+            3: {
+                "callable": {
+                    "retval": {"type": b"v"},
+                    "arguments": {
+                        0: {"type": b"^v"},
+                        1: {"type": b"@"},
+                        2: {"type": b"@"},
+                    },
+                }
+            }
+        }
+    },
+)
 
 
 class KnownModel(StrEnum):
@@ -21,6 +51,7 @@ class KnownModel(StrEnum):
     DISTIL_WHISPER = "mlx-community/distil-whisper-large-v3"  # default; fast English
     WHISPER_TURBO = "mlx-community/whisper-large-v3-turbo"  # multilingual, accurate
     PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # fastest; English only
+    SFSPEECH_EN = "macos/sfspeech-en-us"  # macOS SFSpeechRecognizer; synthetic ID, not a HF repo
 
 
 class Backend(StrEnum):
@@ -28,6 +59,7 @@ class Backend(StrEnum):
 
     MLX_WHISPER = "mlx-whisper"
     PARAKEET = "parakeet-mlx"
+    SFSPEECH = "sfspeech"
 
 
 DEFAULT_MODEL = KnownModel.DISTIL_WHISPER
@@ -43,10 +75,15 @@ _BACKEND_MAP: dict[str, Backend] = {
     KnownModel.DISTIL_WHISPER: Backend.MLX_WHISPER,
     KnownModel.WHISPER_TURBO: Backend.MLX_WHISPER,
     KnownModel.PARAKEET_V2: Backend.PARAKEET,
+    KnownModel.SFSPEECH_EN: Backend.SFSPEECH,
 }
 
 # Parakeet model instance cached at warm_up time so from_pretrained() runs once per session.
 _parakeet_cache: dict[str, Any] = {}
+
+# SFSpeechRecognizer instance cached at warm_up time; recognizer creation is lightweight
+# but reusing the same instance avoids repeated alloc/init overhead per keypress.
+_sfspeech_recognizer_cache: dict[str, Any] = {}
 
 
 def get_backend(model: str) -> Backend:
@@ -146,6 +183,61 @@ def _run_parakeet(audio: np.ndarray, model: str) -> str:
     return result.text.strip()
 
 
+def _run_sfspeech(audio: np.ndarray, model: str) -> str:
+    """Transcribe audio via macOS SFSpeechRecognizer (on-device, zero install).
+
+    WAV overhead is ~1–5ms for typical clips (5s = ~160KB PCM16); not the bottleneck.
+    Uses threading.Event rather than NSRunLoop — safe from any thread, including the
+    background thread used by the hotkey handler.
+
+    Args:
+        audio: Float32 numpy array at 16kHz.
+        model: Model ID (used as cache key; only "macos/sfspeech-en-us" supported).
+
+    Returns:
+        Transcribed text string.
+    """
+    import threading
+
+    import soundfile as sf
+
+    if model not in _sfspeech_recognizer_cache:
+        locale = NSLocale.alloc().initWithLocaleIdentifier_("en-US")
+        _sfspeech_recognizer_cache[model] = SFSpeechRecognizer.alloc().initWithLocale_(locale)  # noqa: F821
+    recognizer = _sfspeech_recognizer_cache[model]
+
+    tmp_path = None
+    transcript = ""
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp_path = tmp.name
+        sf.write(tmp_path, audio, 16000, subtype="PCM_16")
+
+        url = NSURL.fileURLWithPath_(tmp_path)
+        request = SFSpeechURLRecognitionRequest.alloc().initWithURL_(url)  # noqa: F821
+        request.setRequiresOnDeviceRecognition_(True)
+        request.setAddsPunctuation_(True)
+
+        done = threading.Event()
+        result_holder: list[str | None] = [None]
+
+        def handler(result, error):
+            if result is not None and result.isFinal():
+                result_holder[0] = result.bestTranscription().formattedString()
+                done.set()
+            elif error is not None:
+                done.set()
+
+        recognizer.recognitionTaskWithRequest_resultHandler_(request, handler)
+        done.wait(timeout=5.0)
+        transcript = result_holder[0] or ""
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+    return transcript.strip()
+
+
 def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
     """Download (if needed) and pre-load model, compiling Metal shaders.
 
@@ -156,6 +248,15 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
         model: HuggingFace model ID to pre-load.
         backend: Backend name ("mlx-whisper" or "parakeet-mlx").
     """
+    if backend == Backend.SFSPEECH:
+        try:
+            locale = NSLocale.alloc().initWithLocaleIdentifier_("en-US")
+            _sfspeech_recognizer_cache[model] = SFSpeechRecognizer.alloc().initWithLocale_(locale)  # noqa: F821
+            print("[local-whisper] SFSpeech recognizer ready.", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"[local-whisper] SFSpeech warm-up failed (non-fatal): {exc}", file=sys.stderr, flush=True)
+        return
+
     if backend == Backend.PARAKEET:
         try:
             import parakeet_mlx
@@ -208,7 +309,16 @@ def run(
     print(f"Transcribing with {model} ({backend})...", file=sys.stderr, flush=True)
     start = time.perf_counter()
 
-    if backend == Backend.PARAKEET:
+    if backend == Backend.SFSPEECH:
+        try:
+            text = _run_sfspeech(audio, model)
+        except Exception as exc:
+            print(
+                f"[local-whisper] SFSpeech failed, falling back to mlx-whisper: {exc}",
+                file=sys.stderr,
+            )
+            text = _run_mlx_whisper(audio, KnownModel.DISTIL_WHISPER)
+    elif backend == Backend.PARAKEET:
         text = _run_parakeet(audio, model)
     else:
         text = _run_mlx_whisper(audio, model)
