@@ -5,26 +5,26 @@
 See: .paul/PROJECT.md (updated 2026-05-04 after Phase 12)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.6 Speed — complete. Next milestone TBD.
+**Current focus:** v0.7 Sub-second ASR — Phase 14 implementation.
 
 ## Current Position
 
-Milestone: v0.6 Speed — ✅ Complete
-Phase: 12 (CoreML Backend / Parakeet Caching) — ✅ Complete
-Plan: 12-01 — UNIFY complete
-Status: Milestone complete
-Last activity: 2026-05-04 — Phase 12 UNIFY complete; v0.6 Speed milestone done
+Milestone: v0.7 Sub-second ASR — 🚧 In Progress
+Phase: 14 (SFSpeech Implementation) — Not started
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-05 — Phase 13 complete; transitioned to Phase 14
 
 Progress:
-- v0.5 Model Selection: [██████████] 100% (complete)
 - v0.6 Speed: [██████████] 100% (complete)
+- v0.7 Sub-second ASR: [█████░░░░░] 50% (1/2 phases)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop closed — milestone complete]
+  ✓        ✓        ✓     [Loop closed — Phase 13 complete, ready for Phase 14 PLAN]
 ```
 
 ## Accumulated Context
@@ -55,6 +55,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | Phase 12 pivot: parakeet caching over CoreML | Phase 12 | whisperkittools not on PyPI; coremltools too low-level; pivot to module-level parakeet instance cache in transcribe.py |
 | _parakeet_cache module-level dict in transcribe.py | Phase 12 | warm_up() pre-loads model once; _run_parakeet() uses cache — eliminates 5s reload per keypress |
 | CoreML/ANE Python backend deferred | Phase 12 | No pip-installable Python CoreML Whisper package exists as of 2026-05-04 |
+| 2026-05-05: SFSpeechRecognizer viable for v0.7 | Phase 13 | 200–700ms warm latency, zero install, on-device; whisper.cpp spike skipped |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
@@ -73,10 +74,10 @@ PLAN ──▶ APPLY ──▶ UNIFY
 
 ## Session Continuity
 
-Last session: 2026-05-04
-Stopped at: v0.6 Speed milestone complete (Phase 12 UNIFY done)
-Next action: Define next milestone (v0.7) or start ad-hoc work
-Resume file: .paul/ROADMAP.md
+Last session: 2026-05-05
+Stopped at: Phase 13 UNIFY complete — SFSpeechRecognizer confirmed, Phase 14 ready
+Next action: /paul:plan for Phase 14 (SFSpeech Implementation)
+Resume file: .paul/phases/13-sub-second-asr/13-00-RESEARCH.md
 
 ---
 *STATE.md — Updated after every significant action*

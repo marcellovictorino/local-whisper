@@ -6,6 +6,12 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 
 ## Current Milestone
 
+**v0.7 Sub-second ASR** (v0.7.0)
+Status: 🚧 In Progress
+Phases: 1 of 2 complete
+
+---
+
 **v0.6 Speed** (v0.6.0)
 Status: ✅ Complete
 Phases: 2 of 2 complete
@@ -41,6 +47,13 @@ Status: ✅ Complete
 Phases: 4 of 4 complete
 
 ## Phases
+
+### v0.7 Sub-second ASR
+
+| Phase | Name | Plans | Status | GitHub Issue | Completed |
+|-------|------|-------|--------|--------------|-----------|
+| 13 | Sub-second ASR Research | 1 | ✅ Complete | - | 2026-05-05 |
+| 14 | SFSpeech Implementation | TBD | Not started | - | - |
 
 ### v0.6 Speed
 
@@ -236,26 +249,28 @@ Python packages that include C/Swift/Rust code need platform-specific compiled `
 **Plans:**
 - [ ] 09-01: auto_adapt module + config + pipeline integration + README
 
-### Phase 8: Auto-Cleanup
+### Phase 14: SFSpeech Implementation
 
-**Goal:** Post-process every transcription to remove filler words and immediate repetitions before paste. Always-on by default, opt-out via config.
-**Depends on:** Phase 7 (pipeline established)
-**Research:** Unlikely (rule-based, no new deps)
+**Goal:** Wire `SFSpeechRecognizer` into `transcribe.py` as `Backend.SFSPEECH`, making it the new default for English users. Sub-second transcription (~200–700ms) with zero install, using the research findings from Phase 13.
+**Depends on:** Phase 13 (integration path documented in 13-00-RESEARCH.md)
+**Research:** Not needed — full integration path in `.paul/phases/13-sub-second-asr/13-00-RESEARCH.md`
 
 **Scope:**
-- Filler word removal (`um`, `uh`, `like`, `you know`, etc.)
-- Immediate repetition collapse (`I I need` → `I need`)
-- Config: `[auto_cleanup] enabled = true` in `config.toml`
-- Pipeline position: transcribe → auto-cleanup → snippets → corrections → paste
+- `Backend.SFSPEECH` + `KnownModel.SFSPEECH_EN = "macos/sfspeech-en-us"` added to `transcribe.py`
+- `_BACKEND_MAP` entry: `KnownModel.SFSPEECH_EN → Backend.SFSPEECH`
+- `_run_sfspeech(audio, model)`: temp WAV via soundfile → `SFSpeechURLRecognitionRequest` (requiresOnDeviceRecognition=True, addsPunctuation=True) → drain NSRunLoop → return text
+- `_sfspeech_recognizer_cache` module-level dict; `warm_up()` pre-creates recognizer
+- `objc.registerMetaDataForSelector` for block signature at module level
+- `run()` dispatch branch: `if backend == Backend.SFSPEECH: text = _run_sfspeech(...)`
+- Graceful fallback: if `SFSpeechRecognizer` unavailable, fall back to mlx-whisper with warning
+- `KnownModel.SFSPEECH_EN` as new DEFAULT_MODEL
+- `benchmark.py` updated to include sfspeech backend
+- 4+ unit tests for `_run_sfspeech()` and warm-up branch
 
 **Plans:**
-- [ ] 08-01: Auto-cleanup module + config integration
+- [ ] 14-01: SFSpeech backend wiring + default model change + tests + benchmark
 
-## Deferred Ideas
-
-These are researched or considered but not yet planned. Revisit when prioritizing next milestone.
-
-### Idea: Sub-second ASR
+### Phase 13: Sub-second ASR Research
 
 **Goal:** Research viable paths to <1s transcription latency on Apple Silicon. Three candidates need evaluation before committing to implementation.
 **Depends on:** Phase 12 (multi-backend infrastructure in place)
@@ -287,6 +302,21 @@ These are researched or considered but not yet planned. Revisit when prioritizin
 **Plans:**
 - [ ] 13-00: Research — spike all three paths, benchmark WER + latency, recommend winner
 
+### Phase 8: Auto-Cleanup
+
+**Goal:** Post-process every transcription to remove filler words and immediate repetitions before paste. Always-on by default, opt-out via config.
+**Depends on:** Phase 7 (pipeline established)
+**Research:** Unlikely (rule-based, no new deps)
+
+**Scope:**
+- Filler word removal (`um`, `uh`, `like`, `you know`, etc.)
+- Immediate repetition collapse (`I I need` → `I need`)
+- Config: `[auto_cleanup] enabled = true` in `config.toml`
+- Pipeline position: transcribe → auto-cleanup → snippets → corrections → paste
+
+**Plans:**
+- [ ] 08-01: Auto-cleanup module + config integration
+
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-05-05 — Phase 13 (Sub-second ASR Research) added; v0.7 milestone planned*
+*Last updated: 2026-05-05 — Phase 13 complete (SFSpeechRecognizer chosen); Phase 14 (implementation) added*
