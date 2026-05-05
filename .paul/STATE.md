@@ -2,10 +2,10 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-05-05 after Phase 13)
+See: .paul/PROJECT.md (updated 2026-05-05 after Phase 14)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.7 Sub-second ASR — Phase 14 implementation.
+**Current focus:** v0.7 evaluated and closed — SFSpeech benchmarked (57.1% WER, 2.5s) vs distil-whisper (12.2% WER, 1.85s); SFSpeech dropped. Milestone closed as research outcome.
 
 ## Current Position
 
@@ -56,8 +56,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | _parakeet_cache module-level dict in transcribe.py | Phase 12 | warm_up() pre-loads model once; _run_parakeet() uses cache — eliminates 5s reload per keypress |
 | CoreML/ANE Python backend deferred | Phase 12 | No pip-installable Python CoreML Whisper package exists as of 2026-05-04 |
 | 2026-05-05: SFSpeechRecognizer viable for v0.7 | Phase 13 | 200–700ms warm latency, zero install, on-device; whisper.cpp spike skipped |
-| threading.Event for SFSpeech sync (not NSRunLoop) | Phase 14 | SFSpeech delivers on internal queue; threading.Event correct for background threads |
-| SFSpeech opt-in via config, not default | Phase 14 | Benchmark comparison deferred; distil-whisper-large-v3 remains default |
+| SFSpeech dropped after benchmark | Phase 14 post | WER 57.1% vs distil-whisper 12.2%; on-device Siri model quality unacceptable for dictation; privacy dialog also misleading |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
@@ -68,7 +67,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | LLM-based cleanup (higher quality, ~1s overhead) | Phase 8 | M | v0.7+ |
 | auto_adapt uses same COMMAND_MODEL env var as command mode | Phase 9 | S | v0.7+ |
 | CoreML/ANE Python inference: no pip-installable package exists | Phase 12 | L | Revisit when argmaxinc publishes proper PyPI package |
-| SFSpeech default promotion: benchmark needed before changing DEFAULT_MODEL | Phase 14 | S | Run `just benchmark` with sfspeech + distil-whisper, compare WER + latency |
+| Sub-second ASR: no viable path found | v0.7 | L | SFSpeech: 57.1% WER (unacceptable) + misleading "sends to Apple" privacy dialog; distil-whisper remains best balance at 12.2% WER / 1.85s |
 
 ### Blockers/Concerns
 | Concern | Detail |
@@ -78,8 +77,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 ## Session Continuity
 
 Last session: 2026-05-05
-Stopped at: v0.7 milestone complete — Phase 14 UNIFY done
-Next action: Benchmark SFSpeech vs distil-whisper-large-v3, then decide if SFSPEECH_EN becomes new default; or start next milestone
+Stopped at: v0.7 closed — SFSpeech benchmarked and dropped; implementation reverted
+Next action: Start next milestone or close branch with PR documenting the research outcome
 Resume file: .paul/ROADMAP.md
 
 ---

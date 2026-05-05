@@ -13,8 +13,6 @@ Um... the staging models run nightly, and — uh — the lineage graph shows thr
 
 There's a certain joie de vivre in having fast tooling. Latency below five hundred milliseconds feels — hmm — almost instant.
 
-[pause 1s]
-The Parakeet...
 ---
 
 EXPECTED TRANSCRIPT (ground truth — compare against app output):
@@ -22,7 +20,6 @@ EXPECTED TRANSCRIPT (ground truth — compare against app output):
 My workflow lives in Tmux, with NeoVim as the editor and dbt for data transformations.
 The staging models run nightly, and the lineage graph shows three layers: raw, intermediate, and mart.
 There's a certain joie de vivre in having fast tooling. Latency below five hundred milliseconds feels almost instant.
-The Parakeet
 ---
 
 WHAT TO LOOK FOR:

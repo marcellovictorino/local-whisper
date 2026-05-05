@@ -1,4 +1,4 @@
-"""Tests for transcribe._model_is_cached, get_model, KnownModel, get_backend, SFSpeech backend."""
+"""Tests for transcribe._model_is_cached, get_model, KnownModel, get_backend, parakeet caching."""
 
 import sys
 from pathlib import Path
@@ -7,12 +7,10 @@ from unittest.mock import MagicMock, patch
 import local_whisper.transcribe as _tr
 from local_whisper.transcribe import (
     DEFAULT_MODEL,
-    Backend,
     KnownModel,
     _model_is_cached,
     _parakeet_cache,
     _run_parakeet,
-    _sfspeech_recognizer_cache,
     get_backend,
     get_model,
 )
@@ -93,8 +91,7 @@ def test_known_model_values_are_strings() -> None:
 
 
 def test_known_model_hf_ids_use_mlx_community_prefix() -> None:
-    hf_models = {KnownModel.DISTIL_WHISPER, KnownModel.WHISPER_TURBO, KnownModel.PARAKEET_V2}
-    for member in hf_models:
+    for member in KnownModel:
         assert member.value.startswith("mlx-community/")
 
 
@@ -163,50 +160,5 @@ def test_run_parakeet_falls_back_on_import_error() -> None:
     assert result == "fallback text"
 
 
-# --- SFSpeech backend tests ---
-
-
-def test_default_model_unchanged() -> None:
+def test_default_model_is_distil_whisper() -> None:
     assert DEFAULT_MODEL == KnownModel.DISTIL_WHISPER
-
-
-def test_get_backend_sfspeech() -> None:
-    assert get_backend(KnownModel.SFSPEECH_EN) == Backend.SFSPEECH
-
-
-def test_warm_up_sfspeech_populates_cache() -> None:
-    mock_recognizer_instance = MagicMock()
-    mock_sf_recognizer = MagicMock()
-    mock_sf_recognizer.alloc.return_value.initWithLocale_.return_value = mock_recognizer_instance
-
-    _sfspeech_recognizer_cache.clear()
-    try:
-        with patch.object(_tr, "SFSpeechRecognizer", mock_sf_recognizer):
-            _tr.warm_up(KnownModel.SFSPEECH_EN, backend=Backend.SFSPEECH)
-        assert KnownModel.SFSPEECH_EN in _sfspeech_recognizer_cache
-        assert _sfspeech_recognizer_cache[KnownModel.SFSPEECH_EN] is mock_recognizer_instance
-    finally:
-        _sfspeech_recognizer_cache.clear()
-
-
-def test_run_dispatches_to_sfspeech() -> None:
-    import numpy as np
-
-    audio = np.zeros(8000, dtype="float32")
-    with patch("local_whisper.transcribe._run_sfspeech", return_value="hello world") as mock_sf:
-        result = _tr.run(audio, KnownModel.SFSPEECH_EN, Backend.SFSPEECH)
-    mock_sf.assert_called_once_with(audio, KnownModel.SFSPEECH_EN)
-    assert result == "hello world"
-
-
-def test_run_sfspeech_falls_back_on_exception() -> None:
-    import numpy as np
-
-    audio = np.zeros(8000, dtype="float32")
-    with (
-        patch("local_whisper.transcribe._run_sfspeech", side_effect=RuntimeError("unavailable")),
-        patch("local_whisper.transcribe._run_mlx_whisper", return_value="fallback") as mock_mlx,
-    ):
-        result = _tr.run(audio, KnownModel.SFSPEECH_EN, Backend.SFSPEECH)
-    mock_mlx.assert_called_once_with(audio, KnownModel.DISTIL_WHISPER)
-    assert result == "fallback"
