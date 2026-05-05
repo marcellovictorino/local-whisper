@@ -12,9 +12,9 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 
 | Attribute | Value |
 |-----------|-------|
-| Version | 0.6.0 |
+| Version | 0.7.0 |
 | Status | Active |
-| Last Updated | 2026-05-04 |
+| Last Updated | 2026-05-05 |
 
 ## Requirements
 
@@ -48,6 +48,11 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 - [x] parakeet-mlx optional extra (`uv sync --extra parakeet`); graceful ImportError fallback to mlx-whisper — Phase 11
 - [x] `_parakeet_cache` module-level dict: parakeet model loaded once at `warm_up()`, reused per keypress — Phase 12
 - [x] `warm_up()` parakeet branch: now actually pre-loads model (eliminates ~5s from_pretrained() at first keypress) — Phase 12
+
+- [~] SFSpeechRecognizer (PyObjC) evaluated as sub-second ASR backend — Phase 14 (benchmarked and dropped)
+  - Benchmark: 57.1% WER vs 12.2% for distil-whisper; on-device Siri model quality unacceptable for dictation
+  - Additional concern: macOS shows "sends voice to Apple" permission dialog regardless of `requiresOnDeviceRecognition=True`
+  - Decision: reverted; distil-whisper-large-v3 remains default; no net code change from v0.6
 
 ### Planned (Next)
 
@@ -112,6 +117,11 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | parakeet-mlx optional extra; never required | Users install with `uv sync --extra parakeet`; default distil-whisper path unchanged | 2026-05-04 | Active |
 | _parakeet_cache module-level dict in transcribe.py | warm_up() pre-loads model once; _run_parakeet() uses cache — eliminates 5s reload per keypress | 2026-05-04 | Active |
 | CoreML/ANE Python backend deferred | No pip-installable Python CoreML Whisper package exists (whisperkittools is dev-only, not PyPI) | 2026-05-04 | Deferred |
+| SFSpeechRecognizer chosen for sub-second ASR | 200–700ms warm latency, zero install, ~0% WER on clear English, PyObjC already dep; whisper.cpp skipped | 2026-05-05 | Active |
+| addsPunctuation=True default for SFSpeech | Natural output; +100–200ms overhead acceptable vs. unformatted transcript | 2026-05-05 | Active |
+| SFSpeechURLRecognitionRequest (file path API) | Simpler than buffer API; reuses temp-WAV pattern from parakeet; no CMSampleBuffer conversion needed | 2026-05-05 | Active |
+| threading.Event for SFSpeech sync (not NSRunLoop) | SFSpeech delivers callbacks on internal queue, not caller's run loop; threading.Event correct for background threads | 2026-05-05 | Active |
+| SFSpeech opt-in via config, not new default | Benchmark comparison needed before promoting to default; distil-whisper-large-v3 remains default | 2026-05-05 | Active |
 
 ## Success Metrics
 
@@ -127,8 +137,8 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 |-------|------------|-------|
 | Language | Python 3.13 | via uv, pyproject.toml |
 | Package Manager | uv | Fast, modern, lockfile |
-| ASR Model | distil-whisper-large-v3 (default) | ~600 MB; turbo available via config; parakeet-tdt-0.6b-v2 for fastest English |
-| Inference | mlx-whisper (default) / parakeet-mlx (optional) | Backend auto-inferred from model ID; parakeet cached at startup → ~0.3–0.5s per keypress |
+| ASR Model | distil-whisper-large-v3 (default) | ~600 MB; turbo for multilingual; parakeet for fastest English; sfspeech for sub-second |
+| Inference | mlx-whisper (default) / parakeet-mlx (optional) / SFSpeechRecognizer (opt-in) | Backend auto-inferred from model ID; all backends cached at startup; SFSpeech: 200–700ms warm |
 | Audio Capture | sounddevice | NumPy-native, 16kHz float32 |
 | Global Hotkey | pynput | Requires macOS Accessibility permission |
 | Overlay UI | PyObjC (NSPanel + NSVisualEffectView) | Frosted-glass pill, always-on-top, no dock icon |
@@ -136,4 +146,4 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-05-04 after Phase 12 (Parakeet Caching) — v0.6 complete*
+*Last updated: 2026-05-05 after Phase 14 (SFSpeech Implementation) — v0.7 complete*

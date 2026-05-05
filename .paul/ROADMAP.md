@@ -6,6 +6,12 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 
 ## Current Milestone
 
+**v0.7 Sub-second ASR** (v0.7.0)
+Status: ✅ Complete
+Phases: 2 of 2 complete
+
+---
+
 **v0.6 Speed** (v0.6.0)
 Status: ✅ Complete
 Phases: 2 of 2 complete
@@ -41,6 +47,13 @@ Status: ✅ Complete
 Phases: 4 of 4 complete
 
 ## Phases
+
+### v0.7 Sub-second ASR
+
+| Phase | Name | Plans | Status | GitHub Issue | Completed |
+|-------|------|-------|--------|--------------|-----------|
+| 13 | Sub-second ASR Research | 1 | ✅ Complete | - | 2026-05-05 |
+| 14 | SFSpeech Evaluation + Revert | 1 | ❌ Dropped | - | 2026-05-05 |
 
 ### v0.6 Speed
 
@@ -236,26 +249,27 @@ Python packages that include C/Swift/Rust code need platform-specific compiled `
 **Plans:**
 - [ ] 09-01: auto_adapt module + config + pipeline integration + README
 
-### Phase 8: Auto-Cleanup
+### Phase 14: SFSpeech Evaluation + Revert
 
-**Goal:** Post-process every transcription to remove filler words and immediate repetitions before paste. Always-on by default, opt-out via config.
-**Depends on:** Phase 7 (pipeline established)
-**Research:** Unlikely (rule-based, no new deps)
+**Outcome: DROPPED** — SFSpeech implemented, benchmarked, and reverted. No net code change from v0.6.
 
-**Scope:**
-- Filler word removal (`um`, `uh`, `like`, `you know`, etc.)
-- Immediate repetition collapse (`I I need` → `I need`)
-- Config: `[auto_cleanup] enabled = true` in `config.toml`
-- Pipeline position: transcribe → auto-cleanup → snippets → corrections → paste
+**What was tried:** Full PyObjC integration of `SFSpeechRecognizer` as `Backend.SFSPEECH` with recognizer caching, XPC run loop handling, authorization flow, and 5 unit tests.
+
+**Benchmark result (30s real audio, 2026-05-05):**
+| Backend | WER% | Latency |
+|---------|------|---------|
+| SFSpeech (on-device, en-US) | 57.1% | 2.45s |
+| distil-whisper-large-v3 | 12.2% | 1.85s |
+
+**Why dropped:**
+1. **Quality**: 57.1% WER unacceptable for dictation — on-device Siri model is weaker than distil-whisper
+2. **Privacy UX**: macOS shows "sends voice to Apple" in permission dialog regardless of `requiresOnDeviceRecognition=True` — contradicts "zero cloud" product promise
+3. **Complexity**: Required `objc.registerMetaDataForSelector` block registration, XPC run loop spin, explicit authorization flow — significant PyObjC plumbing for a worse result
 
 **Plans:**
-- [ ] 08-01: Auto-cleanup module + config integration
+- [x] 14-01: SFSpeech backend wiring + benchmark + revert
 
-## Deferred Ideas
-
-These are researched or considered but not yet planned. Revisit when prioritizing next milestone.
-
-### Idea: Sub-second ASR
+### Phase 13: Sub-second ASR Research
 
 **Goal:** Research viable paths to <1s transcription latency on Apple Silicon. Three candidates need evaluation before committing to implementation.
 **Depends on:** Phase 12 (multi-backend infrastructure in place)
@@ -287,6 +301,21 @@ These are researched or considered but not yet planned. Revisit when prioritizin
 **Plans:**
 - [ ] 13-00: Research — spike all three paths, benchmark WER + latency, recommend winner
 
+### Phase 8: Auto-Cleanup
+
+**Goal:** Post-process every transcription to remove filler words and immediate repetitions before paste. Always-on by default, opt-out via config.
+**Depends on:** Phase 7 (pipeline established)
+**Research:** Unlikely (rule-based, no new deps)
+
+**Scope:**
+- Filler word removal (`um`, `uh`, `like`, `you know`, etc.)
+- Immediate repetition collapse (`I I need` → `I need`)
+- Config: `[auto_cleanup] enabled = true` in `config.toml`
+- Pipeline position: transcribe → auto-cleanup → snippets → corrections → paste
+
+**Plans:**
+- [ ] 08-01: Auto-cleanup module + config integration
+
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-05-05 — Phase 13 (Sub-second ASR Research) added; v0.7 milestone planned*
+*Last updated: 2026-05-05 — v0.7 closed: SFSpeech evaluated (57.1% WER) and dropped; distil-whisper-large-v3 remains default*

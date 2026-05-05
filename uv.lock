@@ -730,6 +730,7 @@ dependencies = [
     { name = "pynput" },
     { name = "pyperclip" },
     { name = "sounddevice" },
+    { name = "soundfile" },
 ]
 
 [package.optional-dependencies]
@@ -753,6 +754,7 @@ requires-dist = [
     { name = "pynput", specifier = ">=1.7" },
     { name = "pyperclip", specifier = ">=1.8" },
     { name = "sounddevice", specifier = ">=0.4.7" },
+    { name = "soundfile", specifier = ">=0.12" },
 ]
 
 [package.metadata.requires-dev]

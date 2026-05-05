@@ -9,6 +9,7 @@ dependencies = [
     "pyperclip>=1.8",
     "pynput>=1.7",
     "openai>=1.0",
+    "soundfile>=0.12",
 ]
 
 [project.scripts]

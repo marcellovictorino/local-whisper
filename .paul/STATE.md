@@ -2,29 +2,29 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-05-04 after Phase 12)
+See: .paul/PROJECT.md (updated 2026-05-05 after Phase 14)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.6 Speed — complete. Next milestone TBD.
+**Current focus:** v0.7 evaluated and closed — SFSpeech benchmarked (57.1% WER, 2.5s) vs distil-whisper (12.2% WER, 1.85s); SFSpeech dropped. Milestone closed as research outcome.
 
 ## Current Position
 
-Milestone: v0.6 Speed — ✅ Complete
-Phase: 12 (CoreML Backend / Parakeet Caching) — ✅ Complete
-Plan: 12-01 — UNIFY complete
-Status: Milestone complete
-Last activity: 2026-05-04 — Phase 12 UNIFY complete; v0.6 Speed milestone done
+Milestone: v0.7 Sub-second ASR — ❌ Closed (negative result)
+Phase: 14 (SFSpeech Evaluation + Revert) — ✅ Complete
+Plan: 14-01 complete
+Status: Milestone closed — SFSpeech benchmarked (57.1% WER) and dropped; no net code change from v0.6
+Last activity: 2026-05-05 — SFSpeech reverted after benchmark; PR #15 opened
 
 Progress:
-- v0.5 Model Selection: [██████████] 100% (complete)
 - v0.6 Speed: [██████████] 100% (complete)
+- v0.7 Sub-second ASR: [██████████] 100% (2/2 phases)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop closed — milestone complete]
+  ✓        ✓        ✓     [Loop complete — Phase 14 done, v0.7 milestone complete]
 ```
 
 ## Accumulated Context
@@ -55,6 +55,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | Phase 12 pivot: parakeet caching over CoreML | Phase 12 | whisperkittools not on PyPI; coremltools too low-level; pivot to module-level parakeet instance cache in transcribe.py |
 | _parakeet_cache module-level dict in transcribe.py | Phase 12 | warm_up() pre-loads model once; _run_parakeet() uses cache — eliminates 5s reload per keypress |
 | CoreML/ANE Python backend deferred | Phase 12 | No pip-installable Python CoreML Whisper package exists as of 2026-05-04 |
+| 2026-05-05: SFSpeechRecognizer viable for v0.7 | Phase 13 | 200–700ms warm latency, zero install, on-device; whisper.cpp spike skipped |
+| SFSpeech dropped after benchmark | Phase 14 post | WER 57.1% vs distil-whisper 12.2%; on-device Siri model quality unacceptable for dictation; privacy dialog also misleading |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
@@ -65,6 +67,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | LLM-based cleanup (higher quality, ~1s overhead) | Phase 8 | M | v0.7+ |
 | auto_adapt uses same COMMAND_MODEL env var as command mode | Phase 9 | S | v0.7+ |
 | CoreML/ANE Python inference: no pip-installable package exists | Phase 12 | L | Revisit when argmaxinc publishes proper PyPI package |
+| Sub-second ASR: no viable path found | v0.7 | L | SFSpeech: 57.1% WER (unacceptable) + misleading "sends to Apple" privacy dialog; distil-whisper remains best balance at 12.2% WER / 1.85s |
 
 ### Blockers/Concerns
 | Concern | Detail |
@@ -73,9 +76,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 
 ## Session Continuity
 
-Last session: 2026-05-04
-Stopped at: v0.6 Speed milestone complete (Phase 12 UNIFY done)
-Next action: Define next milestone (v0.7) or start ad-hoc work
+Last session: 2026-05-05
+Stopped at: v0.7 closed — SFSpeech benchmarked and dropped; implementation reverted
+Next action: Start next milestone or close branch with PR documenting the research outcome
 Resume file: .paul/ROADMAP.md
 
 ---

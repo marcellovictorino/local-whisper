@@ -1,4 +1,4 @@
-"""Tests for transcribe._model_is_cached, get_model, KnownModel, get_backend."""
+"""Tests for transcribe._model_is_cached, get_model, KnownModel, get_backend, parakeet caching."""
 
 import sys
 from pathlib import Path
@@ -84,9 +84,14 @@ def test_get_model_returns_default_on_corrupt_config(tmp_path: Path) -> None:
 # --- KnownModel + get_backend() tests ---
 
 
-def test_known_model_values_match_hf_ids() -> None:
+def test_known_model_values_are_strings() -> None:
     for member in KnownModel:
         assert isinstance(member.value, str)
+        assert len(member.value) > 0
+
+
+def test_known_model_hf_ids_use_mlx_community_prefix() -> None:
+    for member in KnownModel:
         assert member.value.startswith("mlx-community/")
 
 
@@ -153,3 +158,7 @@ def test_run_parakeet_falls_back_on_import_error() -> None:
 
     mock_mlx.assert_called_once_with(audio, DEFAULT_MODEL)
     assert result == "fallback text"
+
+
+def test_default_model_is_distil_whisper() -> None:
+    assert DEFAULT_MODEL == KnownModel.DISTIL_WHISPER
