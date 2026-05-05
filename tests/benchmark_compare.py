@@ -25,7 +25,9 @@ import numpy as np
 
 from local_whisper.transcribe import KnownModel
 
-DEFAULT_MODELS = list(KnownModel)
+# Parakeet requires `uv sync --extra parakeet` — excluded from default run.
+# Pass --models mlx-community/parakeet-tdt-0.6b-v2 to include it explicitly.
+DEFAULT_MODELS = [KnownModel.DISTIL_WHISPER, KnownModel.WHISPER_TURBO]
 
 FILLER_PATTERN = re.compile(
     r"\b(um+|uh+|er+|ah+|hmm+|you know|like|so|right)\b",

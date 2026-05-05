@@ -73,7 +73,8 @@ def get_model(path: Path = _CONFIG_PATH) -> str:
     try:
         with open(path, "rb") as f:
             data = tomllib.load(f)
-        return data.get("whisper", {}).get("model", DEFAULT_MODEL)
+        value = data.get("whisper", {}).get("model", DEFAULT_MODEL)
+        return value if isinstance(value, str) else DEFAULT_MODEL
     except FileNotFoundError:
         return DEFAULT_MODEL
     except Exception as exc:
@@ -97,7 +98,6 @@ def _suppress_progress_bars() -> None:
 
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
     os.environ["TQDM_DISABLE"] = "1"
-    os.environ["HF_HUB_OFFLINE"] = "1"  # model cached — skip HF network check
     logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
 
@@ -126,7 +126,7 @@ def _run_parakeet(audio: np.ndarray, model: str) -> str:
             "[local-whisper] parakeet-mlx not installed. Run: uv sync --extra parakeet\nFalling back to mlx-whisper.",
             file=sys.stderr,
         )
-        return _run_mlx_whisper(audio, model)
+        return _run_mlx_whisper(audio, DEFAULT_MODEL)
 
     import soundfile as sf
 

@@ -30,16 +30,16 @@ uv sync
 # --- Pre-download model ---
 
 echo ""
-echo "Checking model cache (may download ~1.5 GB on first run)..."
 uv run python -c "
-from local_whisper.transcribe import _model_is_cached
-MODEL = 'mlx-community/whisper-large-v3-turbo'
-if _model_is_cached(MODEL):
+from local_whisper.transcribe import DEFAULT_MODEL, _model_is_cached, _MODEL_SIZES
+size = _MODEL_SIZES.get(DEFAULT_MODEL, 'unknown size')
+print(f'Checking model cache (may download {size} on first run)...', flush=True)
+if _model_is_cached(DEFAULT_MODEL):
     print('Model already cached.', flush=True)
 else:
-    print('Downloading model (one-time, ~1.5 GB)...', flush=True)
+    print(f'Downloading model (one-time, {size})...', flush=True)
     from huggingface_hub import snapshot_download
-    snapshot_download(MODEL)
+    snapshot_download(DEFAULT_MODEL)
 "
 echo "Model ready."
 

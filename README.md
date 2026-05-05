@@ -294,9 +294,10 @@ just stop && just start
 | `mlx-community/whisper-large-v3-turbo` | ~1.5 GB | 99 languages | ⚡ fast | ★★★★★ | Multilingual, mixed-language, highest accuracy |
 | `mlx-community/parakeet-tdt-0.6b-v2` | ~600 MB | English only | ⚡ fast | ★★★★ | English only; requires optional install (see below) |
 
-**Parakeet** requires an optional dependency:
+**Parakeet** requires an optional dependency and `ffmpeg` (used internally to load audio):
 
 ```bash
+brew install ffmpeg
 uv sync --extra parakeet
 ```
 

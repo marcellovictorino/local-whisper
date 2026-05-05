@@ -14,7 +14,7 @@ Um... the staging models run nightly, and — uh — the lineage graph shows thr
 There's a certain joie de vivre in having fast tooling. Latency below five hundred milliseconds feels — hmm — almost instant.
 
 [pause 1s]
-The Parekeet...
+The Parakeet...
 ---
 
 EXPECTED TRANSCRIPT (ground truth — compare against app output):

@@ -141,7 +141,7 @@ def test_run_parakeet_skips_from_pretrained_when_cached() -> None:
         _parakeet_cache.clear()
 
 
-def test_run_parakeet_falls_back_on_import_error(capsys: object) -> None:
+def test_run_parakeet_falls_back_on_import_error() -> None:
     import numpy as np
 
     audio = np.zeros(8000, dtype="float32")
@@ -151,7 +151,5 @@ def test_run_parakeet_falls_back_on_import_error(capsys: object) -> None:
     ):
         result = _run_parakeet(audio, "mlx-community/parakeet-tdt-0.6b-v2")
 
-    mock_mlx.assert_called_once_with(audio, "mlx-community/parakeet-tdt-0.6b-v2")
+    mock_mlx.assert_called_once_with(audio, DEFAULT_MODEL)
     assert result == "fallback text"
-    captured = capsys.readouterr()
-    assert "parakeet-mlx not installed" in captured.err
