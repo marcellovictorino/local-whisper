@@ -7,7 +7,7 @@ import time
 import numpy as np
 
 _SAMPLE_RATE = 16_000
-_DURATION_S = 30
+DURATION_S = 30
 
 
 def run(model: str, backend: str = "mlx-whisper", runs: int = 3) -> dict:
@@ -23,7 +23,7 @@ def run(model: str, backend: str = "mlx-whisper", runs: int = 3) -> dict:
     """
     from local_whisper import transcribe
 
-    audio = np.zeros(_SAMPLE_RATE * _DURATION_S, dtype="float32")
+    audio = np.zeros(_SAMPLE_RATE * DURATION_S, dtype="float32")
 
     t0 = time.perf_counter()
     transcribe.warm_up(model, backend=backend)
@@ -38,7 +38,7 @@ def run(model: str, backend: str = "mlx-whisper", runs: int = 3) -> dict:
     return {
         "model": model,
         "backend": backend,
-        "audio_duration_s": _DURATION_S,
+        "audio_duration_s": DURATION_S,
         "warmup_s": round(warmup_s, 3),
         "runs": runs,
         "mean_s": round(sum(times) / len(times), 3),

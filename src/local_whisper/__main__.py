@@ -95,7 +95,7 @@ def main() -> None:
         model = transcribe.get_model()
         backend = transcribe.get_backend(model)
         print(
-            f"Benchmarking {model} ({benchmark._DURATION_S}s audio, 3 runs)...",
+            f"Benchmarking {model} ({benchmark.DURATION_S}s audio, 3 runs)...",
             file=sys.stderr,
         )
         results = benchmark.run(model, backend=backend)

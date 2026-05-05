@@ -23,11 +23,9 @@ from pathlib import Path
 
 import numpy as np
 
-DEFAULT_MODELS = [
-    "mlx-community/distil-whisper-large-v3",
-    "mlx-community/whisper-large-v3-turbo",
-    "mlx-community/parakeet-tdt-0.6b-v2",
-]
+from local_whisper.transcribe import KnownModel
+
+DEFAULT_MODELS = list(KnownModel)
 
 FILLER_PATTERN = re.compile(
     r"\b(um+|uh+|er+|ah+|hmm+|you know|like|so|right)\b",

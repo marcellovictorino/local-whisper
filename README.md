@@ -292,6 +292,20 @@ just stop && just start
 |-------|------|-----------|-------|----------|----------|
 | `mlx-community/distil-whisper-large-v3` *(default)* | ~600 MB | English only | ⚡⚡ fastest | ★★★★ | English dictation, lowest latency |
 | `mlx-community/whisper-large-v3-turbo` | ~1.5 GB | 99 languages | ⚡ fast | ★★★★★ | Multilingual, mixed-language, highest accuracy |
+| `mlx-community/parakeet-tdt-0.6b-v2` | ~600 MB | English only | ⚡ fast | ★★★★ | English only; requires optional install (see below) |
+
+**Parakeet** requires an optional dependency:
+
+```bash
+uv sync --extra parakeet
+```
+
+Then set the model in config and restart:
+
+```toml
+[whisper]
+model = "mlx-community/parakeet-tdt-0.6b-v2"
+```
 
 To switch to multilingual/higher accuracy:
 
@@ -323,6 +337,8 @@ Models download automatically on first use (once, to `~/.cache/huggingface/hub/`
 | 8 | Auto-cleanup (filler word removal, repetition collapse) | ✅ v0.3 |
 | 9 | Auto-adapt (app-aware LLM text reshaping, cyan pill) | ✅ v0.4 |
 | 10 | Configurable model — distil-whisper default, config override | ✅ v0.5 |
+| 11 | Parakeet backend — optional faster English-only inference | ✅ v0.6 |
+| 12 | Model pre-load at startup — first keypress instant after warm-up | ✅ v0.6 |
 
 ## Troubleshooting
 

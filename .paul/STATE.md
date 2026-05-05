@@ -2,29 +2,29 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-05-04 after Phase 10)
+See: .paul/PROJECT.md (updated 2026-05-04 after Phase 12)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.6 Speed — Phase 12 (CoreML Backend) — research required
+**Current focus:** v0.6 Speed — complete. Next milestone TBD.
 
 ## Current Position
 
-Milestone: v0.6 Speed — In progress
-Phase: 12 (CoreML Backend) — Not started (Research Required)
-Plan: Not started
-Status: Ready to research Phase 12
-Last activity: 2026-05-04 — Phase 11 complete (parakeet-mlx backend added); transitioned to Phase 12
+Milestone: v0.6 Speed — ✅ Complete
+Phase: 12 (CoreML Backend / Parakeet Caching) — ✅ Complete
+Plan: 12-01 — UNIFY complete
+Status: Milestone complete
+Last activity: 2026-05-04 — Phase 12 UNIFY complete; v0.6 Speed milestone done
 
 Progress:
 - v0.5 Model Selection: [██████████] 100% (complete)
-- v0.6 Speed: [█████░░░░░] 50% (Phase 11 complete, Phase 12 pending)
+- v0.6 Speed: [██████████] 100% (complete)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Phase 11 complete — Phase 12 ready to research]
+  ✓        ✓        ✓     [Loop closed — milestone complete]
 ```
 
 ## Accumulated Context
@@ -52,16 +52,19 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | KnownModel StrEnum + _BACKEND_MAP for backend dispatch | Phase 11 | Single source of truth; backend inferred from model ID; unknown IDs → mlx-whisper |
 | parakeet-mlx transcribe() requires file path + ffmpeg | Phase 11 | API discovery: writes numpy to temp WAV via soundfile, then cleans up |
 | parakeet-mlx as optional extra (--extra parakeet) | Phase 11 | Never required; graceful ImportError fallback to mlx-whisper |
+| Phase 12 pivot: parakeet caching over CoreML | Phase 12 | whisperkittools not on PyPI; coremltools too low-level; pivot to module-level parakeet instance cache in transcribe.py |
+| _parakeet_cache module-level dict in transcribe.py | Phase 12 | warm_up() pre-loads model once; _run_parakeet() uses cache — eliminates 5s reload per keypress |
+| CoreML/ANE Python backend deferred | Phase 12 | No pip-installable Python CoreML Whisper package exists as of 2026-05-04 |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
 |-------|--------|--------|---------|
 | Accessibility permission onboarding is manual | Phase 2 | S | Future polish |
 | No error recovery if record thread crashes mid-session | Phase 2 | S | Future polish |
-| Filler list not user-configurable | Phase 8 | S | v0.5+ |
-| LLM-based cleanup (higher quality, ~1s overhead) | Phase 8 | M | v0.5+ |
-| auto_adapt uses same COMMAND_MODEL env var as command mode | Phase 9 | S | v0.5+ |
-| parakeet-mlx re-loads model per call — cache instance in App for real speed gains | Phase 11 | M | v0.6+ |
+| Filler list not user-configurable | Phase 8 | S | v0.7+ |
+| LLM-based cleanup (higher quality, ~1s overhead) | Phase 8 | M | v0.7+ |
+| auto_adapt uses same COMMAND_MODEL env var as command mode | Phase 9 | S | v0.7+ |
+| CoreML/ANE Python inference: no pip-installable package exists | Phase 12 | L | Revisit when argmaxinc publishes proper PyPI package |
 
 ### Blockers/Concerns
 | Concern | Detail |
@@ -71,8 +74,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 ## Session Continuity
 
 Last session: 2026-05-04
-Stopped at: Phase 11 complete (UNIFY done); Phase 12 research required before planning
-Next action: Run `/paul:research-phase` for Phase 12 (CoreML Backend)
+Stopped at: v0.6 Speed milestone complete (Phase 12 UNIFY done)
+Next action: Define next milestone (v0.7) or start ad-hoc work
 Resume file: .paul/ROADMAP.md
 
 ---

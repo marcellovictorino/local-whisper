@@ -2,9 +2,18 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from local_whisper.transcribe import DEFAULT_MODEL, KnownModel, _model_is_cached, _run_parakeet, get_backend, get_model
+import local_whisper.transcribe as _tr
+from local_whisper.transcribe import (
+    DEFAULT_MODEL,
+    KnownModel,
+    _model_is_cached,
+    _parakeet_cache,
+    _run_parakeet,
+    get_backend,
+    get_model,
+)
 
 MODEL = "mlx-community/whisper-large-v3-turbo"
 
@@ -91,6 +100,45 @@ def test_get_backend_returns_parakeet_for_parakeet_v2() -> None:
 
 def test_get_backend_returns_mlx_whisper_for_unknown_model() -> None:
     assert get_backend("unknown/custom-model") == "mlx-whisper"
+
+
+# --- parakeet model caching tests ---
+
+
+def test_warm_up_parakeet_caches_model_instance() -> None:
+    mock_parakeet = MagicMock()
+    mock_instance = MagicMock()
+    mock_parakeet.from_pretrained.return_value = mock_instance
+
+    _parakeet_cache.clear()
+    try:
+        with patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet}):
+            _tr.warm_up(KnownModel.PARAKEET_V2, backend="parakeet-mlx")
+        mock_parakeet.from_pretrained.assert_called_once_with(KnownModel.PARAKEET_V2)
+        assert _parakeet_cache[KnownModel.PARAKEET_V2] is mock_instance
+    finally:
+        _parakeet_cache.clear()
+
+
+def test_run_parakeet_skips_from_pretrained_when_cached() -> None:
+    import numpy as np
+
+    mock_parakeet = MagicMock()
+    mock_model = MagicMock()
+    mock_result = MagicMock()
+    mock_result.text = "hello"
+    mock_model.transcribe.return_value = mock_result
+    mock_sf = MagicMock()
+
+    audio = np.zeros(8000, dtype="float32")
+    _parakeet_cache[KnownModel.PARAKEET_V2] = mock_model
+    try:
+        with patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet, "soundfile": mock_sf}):
+            result = _run_parakeet(audio, KnownModel.PARAKEET_V2)
+        mock_parakeet.from_pretrained.assert_not_called()
+        assert result == "hello"
+    finally:
+        _parakeet_cache.clear()
 
 
 def test_run_parakeet_falls_back_on_import_error(capsys: object) -> None:

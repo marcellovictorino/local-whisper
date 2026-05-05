@@ -5,18 +5,11 @@ import time
 import tomllib
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
 _CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
-
-DEFAULT_MODEL = "mlx-community/distil-whisper-large-v3"
-
-_MODEL_SIZES: dict[str, str] = {
-    "mlx-community/whisper-large-v3-turbo": "~1.5 GB",
-    "mlx-community/distil-whisper-large-v3": "~600 MB",
-    "mlx-community/parakeet-tdt-0.6b-v2": "~600 MB",
-}
 
 
 class KnownModel(StrEnum):
@@ -30,23 +23,40 @@ class KnownModel(StrEnum):
     PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # fastest; English only
 
 
-_BACKEND_MAP: dict[str, str] = {
-    KnownModel.DISTIL_WHISPER: "mlx-whisper",
-    KnownModel.WHISPER_TURBO: "mlx-whisper",
-    KnownModel.PARAKEET_V2: "parakeet-mlx",
+class Backend(StrEnum):
+    """Inference backend names. Backend is auto-inferred from model ID via get_backend()."""
+
+    MLX_WHISPER = "mlx-whisper"
+    PARAKEET = "parakeet-mlx"
+
+
+DEFAULT_MODEL = KnownModel.DISTIL_WHISPER
+DEFAULT_BACKEND = Backend.MLX_WHISPER
+
+_MODEL_SIZES: dict[str, str] = {
+    KnownModel.WHISPER_TURBO: "~1.5 GB",
+    KnownModel.DISTIL_WHISPER: "~600 MB",
+    KnownModel.PARAKEET_V2: "~600 MB",
 }
 
-DEFAULT_BACKEND = "mlx-whisper"
+_BACKEND_MAP: dict[str, Backend] = {
+    KnownModel.DISTIL_WHISPER: Backend.MLX_WHISPER,
+    KnownModel.WHISPER_TURBO: Backend.MLX_WHISPER,
+    KnownModel.PARAKEET_V2: Backend.PARAKEET,
+}
+
+# Parakeet model instance cached at warm_up time so from_pretrained() runs once per session.
+_parakeet_cache: dict[str, Any] = {}
 
 
-def get_backend(model: str) -> str:
+def get_backend(model: str) -> Backend:
     """Infer backend from model ID. Unknown IDs default to mlx-whisper.
 
     Args:
         model: HuggingFace model ID (from get_model() or KnownModel).
 
     Returns:
-        Backend name: "mlx-whisper" or "parakeet-mlx".
+        Backend enum value.
     """
     return _BACKEND_MAP.get(model, DEFAULT_BACKEND)
 
@@ -83,15 +93,22 @@ def _model_is_cached(model: str) -> bool:
 
 
 def _suppress_progress_bars() -> None:
+    import logging
+
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
     os.environ["TQDM_DISABLE"] = "1"
     os.environ["HF_HUB_OFFLINE"] = "1"  # model cached — skip HF network check
+    logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
 
 def _run_mlx_whisper(audio: np.ndarray, model: str) -> str:
+    import mlx.core as mx
     import mlx_whisper
 
-    result = mlx_whisper.transcribe(audio, path_or_hf_repo=model, verbose=False)
+    # MLX Metal streams are thread-local; warm_up runs on a different thread than
+    # each keypress transcription thread, so we create a fresh stream here.
+    with mx.stream(mx.gpu):
+        result = mlx_whisper.transcribe(audio, path_or_hf_repo=model, verbose=False)
     return result["text"].strip()
 
 
@@ -113,12 +130,15 @@ def _run_parakeet(audio: np.ndarray, model: str) -> str:
 
     import soundfile as sf
 
+    if model not in _parakeet_cache:
+        _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
+    parakeet_model = _parakeet_cache[model]
+
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             tmp_path = tmp.name
         sf.write(tmp_path, audio, 16000, subtype="PCM_16")
-        parakeet_model = parakeet_mlx.from_pretrained(model)
         result = parakeet_model.transcribe(tmp_path)
     finally:
         if tmp_path and os.path.exists(tmp_path):
@@ -136,11 +156,16 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
         model: HuggingFace model ID to pre-load.
         backend: Backend name ("mlx-whisper" or "parakeet-mlx").
     """
-    if backend == "parakeet-mlx":
+    if backend == Backend.PARAKEET:
         try:
-            import parakeet_mlx  # noqa: F401
+            import parakeet_mlx
         except ImportError:
             return
+        try:
+            _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
+            print("[local-whisper] Model ready.", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"[local-whisper] Warm-up failed (non-fatal): {exc}", file=sys.stderr, flush=True)
         return
 
     if not _model_is_cached(model):
@@ -183,7 +208,7 @@ def run(
     print(f"Transcribing with {model} ({backend})...", file=sys.stderr, flush=True)
     start = time.perf_counter()
 
-    if backend == "parakeet-mlx":
+    if backend == Backend.PARAKEET:
         text = _run_parakeet(audio, model)
     else:
         text = _run_mlx_whisper(audio, model)

@@ -7,8 +7,8 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 ## Current Milestone
 
 **v0.6 Speed** (v0.6.0)
-Status: 🔵 In Progress
-Phases: 1 of 2 complete
+Status: ✅ Complete
+Phases: 2 of 2 complete
 
 ---
 
@@ -47,7 +47,7 @@ Phases: 4 of 4 complete
 | Phase | Name | Plans | Status | GitHub Issue | Completed |
 |-------|------|-------|--------|--------------|-----------|
 | 11 | Backend Selection | 1 | ✅ Complete | - | 2026-05-04 |
-| 12 | CoreML Backend | 0 | 🔬 Research Required | - | - |
+| 12 | CoreML Backend | 1 | ✅ Complete | - | 2026-05-04 |
 
 ### v0.5 Model Selection
 
@@ -251,6 +251,42 @@ Python packages that include C/Swift/Rust code need platform-specific compiled `
 **Plans:**
 - [ ] 08-01: Auto-cleanup module + config integration
 
+## Deferred Ideas
+
+These are researched or considered but not yet planned. Revisit when prioritizing next milestone.
+
+### Idea: Sub-second ASR
+
+**Goal:** Research viable paths to <1s transcription latency on Apple Silicon. Three candidates need evaluation before committing to implementation.
+**Depends on:** Phase 12 (multi-backend infrastructure in place)
+**Research:** Required — candidates have very different trade-offs
+
+**Candidates:**
+
+1. **macOS SFSpeechRecognizer** (via PyObjC) — *lowest friction candidate*
+   - Built into every macOS installation, no model download, true ANE
+   - PyObjC already a project dependency (used for overlay)
+   - `requiresOnDeviceRecognition = true` runs fully offline
+   - Research: confirm PyObjC bindings for SFSpeechAudioBufferRecognitionRequest; measure latency; measure WER vs distil-whisper; check streaming vs batch API
+   - Risk: accuracy unknown; Siri language model vs Whisper quality; English-only
+
+2. **whisper.cpp with CoreML (pre-compiled binary, subprocess)**
+   - Pre-compile whisper.cpp with CoreML/ANE on dev machine; distribute binary via GitHub Releases or Homebrew tap
+   - `setup.sh` downloads pre-compiled binary — zero compilation for end users
+   - Models in GGML format (~300–800 MB), downloaded on first run
+   - Research: confirm arm64 + CoreML build process; benchmark latency; design subprocess interface; evaluate Homebrew tap vs GitHub Releases distribution; assess model management (GGML vs current HuggingFace MLX format)
+   - Risk: per-macOS-version binary compatibility; subprocess overhead; model format migration
+
+3. **distil-whisper-small / whisper-tiny (smaller model)** — *fallback*
+   - Trivial: change DEFAULT_MODEL; existing infrastructure unchanged
+   - Research: benchmark WER and latency for distil-whisper-small on real audio
+   - Risk: likely 15–20%+ WER vs ~12% current — probably unacceptable for dictation use
+
+**Research order:** SFSpeechRecognizer first (zero install friction, already have PyObjC). If WER acceptable, done. If not, evaluate whisper.cpp CoreML binary distribution. Smaller model as fallback only if both fail.
+
+**Plans:**
+- [ ] 13-00: Research — spike all three paths, benchmark WER + latency, recommend winner
+
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-05-04 — Phase 11 (Backend Selection) complete; Phase 12 (CoreML) next*
+*Last updated: 2026-05-05 — Phase 13 (Sub-second ASR Research) added; v0.7 milestone planned*
