@@ -16,9 +16,19 @@
 
 ---
 
-## Winner
+## Initial Recommendation (later invalidated)
 
-**macOS SFSpeechRecognizer via PyObjC** — delivers 200–700ms on-device transcription with zero install friction and accuracy indistinguishable from distil-whisper on clear English speech.
+**macOS SFSpeechRecognizer via PyObjC** — spike showed 200–700ms on-device transcription with zero install friction. Accuracy appeared comparable to distil-whisper on short synthetic clips.
+
+## ⚠️ Final Outcome (2026-05-05 — after Phase 14 benchmark)
+
+**SFSpeech dropped.** Full benchmark on 30s real audio:
+| Backend | WER% | Latency |
+|---------|------|---------|
+| SFSpeech (on-device, en-US) | 57.1% | 2.45s |
+| distil-whisper-large-v3 | 12.2% | 1.85s |
+
+Spike WER estimate (~0%) was measured on short `say`-generated synthetic audio. Real dictation audio exposed the on-device Siri model's weakness. Additionally, macOS shows "sends voice to Apple" in the permission dialog regardless of `requiresOnDeviceRecognition=True`, contradicting the product's zero-cloud promise. Implementation reverted.
 
 ---
 

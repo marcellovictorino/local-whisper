@@ -15,7 +15,9 @@ Results (2026-05-05, Apple M-series, on-device, requiresOnDeviceRecognition=True
     15s clip:       ~354ms   (without punctuation)
     15s clip:       ~603ms   (with addsPunctuation=True)
 
-Transcription quality: high — comparable to distil-whisper on clear English speech.
+Transcription quality (spike, short synthetic clips): appeared comparable to distil-whisper.
+FINAL BENCHMARK (2026-05-05, 30s real audio): 57.1% WER vs 12.2% for distil-whisper-large-v3.
+On-device Siri model is substantially weaker on natural dictation — SFSpeech dropped from codebase.
 No model download required — uses built-in macOS Siri speech model.
 """
 

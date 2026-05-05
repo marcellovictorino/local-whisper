@@ -14,7 +14,7 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 |-----------|-------|
 | Version | 0.7.0 |
 | Status | Active |
-| Last Updated | 2026-05-04 |
+| Last Updated | 2026-05-05 |
 
 ## Requirements
 
@@ -49,11 +49,10 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 - [x] `_parakeet_cache` module-level dict: parakeet model loaded once at `warm_up()`, reused per keypress — Phase 12
 - [x] `warm_up()` parakeet branch: now actually pre-loads model (eliminates ~5s from_pretrained() at first keypress) — Phase 12
 
-- [x] `Backend.SFSPEECH` + `KnownModel.SFSPEECH_EN = "macos/sfspeech-en-us"` added to `transcribe.py` — Phase 14
-- [x] `_run_sfspeech(audio, model)`: temp WAV → `SFSpeechURLRecognitionRequest` (requiresOnDeviceRecognition=True, addsPunctuation=True) → `threading.Event` drain → transcript — Phase 14
-- [x] `_sfspeech_recognizer_cache` module-level dict; `warm_up()` pre-creates recognizer — Phase 14
-- [x] `addsPunctuation = True` default for SFSpeech backend — Phase 14
-- [x] Graceful fallback to mlx-whisper if SFSpeechRecognizer unavailable (older macOS or auth failure) — Phase 14
+- [~] SFSpeechRecognizer (PyObjC) evaluated as sub-second ASR backend — Phase 14 (benchmarked and dropped)
+  - Benchmark: 57.1% WER vs 12.2% for distil-whisper; on-device Siri model quality unacceptable for dictation
+  - Additional concern: macOS shows "sends voice to Apple" permission dialog regardless of `requiresOnDeviceRecognition=True`
+  - Decision: reverted; distil-whisper-large-v3 remains default; no net code change from v0.6
 
 ### Planned (Next)
 

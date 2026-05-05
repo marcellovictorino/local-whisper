@@ -9,11 +9,11 @@ See: .paul/PROJECT.md (updated 2026-05-05 after Phase 14)
 
 ## Current Position
 
-Milestone: v0.7 Sub-second ASR — ✅ Complete
-Phase: 14 (SFSpeech Implementation) — ✅ Complete
+Milestone: v0.7 Sub-second ASR — ❌ Closed (negative result)
+Phase: 14 (SFSpeech Evaluation + Revert) — ✅ Complete
 Plan: 14-01 complete
-Status: Milestone complete — ready for next milestone or release
-Last activity: 2026-05-05 — Phase 14 UNIFY complete; v0.7 milestone done
+Status: Milestone closed — SFSpeech benchmarked (57.1% WER) and dropped; no net code change from v0.6
+Last activity: 2026-05-05 — SFSpeech reverted after benchmark; PR #15 opened
 
 Progress:
 - v0.6 Speed: [██████████] 100% (complete)

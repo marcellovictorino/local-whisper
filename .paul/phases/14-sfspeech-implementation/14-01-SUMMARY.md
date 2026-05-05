@@ -47,7 +47,7 @@ completed: 2026-05-05T00:00:00Z
 
 # Phase 14 Plan 01: SFSpeech Implementation Summary
 
-**SFSpeechRecognizer wired as Backend.SFSPEECH with recognizer caching, threading.Event sync, graceful mlx-whisper fallback, and 5 new unit tests — available via `[whisper] model = "macos/sfspeech-en-us"` in config.toml.**
+**⚠️ Implementation reverted after benchmark.** SFSpeechRecognizer was wired as Backend.SFSPEECH with recognizer caching, threading.Event sync, and 5 unit tests. Full benchmark (30s real audio) showed 57.1% WER vs 12.2% for distil-whisper. Implementation removed from codebase; no net code change from v0.6.**
 
 ## Performance
 

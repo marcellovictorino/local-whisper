@@ -53,7 +53,7 @@ Phases: 4 of 4 complete
 | Phase | Name | Plans | Status | GitHub Issue | Completed |
 |-------|------|-------|--------|--------------|-----------|
 | 13 | Sub-second ASR Research | 1 | ✅ Complete | - | 2026-05-05 |
-| 14 | SFSpeech Implementation | 1 | ✅ Complete | - | 2026-05-05 |
+| 14 | SFSpeech Evaluation + Revert | 1 | ❌ Dropped | - | 2026-05-05 |
 
 ### v0.6 Speed
 
@@ -249,26 +249,25 @@ Python packages that include C/Swift/Rust code need platform-specific compiled `
 **Plans:**
 - [ ] 09-01: auto_adapt module + config + pipeline integration + README
 
-### Phase 14: SFSpeech Implementation
+### Phase 14: SFSpeech Evaluation + Revert
 
-**Goal:** Wire `SFSpeechRecognizer` into `transcribe.py` as `Backend.SFSPEECH`, making it the new default for English users. Sub-second transcription (~200–700ms) with zero install, using the research findings from Phase 13.
-**Depends on:** Phase 13 (integration path documented in 13-00-RESEARCH.md)
-**Research:** Not needed — full integration path in `.paul/phases/13-sub-second-asr/13-00-RESEARCH.md`
+**Outcome: DROPPED** — SFSpeech implemented, benchmarked, and reverted. No net code change from v0.6.
 
-**Scope:**
-- `Backend.SFSPEECH` + `KnownModel.SFSPEECH_EN = "macos/sfspeech-en-us"` added to `transcribe.py`
-- `_BACKEND_MAP` entry: `KnownModel.SFSPEECH_EN → Backend.SFSPEECH`
-- `_run_sfspeech(audio, model)`: temp WAV via soundfile → `SFSpeechURLRecognitionRequest` (requiresOnDeviceRecognition=True, addsPunctuation=True) → drain NSRunLoop → return text
-- `_sfspeech_recognizer_cache` module-level dict; `warm_up()` pre-creates recognizer
-- `objc.registerMetaDataForSelector` for block signature at module level
-- `run()` dispatch branch: `if backend == Backend.SFSPEECH: text = _run_sfspeech(...)`
-- Graceful fallback: if `SFSpeechRecognizer` unavailable, fall back to mlx-whisper with warning
-- `KnownModel.SFSPEECH_EN` as new DEFAULT_MODEL
-- `benchmark.py` updated to include sfspeech backend
-- 4+ unit tests for `_run_sfspeech()` and warm-up branch
+**What was tried:** Full PyObjC integration of `SFSpeechRecognizer` as `Backend.SFSPEECH` with recognizer caching, XPC run loop handling, authorization flow, and 5 unit tests.
+
+**Benchmark result (30s real audio, 2026-05-05):**
+| Backend | WER% | Latency |
+|---------|------|---------|
+| SFSpeech (on-device, en-US) | 57.1% | 2.45s |
+| distil-whisper-large-v3 | 12.2% | 1.85s |
+
+**Why dropped:**
+1. **Quality**: 57.1% WER unacceptable for dictation — on-device Siri model is weaker than distil-whisper
+2. **Privacy UX**: macOS shows "sends voice to Apple" in permission dialog regardless of `requiresOnDeviceRecognition=True` — contradicts "zero cloud" product promise
+3. **Complexity**: Required `objc.registerMetaDataForSelector` block registration, XPC run loop spin, explicit authorization flow — significant PyObjC plumbing for a worse result
 
 **Plans:**
-- [ ] 14-01: SFSpeech backend wiring + default model change + tests + benchmark
+- [x] 14-01: SFSpeech backend wiring + benchmark + revert
 
 ### Phase 13: Sub-second ASR Research
 
@@ -319,4 +318,4 @@ Python packages that include C/Swift/Rust code need platform-specific compiled `
 
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-05-05 — Phase 13 complete (SFSpeechRecognizer chosen); Phase 14 (implementation) added*
+*Last updated: 2026-05-05 — v0.7 closed: SFSpeech evaluated (57.1% WER) and dropped; distil-whisper-large-v3 remains default*

@@ -40,7 +40,7 @@ completed: 2026-05-05T20:25:00Z
 
 # Phase 13 Plan 00: Sub-second ASR Research — Summary
 
-**SFSpeechRecognizer confirmed viable: 200–700ms warm on-device transcription with zero install, using PyObjC bindings already available in project.**
+**⚠️ Preliminary finding later invalidated.** Spike showed SFSpeech viable on short synthetic audio. Full benchmark (Phase 14, 30s real dictation audio) found 57.1% WER — unacceptable. SFSpeech dropped; distil-whisper-large-v3 remains default. See RESEARCH.md addendum for final outcome.
 
 ## Performance
 
