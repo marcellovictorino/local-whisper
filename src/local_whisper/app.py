@@ -1,17 +1,33 @@
 from __future__ import annotations
 
+import logging
 import signal
-import sys
 import threading
+from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-from local_whisper import audio, auto_adapt, auto_cleanup, clipboard, command, corrections, snippets, transcribe
+from local_whisper import audio, auto_adapt, auto_cleanup, clipboard, command, config, corrections, snippets, transcribe
 from local_whisper.hotkey import HotkeyListener
 
 if TYPE_CHECKING:
     from local_whisper.overlay import RecordingOverlay
+
+logger = logging.getLogger("local_whisper")
+
+
+class _Mode(StrEnum):
+    DICTATION = "dictation"
+    COMMAND = "command"
+
+
+@dataclass
+class _Session:
+    mode: _Mode
+    stop_event: threading.Event = field(default_factory=threading.Event)
+    selection: str = ""
 
 
 class App:
@@ -33,13 +49,9 @@ class App:
         self._overlay = overlay
         self._model = model
         self._backend = backend
-        self._stop_event = threading.Event()
-        self._recording = False
         self._active_app: str = ""
+        self._active: _Session | None = None
         self._corrections: dict[str, str] = corrections.load()
-        self._command_stop_event = threading.Event()
-        self._command_recording = False
-        self._command_selection: str = ""
         self._listener = HotkeyListener(
             on_activate=self._on_key_press,
             on_deactivate=self._on_key_release,
@@ -49,11 +61,7 @@ class App:
         """Start the keyboard listener in a daemon thread. Non-blocking."""
         signal.signal(signal.SIGHUP, lambda _s, _f: self._reload_config())
         self._listener.start()
-        print(
-            "local-whisper running. Hold Right ⌘ to dictate (or apply command to selection). Ctrl+C to quit.",
-            file=sys.stderr,
-            flush=True,
-        )
+        logger.info("local-whisper running. Hold Right ⌘ to dictate (or apply command to selection). Ctrl+C to quit.")
 
     def stop(self) -> None:
         """Stop the keyboard listener."""
@@ -68,91 +76,70 @@ class App:
             pass
         finally:
             self.stop()
-            print("\nStopped.", file=sys.stderr)
+            logger.info("Stopped.")
 
     def _reload_config(self) -> None:
-        """Reload corrections config without restarting."""
+        """Reload all config caches without restarting."""
+        config.invalidate()
         self._corrections = corrections.load()
-        print("[local-whisper] Config reloaded.", file=sys.stderr, flush=True)
+        logger.info("Config reloaded.")
 
     def _on_key_press(self) -> None:
         """Detect mode from selection, then start recording in a background thread."""
-        if self._recording or self._command_recording:
-            return  # already recording — debounce
+        if self._active is not None:
+            return
 
         self._active_app = auto_adapt.get_active_app()
         selection = command.get_selection()
 
         if selection:
-            self._command_selection = selection
-            self._command_recording = True
-            self._command_stop_event.clear()
+            session = _Session(mode=_Mode.COMMAND, selection=selection)
             if self._overlay:
                 self._overlay.show_command()
-            threading.Thread(target=self._command_record_and_process, daemon=True).start()
         else:
-            self._recording = True
-            self._stop_event.clear()
+            session = _Session(mode=_Mode.DICTATION)
             if self._overlay:
                 if auto_adapt.is_active(self._active_app):
                     self._overlay.show_adapt()
                 else:
                     self._overlay.show()
-            threading.Thread(target=self._record_and_process, daemon=True).start()
+
+        self._active = session
+        threading.Thread(target=self._run_session, args=(session,), daemon=True).start()
 
     def _on_key_release(self) -> None:
         """Signal the active recording to stop."""
-        if self._command_recording:
-            self._command_stop_event.set()
-        else:
-            self._stop_event.set()
+        if self._active is not None:
+            self._active.stop_event.set()
 
-    def _record_and_process(self) -> None:
-        """Record until stop_event, then transcribe and paste."""
+    def _run_session(self, session: _Session) -> None:
+        """Record until stop_event, transcribe, apply pipeline, paste."""
         try:
             on_amp = self._overlay.update_amplitude if self._overlay else None
-            audio_data: np.ndarray = audio.record_until_event(self._stop_event, on_amplitude=on_amp)
+            audio_data: np.ndarray = audio.record_until_event(session.stop_event, on_amplitude=on_amp)
             if self._overlay:
                 self._overlay.set_processing()
             if audio_data.size == 0:
-                print("[local-whisper] No audio captured.", file=sys.stderr)
+                logger.info("No audio captured.")
                 return
             text = transcribe.run(audio_data, model=self._model, backend=self._backend)
             if not text:
-                print("[local-whisper] Empty transcription.", file=sys.stderr)
+                logger.info("Empty transcription.")
                 return
-            text = auto_cleanup.apply(text)
-            text = auto_adapt.apply(text, self._active_app)
-            text = corrections.apply(text, self._corrections)
-            text = snippets.expand(text)
-            clipboard.write_and_paste(text)
-        except Exception as exc:  # noqa: BLE001
-            print(f"[local-whisper] Error: {exc}", file=sys.stderr)
-        finally:
-            self._recording = False
-            if self._overlay:
-                self._overlay.hide()
 
-    def _command_record_and_process(self) -> None:
-        """Record until stop_event, transcribe, apply voice command via API, paste."""
-        try:
-            on_amp = self._overlay.update_amplitude if self._overlay else None
-            audio_data: np.ndarray = audio.record_until_event(self._command_stop_event, on_amplitude=on_amp)
-            if self._overlay:
-                self._overlay.set_processing()
-            if audio_data.size == 0:
-                print("[local-whisper] No audio captured.", file=sys.stderr)
-                return
-            voice_cmd = transcribe.run(audio_data, model=self._model, backend=self._backend)
-            if not voice_cmd:
-                print("[local-whisper] Empty transcription.", file=sys.stderr)
-                return
-            result = command.apply_command(self._command_selection, voice_cmd)
-            clipboard.write_and_paste(result)
-        except Exception as exc:  # noqa: BLE001
-            print(f"[local-whisper] Command mode error: {exc}", file=sys.stderr)
+            match session.mode:
+                case _Mode.DICTATION:
+                    text = auto_cleanup.apply(text)
+                    text = auto_adapt.apply(text, self._active_app)
+                    text = corrections.apply(text, self._corrections)
+                    text = snippets.expand(text)
+                    clipboard.write_and_paste(text)
+                case _Mode.COMMAND:
+                    result = command.apply_command(session.selection, text)
+                    clipboard.write_and_paste(result)
+        except Exception as exc:
+            logger.error("Session error: %s", exc)
         finally:
-            self._command_recording = False
-            self._command_selection = ""
+            self._active = None
             if self._overlay:
                 self._overlay.hide()

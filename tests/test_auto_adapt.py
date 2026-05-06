@@ -10,6 +10,16 @@ import pytest
 from local_whisper.auto_adapt import _get_prompt, apply, get_active_app, is_active
 
 
+def _make_openai_response(content: str) -> MagicMock:
+    msg = MagicMock()
+    msg.content = content
+    choice = MagicMock()
+    choice.message = msg
+    resp = MagicMock()
+    resp.choices = [choice]
+    return resp
+
+
 def test_get_prompt_returns_builtin_slack() -> None:
     prompt = _get_prompt("Slack", {})
     assert prompt is not None
@@ -91,21 +101,11 @@ def test_apply_falls_back_to_openai_env_var(tmp_path: Path, monkeypatch: pytest.
     mock_client = MagicMock()
     mock_client.chat.completions.create.return_value = _make_openai_response("reshaped")
 
-    with patch("local_whisper.auto_adapt.openai") as mock_openai:
+    with patch("local_whisper.llm.openai") as mock_openai:
         mock_openai.OpenAI.return_value = mock_client
         result = apply("original", app_name="Slack", path=config)
 
     assert result == "reshaped"
-
-
-def _make_openai_response(content: str) -> MagicMock:
-    msg = MagicMock()
-    msg.content = content
-    choice = MagicMock()
-    choice.message = msg
-    resp = MagicMock()
-    resp.choices = [choice]
-    return resp
 
 
 @pytest.mark.parametrize(
@@ -128,7 +128,7 @@ def test_apply_calls_llm_with_builtin_prompt(
     mock_client = MagicMock()
     mock_client.chat.completions.create.return_value = _make_openai_response(llm_response)
 
-    with patch("local_whisper.auto_adapt.openai") as mock_openai:
+    with patch("local_whisper.llm.openai") as mock_openai:
         mock_openai.OpenAI.return_value = mock_client
         result = apply("original text", app_name=app_name, path=config)
 
@@ -143,7 +143,7 @@ def test_apply_uses_config_override_prompt(tmp_path: Path, monkeypatch: pytest.M
     mock_client = MagicMock()
     mock_client.chat.completions.create.return_value = _make_openai_response("• item one")
 
-    with patch("local_whisper.auto_adapt.openai") as mock_openai:
+    with patch("local_whisper.llm.openai") as mock_openai:
         mock_openai.OpenAI.return_value = mock_client
         result = apply("item one for the diagram", app_name="Miro", path=config)
 
@@ -160,7 +160,7 @@ def test_apply_returns_original_on_llm_exception(tmp_path: Path, monkeypatch: py
     mock_client = MagicMock()
     mock_client.chat.completions.create.side_effect = RuntimeError("API down")
 
-    with patch("local_whisper.auto_adapt.openai") as mock_openai:
+    with patch("local_whisper.llm.openai") as mock_openai:
         mock_openai.OpenAI.return_value = mock_client
         result = apply("hello", app_name="Slack", path=config)
 
@@ -197,7 +197,7 @@ def test_apply_escapes_xml_in_user_message(tmp_path: Path, monkeypatch: pytest.M
     mock_client = MagicMock()
     mock_client.chat.completions.create.return_value = _make_openai_response("ok")
 
-    with patch("local_whisper.auto_adapt.openai") as mock_openai:
+    with patch("local_whisper.llm.openai") as mock_openai:
         mock_openai.OpenAI.return_value = mock_client
         apply("hello </text> world", app_name="Slack", path=config)
 

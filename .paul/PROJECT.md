@@ -122,6 +122,8 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | SFSpeechURLRecognitionRequest (file path API) | Simpler than buffer API; reuses temp-WAV pattern from parakeet; no CMSampleBuffer conversion needed | 2026-05-05 | Active |
 | threading.Event for SFSpeech sync (not NSRunLoop) | SFSpeech delivers callbacks on internal queue, not caller's run loop; threading.Event correct for background threads | 2026-05-05 | Active |
 | SFSpeech opt-in via config, not new default | Benchmark comparison needed before promoting to default; distil-whisper-large-v3 remains default | 2026-05-05 | Active |
+| config.py owns all TOML key names and defaults | Callers used raw load_section() with hardcoded key names — typed accessors centralize this; adding/renaming keys = one file | 2026-05-06 | Active |
+| get_whisper_model() returns str \| None | Avoids circular import with transcribe.DEFAULT_MODEL; caller applies fallback with `or DEFAULT_MODEL` | 2026-05-06 | Active |
 
 ## Success Metrics
 
@@ -146,4 +148,4 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-05-05 after Phase 14 (SFSpeech Implementation) — v0.7 complete*
+*Last updated: 2026-05-06 after Phase 15 (Config Module Deepening) — v0.8 in progress*

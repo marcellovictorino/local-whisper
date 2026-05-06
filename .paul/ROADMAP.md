@@ -6,6 +6,12 @@ Build a macOS speech-to-text tool running fully offline on Apple Silicon. Start 
 
 ## Current Milestone
 
+**v0.8 Architecture Deepening** (v0.8.0)
+Status: 🚧 In Progress
+Phases: 0 of 4 complete
+
+---
+
 **v0.7 Sub-second ASR** (v0.7.0)
 Status: ✅ Complete
 Phases: 2 of 2 complete
@@ -47,6 +53,15 @@ Status: ✅ Complete
 Phases: 4 of 4 complete
 
 ## Phases
+
+### v0.8 Architecture Deepening
+
+| Phase | Name | Plans | Status | Completed |
+|-------|------|-------|--------|-----------|
+| 15 | Config Module Deepening | 1 | ✅ Complete | 2026-05-06 |
+| 16 | Clipboard Reliability Policy | 1 | Planning | - |
+| 17 | LLM Module Interface | TBD | Not started | - |
+| 18 | Session + Logging Bootstrap | TBD | Not started | - |
 
 ### v0.7 Sub-second ASR
 
@@ -301,6 +316,63 @@ Python packages that include C/Swift/Rust code need platform-specific compiled `
 **Plans:**
 - [ ] 13-00: Research — spike all three paths, benchmark WER + latency, recommend winner
 
+### Phase 15: Config Module Deepening
+
+**Goal:** Replace raw-dict `load_section()` callers with typed domain accessors. Centralize all defaults, type coercion, malformed-value behavior, and cache invalidation in `config.py`.
+**Depends on:** Refactor PR #16 (config.py exists)
+**Research:** Not needed
+
+**Scope:**
+- Typed accessor functions: `get_auto_adapt_config()`, `get_auto_cleanup_config()`, `get_corrections_config()`, `get_snippets_config()`, `get_whisper_config()`
+- Each returns a typed dataclass or TypedDict; callers no longer own key/default/type knowledge
+- Tests: per-section defaults, type validation, malformed values, cache behavior
+
+**Plans:**
+- [ ] 15-01: Typed config accessors + callers updated + tests
+
+### Phase 16: Clipboard Reliability Policy
+
+**Goal:** Make paste strategy explicit at the module Interface. Define a contract for settle delay, retry/backoff, and fallback ("copied, manual paste required").
+**Depends on:** Phase 15 (stable config access)
+**Research:** Not needed
+
+**Scope:**
+- Explicit `write_and_paste(text, *, settle_ms=0, retries=0)` or equivalent Interface
+- Platform-specific timing/retry details contained in implementation
+- Tests: success path, failure path with warning + clipboard preserved, retry policy
+
+**Plans:**
+- [ ] 16-01: Explicit paste contract + retry policy + tests
+
+### Phase 17: LLM Module Interface
+
+**Goal:** Evolve `llm.transform()` from generic helper to intention-level operations. Callers stop owning model/env/fallback policy.
+**Depends on:** Phase 15 (stable config access)
+**Research:** Not needed
+
+**Scope:**
+- Intention-level functions: `apply_voice_command(selected_text, instruction)` and `reshape_for_app(text, app_name, prompt)`
+- Or: options object encapsulating model env var, escaping mode, token policy, base URL policy
+- Callers (`command.py`, `auto_adapt.py`) shrink to single-line calls
+- Tests: missing key/package fallback, API exception, env precedence, escaping behavior
+
+**Plans:**
+- [ ] 17-01: Intention-level LLM interface + callers updated + tests
+
+### Phase 18: Session + Logging Bootstrap
+
+**Goal:** Move `_setup_logging()` from import-time side effect to explicit startup call in `__main__`. Introduce per-mode session adapters in `app.py` for cleaner mode-specific testing.
+**Depends on:** Phase 17 (stable LLM interface)
+**Research:** Not needed
+
+**Scope:**
+- Move `_setup_logging()` call from `__init__.py` to `__main__.main()`; keep `__init__.py` side-effect free
+- Per-mode adapters behind session seam: `DictationSession`, `CommandSession` — shared record/transcribe runner common
+- Tests: logging only configured when `main()` runs (not on import); per-mode adapter behavior
+
+**Plans:**
+- [ ] 18-01: Logging bootstrap relocation + session adapters + tests
+
 ### Phase 8: Auto-Cleanup
 
 **Goal:** Post-process every transcription to remove filler words and immediate repetitions before paste. Always-on by default, opt-out via config.
@@ -318,4 +390,4 @@ Python packages that include C/Swift/Rust code need platform-specific compiled `
 
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-05-05 — v0.7 closed: SFSpeech evaluated (57.1% WER) and dropped; distil-whisper-large-v3 remains default*
+*Last updated: 2026-05-06 — Phase 15 (Config Module Deepening) complete*

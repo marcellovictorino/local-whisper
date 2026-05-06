@@ -1,10 +1,12 @@
+import logging
 import math
-import sys
 import threading
 from collections.abc import Callable
 
 import numpy as np
 import sounddevice
+
+logger = logging.getLogger("local_whisper")
 
 
 def record(duration: float, sample_rate: int = 16000) -> np.ndarray:
@@ -17,7 +19,7 @@ def record(duration: float, sample_rate: int = 16000) -> np.ndarray:
     Returns:
         Float32 numpy array of shape (N,) normalised to [-1.0, 1.0].
     """
-    print("Recording...", file=sys.stderr, flush=True)
+    logger.info("Recording...")
     audio = sounddevice.rec(
         int(duration * sample_rate),
         samplerate=sample_rate,
@@ -25,7 +27,7 @@ def record(duration: float, sample_rate: int = 16000) -> np.ndarray:
         dtype="float32",
     )
     sounddevice.wait()
-    print("Done.", file=sys.stderr, flush=True)
+    logger.info("Done.")
     return audio.squeeze()
 
 
@@ -55,14 +57,14 @@ def record_until_event(
         status: sounddevice.CallbackFlags,
     ) -> None:
         if status:
-            print(f"[audio] {status}", file=sys.stderr)
+            logger.warning("[audio] %s", status)
         chunks.append(indata.copy())
         if on_amplitude is not None:
             flat = indata[:, 0]
             rms = math.sqrt(float(np.dot(flat, flat)) / len(flat))
             on_amplitude(rms)
 
-    print("Recording...", file=sys.stderr, flush=True)
+    logger.info("Recording...")
     with sounddevice.InputStream(
         samplerate=sample_rate,
         channels=1,
@@ -72,7 +74,7 @@ def record_until_event(
     ):
         stop_event.wait()
 
-    print("Done.", file=sys.stderr, flush=True)
+    logger.info("Done.")
 
     if not chunks:
         return np.zeros(0, dtype="float32")

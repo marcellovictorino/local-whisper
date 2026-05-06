@@ -1,9 +1,12 @@
 import argparse
 import json
+import logging
 import sys
 import threading
 
 from local_whisper import audio, transcribe
+
+logger = logging.getLogger("local_whisper")
 
 
 def _check_accessibility() -> bool:
@@ -57,58 +60,59 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.run:
-        if not _check_accessibility():
-            print(
-                "Accessibility permission required.\n"
-                "\n"
-                "  1. Open: System Settings → Privacy & Security → Accessibility\n"
-                "  2. Add and enable the app running this script\n"
-                "     (Terminal, iTerm2, or the launchd wrapper — whichever launched this)\n"
-                "  3. Re-run: uv run python -m local_whisper --run\n",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+    match (args.run, args.benchmark, args.test):
+        case (True, _, _):
+            if not _check_accessibility():
+                print(
+                    "Accessibility permission required.\n"
+                    "\n"
+                    "  1. Open: System Settings → Privacy & Security → Accessibility\n"
+                    "  2. Add and enable the app running this script\n"
+                    "     (Terminal, iTerm2, or the launchd wrapper — whichever launched this)\n"
+                    "  3. Re-run: uv run python -m local_whisper --run\n",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
 
-        from local_whisper.app import App
-        from local_whisper.overlay import RecordingOverlay
+            from local_whisper.app import App
+            from local_whisper.overlay import RecordingOverlay
 
-        model = transcribe.get_model()
-        backend = transcribe.get_backend(model)
-        overlay = RecordingOverlay()
-        app = App(overlay=overlay, model=model, backend=backend)
-        app.start()  # starts pynput listener in daemon thread (non-blocking)
+            model = transcribe.get_model()
+            backend = transcribe.get_backend(model)
+            overlay = RecordingOverlay()
+            app = App(overlay=overlay, model=model, backend=backend)
+            app.start()
 
-        # Pre-load model and compile Metal shaders so first keypress is instant.
-        threading.Thread(target=transcribe.warm_up, args=(model, backend), daemon=True).start()
+            # Pre-load model and compile Metal shaders so first keypress is instant.
+            threading.Thread(target=transcribe.warm_up, args=(model, backend), daemon=True).start()
 
-        try:
-            overlay.run()  # AppKit event loop on main thread — blocks until quit()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            app.stop()
-            overlay.quit()
-    elif args.benchmark:
-        from local_whisper import benchmark
+            try:
+                overlay.run()  # AppKit event loop on main thread — blocks until quit()
+            except KeyboardInterrupt:
+                pass
+            finally:
+                app.stop()
+                overlay.quit()
 
-        model = transcribe.get_model()
-        backend = transcribe.get_backend(model)
-        print(
-            f"Benchmarking {model} ({benchmark.DURATION_S}s audio, 3 runs)...",
-            file=sys.stderr,
-        )
-        results = benchmark.run(model, backend=backend)
-        print(json.dumps(results, indent=2))
-    elif args.test:
-        model = transcribe.get_model()
-        backend = transcribe.get_backend(model)
-        print(f"Speak now — recording for {args.duration}s...", file=sys.stderr)
-        audio_data = audio.record(duration=args.duration)
-        text = transcribe.run(audio_data, model=model, backend=backend)
-        print(text)
-    else:
-        parser.print_help()
+        case (_, True, _):
+            from local_whisper import benchmark
+
+            model = transcribe.get_model()
+            backend = transcribe.get_backend(model)
+            logger.info("Benchmarking %s (%ds audio, 3 runs)...", model, benchmark.DURATION_S)
+            results = benchmark.run(model, backend=backend)
+            print(json.dumps(results, indent=2))
+
+        case (_, _, True):
+            model = transcribe.get_model()
+            backend = transcribe.get_backend(model)
+            logger.info("Speak now — recording for %gs...", args.duration)
+            audio_data = audio.record(duration=args.duration)
+            text = transcribe.run(audio_data, model=model, backend=backend)
+            print(text)
+
+        case _:
+            parser.print_help()
 
 
 if __name__ == "__main__":

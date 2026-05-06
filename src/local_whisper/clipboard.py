@@ -1,17 +1,9 @@
+import logging
 import subprocess
-import sys
-import time
 
 import pyperclip
 
-
-def copy(text: str) -> None:
-    """Write text to the system clipboard.
-
-    Args:
-        text: Text to copy.
-    """
-    pyperclip.copy(text)
+logger = logging.getLogger("local_whisper")
 
 
 def write_and_paste(text: str) -> None:
@@ -23,9 +15,7 @@ def write_and_paste(text: str) -> None:
     Args:
         text: Text to paste.
     """
-    copy(text)
-    time.sleep(0.05)  # give clipboard time to settle before paste
-
+    pyperclip.copy(text)
     try:
         subprocess.run(
             [
@@ -36,11 +26,10 @@ def write_and_paste(text: str) -> None:
             check=True,
             capture_output=True,
         )
-        print(f"Pasted {len(text)} chars.", file=sys.stderr, flush=True)
+        logger.info("Pasted %d chars.", len(text))
     except subprocess.CalledProcessError as exc:
         stderr_msg = exc.stderr.decode().strip() if exc.stderr else ""
-        print(
-            f"[local-whisper] Paste via osascript failed: {stderr_msg}\n"
-            "  → Text copied to clipboard — paste manually with Cmd+V.",
-            file=sys.stderr,
+        logger.warning(
+            "Paste via osascript failed: %s — text copied to clipboard, paste manually with Cmd+V.",
+            stderr_msg,
         )

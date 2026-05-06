@@ -1,15 +1,16 @@
+import logging
 import os
-import sys
 import tempfile
 import time
-import tomllib
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-_CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
+from local_whisper import config
+
+logger = logging.getLogger("local_whisper")
 
 
 class KnownModel(StrEnum):
@@ -48,6 +49,8 @@ _BACKEND_MAP: dict[str, Backend] = {
 # Parakeet model instance cached at warm_up time so from_pretrained() runs once per session.
 _parakeet_cache: dict[str, Any] = {}
 
+_progress_bars_suppressed = False
+
 
 def get_backend(model: str) -> Backend:
     """Infer backend from model ID. Unknown IDs default to mlx-whisper.
@@ -61,7 +64,7 @@ def get_backend(model: str) -> Backend:
     return _BACKEND_MAP.get(model, DEFAULT_BACKEND)
 
 
-def get_model(path: Path = _CONFIG_PATH) -> str:
+def get_model(path: Path = config.CONFIG_PATH) -> str:
     """Read model ID from config.toml, falling back to DEFAULT_MODEL.
 
     Args:
@@ -70,16 +73,8 @@ def get_model(path: Path = _CONFIG_PATH) -> str:
     Returns:
         HuggingFace model ID string.
     """
-    try:
-        with open(path, "rb") as f:
-            data = tomllib.load(f)
-        value = data.get("whisper", {}).get("model", DEFAULT_MODEL)
-        return value if isinstance(value, str) else DEFAULT_MODEL
-    except FileNotFoundError:
-        return DEFAULT_MODEL
-    except Exception as exc:
-        print(f"[local-whisper] whisper config error: {exc}", file=sys.stderr)
-        return DEFAULT_MODEL
+    value = config.get_whisper_model(path)
+    return value if isinstance(value, str) else DEFAULT_MODEL
 
 
 def _model_is_cached(model: str) -> bool:
@@ -94,11 +89,13 @@ def _model_is_cached(model: str) -> bool:
 
 
 def _suppress_progress_bars() -> None:
-    import logging
-
+    global _progress_bars_suppressed
+    if _progress_bars_suppressed:
+        return
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
     os.environ["TQDM_DISABLE"] = "1"
     logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+    _progress_bars_suppressed = True
 
 
 def _run_mlx_whisper(audio: np.ndarray, model: str) -> str:
@@ -113,19 +110,10 @@ def _run_mlx_whisper(audio: np.ndarray, model: str) -> str:
 
 
 def _run_parakeet(audio: np.ndarray, model: str) -> str:
-    # Spike findings (Task 1):
-    # - from_pretrained(hf_id_or_path) → BaseParakeet
-    # - model.transcribe(path: Path|str) → AlignedResult — takes file path, not numpy array
-    #   Uses ffmpeg internally to load audio; requires ffmpeg in PATH
-    # - AlignedResult.text: str attribute (not dict subscript)
-    # - Write audio to temp WAV via soundfile (float32, 16 kHz), pass path, then clean up
     try:
         import parakeet_mlx
     except ImportError:
-        print(
-            "[local-whisper] parakeet-mlx not installed. Run: uv sync --extra parakeet\nFalling back to mlx-whisper.",
-            file=sys.stderr,
-        )
+        logger.warning("parakeet-mlx not installed. Run: uv sync --extra parakeet\nFalling back to mlx-whisper.")
         return _run_mlx_whisper(audio, DEFAULT_MODEL)
 
     import soundfile as sf
@@ -141,8 +129,8 @@ def _run_parakeet(audio: np.ndarray, model: str) -> str:
         sf.write(tmp_path, audio, 16000, subtype="PCM_16")
         result = parakeet_model.transcribe(tmp_path)
     finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+        if tmp_path:
+            Path(tmp_path).unlink(missing_ok=True)
     return result.text.strip()
 
 
@@ -163,16 +151,16 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
             return
         try:
             _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
-            print("[local-whisper] Model ready.", file=sys.stderr, flush=True)
+            logger.info("Model ready.")
         except Exception as exc:
-            print(f"[local-whisper] Warm-up failed (non-fatal): {exc}", file=sys.stderr, flush=True)
+            logger.warning("Warm-up failed (non-fatal): %s", exc)
         return
 
     if not _model_is_cached(model):
-        print(
-            f"[local-whisper] Downloading model '{model}' ({_MODEL_SIZES.get(model, 'unknown size')})...",
-            file=sys.stderr,
-            flush=True,
+        logger.info(
+            "Downloading model '%s' (%s)...",
+            model,
+            _MODEL_SIZES.get(model, "unknown size"),
         )
     else:
         _suppress_progress_bars()
@@ -182,9 +170,9 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
     silence = np.zeros(int(0.5 * 16000), dtype="float32")
     try:
         mlx_whisper.transcribe(silence, path_or_hf_repo=model, verbose=False)
-        print("[local-whisper] Model ready.", file=sys.stderr, flush=True)
+        logger.info("Model ready.")
     except Exception as exc:
-        print(f"[local-whisper] Warm-up failed (non-fatal): {exc}", file=sys.stderr, flush=True)
+        logger.warning("Warm-up failed (non-fatal): %s", exc)
 
 
 def run(
@@ -205,7 +193,7 @@ def run(
     if _model_is_cached(model):
         _suppress_progress_bars()
 
-    print(f"Transcribing with {model} ({backend})...", file=sys.stderr, flush=True)
+    logger.info("Transcribing with %s (%s)...", model, backend)
     start = time.perf_counter()
 
     if backend == Backend.PARAKEET:
@@ -214,6 +202,6 @@ def run(
         text = _run_mlx_whisper(audio, model)
 
     elapsed = time.perf_counter() - start
-    print(f"Transcription done in {elapsed:.2f}s", file=sys.stderr, flush=True)
+    logger.info("Transcription done in %.2fs", elapsed)
 
     return text

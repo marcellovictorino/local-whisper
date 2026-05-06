@@ -2,29 +2,29 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-05-05 after Phase 14)
+See: .paul/PROJECT.md (updated 2026-05-06 after Phase 15)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.7 evaluated and closed — SFSpeech benchmarked (57.1% WER, 2.5s) vs distil-whisper (12.2% WER, 1.85s); SFSpeech dropped. Milestone closed as research outcome.
+**Current focus:** v0.8 Architecture Deepening — Phase 15 (Config Module Deepening) complete; config.py now owns all TOML key names and defaults via typed accessors.
 
 ## Current Position
 
-Milestone: v0.7 Sub-second ASR — ❌ Closed (negative result)
-Phase: 14 (SFSpeech Evaluation + Revert) — ✅ Complete
-Plan: 14-01 complete
-Status: Milestone closed — SFSpeech benchmarked (57.1% WER) and dropped; no net code change from v0.6
-Last activity: 2026-05-05 — SFSpeech reverted after benchmark; PR #15 opened
+Milestone: v0.8 Architecture Deepening
+Phase: 16 of 18 (Clipboard Reliability Policy) — Planning
+Plan: 16-01 created, awaiting approval
+Status: PLAN created, ready for APPLY
+Last activity: 2026-05-06 — Created .paul/phases/16-clipboard-reliability/16-01-PLAN.md
 
 Progress:
-- v0.6 Speed: [██████████] 100% (complete)
-- v0.7 Sub-second ASR: [██████████] 100% (2/2 phases)
+- v0.7 Sub-second ASR: [██████████] 100% (complete)
+- v0.8 Architecture Deepening: [██░░░░░░░░] 25% (1/4 phases)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop complete — Phase 14 done, v0.7 milestone complete]
+  ✓        ○        ○     [Plan created, awaiting approval]
 ```
 
 ## Accumulated Context
@@ -57,6 +57,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | CoreML/ANE Python backend deferred | Phase 12 | No pip-installable Python CoreML Whisper package exists as of 2026-05-04 |
 | 2026-05-05: SFSpeechRecognizer viable for v0.7 | Phase 13 | 200–700ms warm latency, zero install, on-device; whisper.cpp spike skipped |
 | SFSpeech dropped after benchmark | Phase 14 post | WER 57.1% vs distil-whisper 12.2%; on-device Siri model quality unacceptable for dictation; privacy dialog also misleading |
+| config.py typed accessor pattern | Phase 15 | get_whisper_model, is_auto_cleanup_enabled, is_auto_adapt_enabled, get_corrections_raw, get_snippets_raw, get_auto_adapt_section — callers own no TOML keys |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
@@ -76,10 +77,10 @@ PLAN ──▶ APPLY ──▶ UNIFY
 
 ## Session Continuity
 
-Last session: 2026-05-05
-Stopped at: v0.7 closed — SFSpeech benchmarked and dropped; implementation reverted
-Next action: Start next milestone or close branch with PR documenting the research outcome
-Resume file: .paul/ROADMAP.md
+Last session: 2026-05-06
+Stopped at: Plan 16-01 created
+Next action: Review and approve plan, then run /paul:apply .paul/phases/16-clipboard-reliability/16-01-PLAN.md
+Resume file: .paul/phases/16-clipboard-reliability/16-01-PLAN.md
 
 ---
 *STATE.md — Updated after every significant action*
