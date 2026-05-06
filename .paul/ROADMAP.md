@@ -59,7 +59,7 @@ Phases: 4 of 4 complete
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
 | 15 | Config Module Deepening | 1 | ✅ Complete | 2026-05-06 |
-| 16 | Clipboard Reliability Policy | 1 | Planning | - |
+| 16 | Clipboard Reliability Policy | 1 | ✅ Complete | 2026-05-06 |
 | 17 | LLM Module Interface | TBD | Not started | - |
 | 18 | Session + Logging Bootstrap | TBD | Not started | - |
 
@@ -390,4 +390,4 @@ Python packages that include C/Swift/Rust code need platform-specific compiled `
 
 ---
 *Roadmap created: 2026-04-27*
-*Last updated: 2026-05-06 — Phase 15 (Config Module Deepening) complete*
+*Last updated: 2026-05-06 — Phase 16 (Clipboard Reliability Policy) complete*

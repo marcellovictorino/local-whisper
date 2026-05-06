@@ -5,26 +5,26 @@
 See: .paul/PROJECT.md (updated 2026-05-06 after Phase 15)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.8 Architecture Deepening — Phase 15 (Config Module Deepening) complete; config.py now owns all TOML key names and defaults via typed accessors.
+**Current focus:** v0.8 Architecture Deepening — Phase 16 (Clipboard Reliability Policy) complete; write_and_paste now has explicit settle_ms + retries contract.
 
 ## Current Position
 
 Milestone: v0.8 Architecture Deepening
-Phase: 16 of 18 (Clipboard Reliability Policy) — Planning
-Plan: 16-01 created, awaiting approval
-Status: PLAN created, ready for APPLY
-Last activity: 2026-05-06 — Created .paul/phases/16-clipboard-reliability/16-01-PLAN.md
+Phase: 17 of 18 (LLM Module Interface)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-06 — Phase 16 complete, transitioned to Phase 17
 
 Progress:
 - v0.7 Sub-second ASR: [██████████] 100% (complete)
-- v0.8 Architecture Deepening: [██░░░░░░░░] 25% (1/4 phases)
+- v0.8 Architecture Deepening: [████░░░░░░] 50% (2/4 phases)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ○        ○     [Plan created, awaiting approval]
+  ✓        ✓        ✓     [Loop complete — Phase 16 done, ready for Phase 17 PLAN]
 ```
 
 ## Accumulated Context
@@ -58,6 +58,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | 2026-05-05: SFSpeechRecognizer viable for v0.7 | Phase 13 | 200–700ms warm latency, zero install, on-device; whisper.cpp spike skipped |
 | SFSpeech dropped after benchmark | Phase 14 post | WER 57.1% vs distil-whisper 12.2%; on-device Siri model quality unacceptable for dictation; privacy dialog also misleading |
 | config.py typed accessor pattern | Phase 15 | get_whisper_model, is_auto_cleanup_enabled, is_auto_adapt_enabled, get_corrections_raw, get_snippets_raw, get_auto_adapt_section — callers own no TOML keys |
+| write_and_paste explicit contract | Phase 16 | settle_ms + retries params; retry loop; defaults 0/0 preserve all existing call sites |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
@@ -78,9 +79,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 ## Session Continuity
 
 Last session: 2026-05-06
-Stopped at: Plan 16-01 created
-Next action: Review and approve plan, then run /paul:apply .paul/phases/16-clipboard-reliability/16-01-PLAN.md
-Resume file: .paul/phases/16-clipboard-reliability/16-01-PLAN.md
+Stopped at: Phase 16 complete, transitioned to Phase 17
+Next action: /paul:plan for Phase 17 (LLM Module Interface)
+Resume file: .paul/ROADMAP.md
 
 ---
 *STATE.md — Updated after every significant action*

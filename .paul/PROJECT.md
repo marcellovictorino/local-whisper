@@ -49,6 +49,7 @@ Mac users can transcribe speech to text instantly with a single keypress, using 
 - [x] `_parakeet_cache` module-level dict: parakeet model loaded once at `warm_up()`, reused per keypress — Phase 12
 - [x] `warm_up()` parakeet branch: now actually pre-loads model (eliminates ~5s from_pretrained() at first keypress) — Phase 12
 
+- [x] `write_and_paste(text, *, settle_ms=0, retries=0)` — explicit paste contract with retry loop and pre-paste settle delay — Phase 16
 - [~] SFSpeechRecognizer (PyObjC) evaluated as sub-second ASR backend — Phase 14 (benchmarked and dropped)
   - Benchmark: 57.1% WER vs 12.2% for distil-whisper; on-device Siri model quality unacceptable for dictation
   - Additional concern: macOS shows "sends voice to Apple" permission dialog regardless of `requiresOnDeviceRecognition=True`
@@ -124,6 +125,8 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 | SFSpeech opt-in via config, not new default | Benchmark comparison needed before promoting to default; distil-whisper-large-v3 remains default | 2026-05-05 | Active |
 | config.py owns all TOML key names and defaults | Callers used raw load_section() with hardcoded key names — typed accessors centralize this; adding/renaming keys = one file | 2026-05-06 | Active |
 | get_whisper_model() returns str \| None | Avoids circular import with transcribe.DEFAULT_MODEL; caller applies fallback with `or DEFAULT_MODEL` | 2026-05-06 | Active |
+| write_and_paste settle_ms fires before first attempt only | Settle is about app focus stabilising, not inter-retry timing; retries don't need settle delay | 2026-05-06 | Active |
+| Inter-retry sleep hardcoded at 100ms | No evidence of needing configurability (YAGNI); one fewer param | 2026-05-06 | Active |
 
 ## Success Metrics
 
@@ -148,4 +151,4 @@ Apple Silicon M-family chips enable fast on-device inference. Using mlx-whisper 
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-05-06 after Phase 15 (Config Module Deepening) — v0.8 in progress*
+*Last updated: 2026-05-06 after Phase 16 (Clipboard Reliability Policy) — v0.8 in progress*

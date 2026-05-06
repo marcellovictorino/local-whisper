@@ -144,7 +144,7 @@ def test_apply_command_calls_api_and_returns_text(monkeypatch):
 
     assert result == "HELLO WORLD"
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
-    assert call_kwargs["model"] == "gpt-4o-mini"
+    assert call_kwargs["model"] == "gpt-5-nano"
     assert "max_completion_tokens" in call_kwargs
     assert "max_tokens" not in call_kwargs
     user_msg = next(m for m in call_kwargs["messages"] if m["role"] == "user")
