@@ -27,7 +27,8 @@ def _load_toml(path: Path = CONFIG_PATH) -> dict:
             return {}
         _toml_cache.clear()
         _toml_cache[key] = data
-    return _toml_cache[key]
+        return data
+    return _toml_cache.get(key, {})
 
 
 def load_section(name: str, path: Path = CONFIG_PATH) -> dict:

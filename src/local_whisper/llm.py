@@ -66,3 +66,34 @@ def transform(
     except Exception as exc:
         logger.error("LLM call failed: %s", exc)
         return fallback
+
+
+def apply_voice_command(text: str, instruction: str) -> str:
+    """Apply a spoken instruction to selected text via LLM.
+
+    Args:
+        text: Selected text to transform.
+        instruction: Voice command describing the transformation.
+
+    Returns:
+        Transformed text, or instruction unchanged if API unavailable.
+    """
+    system = (
+        "Apply the instruction to the provided text. Return only the transformed text — no explanation, no preamble."
+    )
+    user = f"{instruction}\n\n{text}"
+    return transform(system, user, default_model="gpt-5-nano", fallback=instruction)
+
+
+def reshape_for_app(text: str, prompt: str) -> str:
+    """Reshape transcribed text for a specific app context via LLM.
+
+    Args:
+        text: Transcribed text to reshape.
+        prompt: App-specific formatting instruction (from config or built-in presets).
+
+    Returns:
+        Reshaped text, or original text unchanged if API unavailable.
+    """
+    system = f"{prompt} Return only the reformatted text — no explanation, no preamble."
+    return transform(system, text, default_model="gpt-5-nano", fallback=text, escape=True)

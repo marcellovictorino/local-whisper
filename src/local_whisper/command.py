@@ -79,8 +79,4 @@ def apply_command(selected_text: str, voice_command: str) -> str:
     Returns:
         Transformed text, or voice_command if API is unavailable.
     """
-    system = (
-        "Apply the instruction to the provided text. Return only the transformed text — no explanation, no preamble."
-    )
-    user = f"{voice_command}\n\n{selected_text}"
-    return llm.transform(system, user, default_model="gpt-5-nano", fallback=voice_command)
+    return llm.apply_voice_command(selected_text, voice_command)

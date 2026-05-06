@@ -125,5 +125,4 @@ def apply(text: str, app_name: str = "", path: Path = config.CONFIG_PATH) -> str
     if prompt is None:
         return text
 
-    system = f"{prompt} Return only the reformatted text — no explanation, no preamble."
-    return llm.transform(system, text, default_model="gpt-5-nano", fallback=text, escape=True)
+    return llm.reshape_for_app(text, prompt)

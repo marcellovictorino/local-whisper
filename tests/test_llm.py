@@ -219,3 +219,47 @@ def test_returns_fallback_when_response_content_is_none(monkeypatch: pytest.Monk
         from local_whisper.llm import transform
 
         assert transform("sys", "user", default_model="m", fallback="FALLBACK") == "FALLBACK"
+
+
+# --- intention-level functions ---
+
+
+def test_apply_voice_command_sends_correct_messages(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
+    mock_openai, mock_client = _mock_openai("result")
+    with patch("local_whisper.llm.openai", mock_openai):
+        from local_whisper.llm import apply_voice_command
+
+        result = apply_voice_command("selected text", "make uppercase")
+    assert result == "result"
+    msgs = mock_client.chat.completions.create.call_args.kwargs["messages"]
+    assert msgs[1]["content"] == "make uppercase\n\nselected text"
+
+
+def test_apply_voice_command_fallback_is_instruction(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    from local_whisper.llm import apply_voice_command
+
+    assert apply_voice_command("some text", "translate to French") == "translate to French"
+
+
+def test_reshape_for_app_escapes_text_and_uses_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
+    mock_openai, mock_client = _mock_openai("reshaped")
+    with patch("local_whisper.llm.openai", mock_openai):
+        from local_whisper.llm import reshape_for_app
+
+        result = reshape_for_app("hello <world>", "Casual Slack message.")
+    assert result == "reshaped"
+    call = mock_client.chat.completions.create.call_args.kwargs
+    assert "Casual Slack message." in call["messages"][0]["content"]
+    assert "&lt;world&gt;" in call["messages"][1]["content"]
+
+
+def test_reshape_for_app_fallback_is_original_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    from local_whisper.llm import reshape_for_app
+
+    assert reshape_for_app("original text", "some prompt") == "original text"

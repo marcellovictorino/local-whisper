@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 import tempfile
@@ -130,7 +131,8 @@ def _run_parakeet(audio: np.ndarray, model: str) -> str:
         result = parakeet_model.transcribe(tmp_path)
     finally:
         if tmp_path:
-            Path(tmp_path).unlink(missing_ok=True)
+            with contextlib.suppress(OSError):
+                Path(tmp_path).unlink(missing_ok=True)
     return result.text.strip()
 
 
