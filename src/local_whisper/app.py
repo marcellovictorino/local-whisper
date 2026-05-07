@@ -28,6 +28,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("local_whisper")
 
+_MIN_RECORD_DURATION_S = 0.3
+_SILENCE_PEAK_THRESHOLD = 0.01
+
 
 class _SessionMode(StrEnum):
     DICTATION = "dictation"
@@ -133,6 +136,16 @@ class App:
             if audio_data.size == 0:
                 logger.info("No audio captured.")
                 return
+            if audio_data.size / 16000 < _MIN_RECORD_DURATION_S:
+                logger.info("Skipping: recording too short.")
+                return
+            if np.max(np.abs(audio_data)) < _SILENCE_PEAK_THRESHOLD:
+                logger.info("Skipping: silence detected.")
+                return
+            if not transcribe.wait_warmed(timeout=0):
+                logger.info("Waiting for model warm-up...")
+                if not transcribe.wait_warmed(timeout=60):
+                    logger.warning("Warm-up timed out after 60s; proceeding anyway.")
             text = transcribe.run(audio_data, model=self._model, backend=self._backend)
             if not text:
                 logger.info("Empty transcription.")
