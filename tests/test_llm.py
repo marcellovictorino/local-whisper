@@ -123,13 +123,10 @@ def test_transform_model_selection(monkeypatch: pytest.MonkeyPatch, model_env, d
 
 
 @pytest.mark.parametrize(
-    "base_url,expected_in_kwargs",
-    [
-        ("https://api.example.com/v1/", True),
-        (None, False),
-    ],
+    "base_url",
+    ["https://api.example.com/v1/", None],
 )
-def test_transform_base_url(monkeypatch: pytest.MonkeyPatch, base_url, expected_in_kwargs) -> None:
+def test_transform_base_url(monkeypatch: pytest.MonkeyPatch, base_url) -> None:
     monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
     monkeypatch.delenv("LOCAL_WHISPER_OPENAI_BASE_URL", raising=False)
     if base_url:
@@ -139,8 +136,7 @@ def test_transform_base_url(monkeypatch: pytest.MonkeyPatch, base_url, expected_
         from local_whisper.llm import transform
 
         transform("sys", "user", default_model="m", fallback="F")
-    kwargs = mock_openai.OpenAI.call_args.kwargs
-    assert ("base_url" in kwargs) is expected_in_kwargs
+    assert mock_openai.OpenAI.call_args.kwargs["base_url"] == base_url
 
 
 # --- is_available() ---

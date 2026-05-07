@@ -29,14 +29,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger("local_whisper")
 
 
-class _Mode(StrEnum):
+class _SessionMode(StrEnum):
     DICTATION = "dictation"
     COMMAND = "command"
 
 
 @dataclass
 class _Session:
-    mode: _Mode
+    mode: _SessionMode
     stop_event: threading.Event = field(default_factory=threading.Event)
     selection: str = ""
 
@@ -104,11 +104,11 @@ class App:
         selection = command.get_selection()
 
         if selection:
-            session = _Session(mode=_Mode.COMMAND, selection=selection)
+            session = _Session(mode=_SessionMode.COMMAND, selection=selection)
             if self._overlay:
                 self._overlay.show_command()
         else:
-            session = _Session(mode=_Mode.DICTATION)
+            session = _Session(mode=_SessionMode.DICTATION)
             if self._overlay:
                 if auto_adapt.is_active(self._active_app):
                     self._overlay.show_adapt()
@@ -139,13 +139,13 @@ class App:
                 return
 
             match session.mode:
-                case _Mode.DICTATION:
+                case _SessionMode.DICTATION:
                     text = auto_cleanup.apply(text)
                     text = auto_adapt.apply(text, self._active_app)
                     text = corrections.apply(text, self._corrections)
                     text = snippets.expand(text)
                     clipboard.write_and_paste(text)
-                case _Mode.COMMAND:
+                case _SessionMode.COMMAND:
                     result = llm.apply_voice_command(session.selection, text)
                     clipboard.write_and_paste(result)
         except Exception as exc:

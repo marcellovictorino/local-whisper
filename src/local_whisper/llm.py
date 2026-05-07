@@ -33,7 +33,7 @@ def is_available() -> bool:
 def _get_client(api_key: str, base_url: str | None) -> openai.OpenAI:  # type: ignore[name-defined]
     key = (api_key, base_url)
     if key not in _client_cache:
-        _client_cache[key] = openai.OpenAI(api_key=api_key, **({"base_url": base_url} if base_url else {}))
+        _client_cache[key] = openai.OpenAI(api_key=api_key, base_url=base_url)
     return _client_cache[key]
 
 
