@@ -1,6 +1,9 @@
 """Tests for snippets.expand — pure filesystem, no side effects."""
 
+import os
 from pathlib import Path
+
+import pytest
 
 from local_whisper import snippets
 
@@ -11,61 +14,71 @@ def _write_config(tmp_path: Path, content: str) -> Path:
     return config
 
 
-def test_no_config_file_returns_text_unchanged(tmp_path: Path) -> None:
-    result = snippets.expand("hello world", config_path=tmp_path / "snippets.toml")
-    assert result == "hello world"
+# --- no-op cases: text returned unchanged ---
 
 
-def test_empty_snippets_section_returns_text_unchanged(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, "[snippets]\n")
-    result = snippets.expand("hello world", config_path=config)
-    assert result == "hello world"
+@pytest.mark.parametrize(
+    "setup",
+    ["missing", "empty_section", "no_match", "malformed_toml", "snippets_not_table"],
+)
+def test_expand_returns_unchanged_on_no_op(tmp_path: Path, setup: str) -> None:
+    text = "hello world"
+    if setup == "missing":
+        config_path = tmp_path / "snippets.toml"
+    elif setup == "empty_section":
+        config_path = _write_config(tmp_path, "[snippets]\n")
+    elif setup == "no_match":
+        config_path = _write_config(tmp_path, '[snippets]\nbrb = "be right back"\n')
+    elif setup == "malformed_toml":
+        config_path = _write_config(tmp_path, "not valid toml = = =")
+    else:  # snippets_not_table
+        config_path = _write_config(tmp_path, 'snippets = "not a table"\n')
+    assert snippets.expand(text, config_path=config_path) == text
 
 
-def test_exact_key_expands(tmp_path: Path) -> None:
+def test_expand_returns_unchanged_on_unreadable_file(tmp_path: Path) -> None:
+    config = _write_config(tmp_path, '[snippets]\nbrb = "be right back"\n')
+    os.chmod(config, 0o000)
+    try:
+        assert snippets.expand("brb", config_path=config) == "brb"
+    finally:
+        os.chmod(config, 0o644)
+
+
+# --- expansion cases ---
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("send to my email", "send to me@example.com"),
+        ("reach me at my email please", "reach me at me@example.com please"),
+    ],
+)
+def test_expand_key_inline(tmp_path: Path, text: str, expected: str) -> None:
     config = _write_config(tmp_path, '[snippets]\n"my email" = "me@example.com"\n')
-    result = snippets.expand("send to my email", config_path=config)
-    assert result == "send to me@example.com"
-
-
-def test_key_expands_inline(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, '[snippets]\n"my email" = "me@example.com"\n')
-    result = snippets.expand("reach me at my email please", config_path=config)
-    assert result == "reach me at me@example.com please"
+    assert snippets.expand(text, config_path=config) == expected
 
 
 def test_case_insensitive_match(tmp_path: Path) -> None:
-    # uppercase key in config, mixed-case text — both must expand
     config = _write_config(tmp_path, '[snippets]\nBRB = "be right back"\n')
     assert snippets.expand("brb", config_path=config) == "be right back"
     assert snippets.expand("BRB", config_path=config) == "be right back"
 
 
 def test_multiple_snippets_expanded(tmp_path: Path) -> None:
-    config = _write_config(
-        tmp_path,
-        '[snippets]\nbrb = "be right back"\nomw = "on my way"\n',
-    )
-    result = snippets.expand("brb, omw", config_path=config)
-    assert result == "be right back, on my way"
-
-
-def test_no_match_returns_unchanged(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, '[snippets]\nbrb = "be right back"\n')
-    result = snippets.expand("hello world", config_path=config)
-    assert result == "hello world"
+    config = _write_config(tmp_path, '[snippets]\nbrb = "be right back"\nomw = "on my way"\n')
+    assert snippets.expand("brb, omw", config_path=config) == "be right back, on my way"
 
 
 def test_repeated_key_in_text_all_expanded(tmp_path: Path) -> None:
     config = _write_config(tmp_path, '[snippets]\nbrb = "be right back"\n')
-    result = snippets.expand("brb and then brb again", config_path=config)
-    assert result == "be right back and then be right back again"
+    assert snippets.expand("brb and then brb again", config_path=config) == "be right back and then be right back again"
 
 
 def test_expansion_with_special_regex_chars_in_key(tmp_path: Path) -> None:
     config = _write_config(tmp_path, '[snippets]\n"c++" = "C plus plus"\n')
-    result = snippets.expand("I love c++", config_path=config)
-    assert result == "I love C plus plus"
+    assert snippets.expand("I love c++", config_path=config) == "I love C plus plus"
 
 
 def test_longer_key_wins_over_shorter_prefix(tmp_path: Path) -> None:
@@ -73,58 +86,20 @@ def test_longer_key_wins_over_shorter_prefix(tmp_path: Path) -> None:
         tmp_path,
         '[snippets]\n"my email" = "short@x.com"\n"my email address" = "full@example.com"\n',
     )
-    result = snippets.expand("send to my email address", config_path=config)
-    assert result == "send to full@example.com"
+    assert snippets.expand("send to my email address", config_path=config) == "send to full@example.com"
 
 
 def test_no_cascade_between_snippets(tmp_path: Path) -> None:
-    # earlier expansion must not feed into a later snippet key
-    config = _write_config(
-        tmp_path,
-        '[snippets]\nbrb = "be right back"\n"right back" = "soon"\n',
-    )
-    result = snippets.expand("brb", config_path=config)
-    assert result == "be right back"
-
-
-def test_malformed_toml_returns_text_unchanged(tmp_path: Path) -> None:
-    config = tmp_path / "snippets.toml"
-    config.write_text("not valid toml = = =", encoding="utf-8")
-    result = snippets.expand("hello world", config_path=config)
-    assert result == "hello world"
-
-
-def test_unreadable_file_returns_text_unchanged(tmp_path: Path) -> None:
-    import os
-
-    config = _write_config(tmp_path, '[snippets]\nbrb = "be right back"\n')
-    os.chmod(config, 0o000)
-    try:
-        result = snippets.expand("brb", config_path=config)
-        assert result == "brb"
-    finally:
-        os.chmod(config, 0o644)
+    config = _write_config(tmp_path, '[snippets]\nbrb = "be right back"\n"right back" = "soon"\n')
+    assert snippets.expand("brb", config_path=config) == "be right back"
 
 
 def test_non_string_values_are_ignored(tmp_path: Path) -> None:
     config = _write_config(tmp_path, '[snippets]\nbrb = 42\nomw = "on my way"\n')
-    result = snippets.expand("brb omw", config_path=config)
-    assert result == "brb on my way"
+    assert snippets.expand("brb omw", config_path=config) == "brb on my way"
 
 
-def test_snippets_not_a_table_returns_text_unchanged(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, 'snippets = "not a table"\n')
-    result = snippets.expand("hello world", config_path=config)
-    assert result == "hello world"
-
-
-def test_empty_key_is_ignored(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, '[snippets]\n"" = "boom"\nomw = "on my way"\n')
-    result = snippets.expand("omw", config_path=config)
-    assert result == "on my way"
-
-
-def test_whitespace_only_key_is_ignored(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, '[snippets]\n"   " = "boom"\nomw = "on my way"\n')
-    result = snippets.expand("omw", config_path=config)
-    assert result == "on my way"
+@pytest.mark.parametrize("key", ['""', '"   "'])
+def test_blank_key_is_ignored(tmp_path: Path, key: str) -> None:
+    config = _write_config(tmp_path, f'[snippets]\n{key} = "boom"\nomw = "on my way"\n')
+    assert snippets.expand("omw", config_path=config) == "on my way"

@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 import re
-import sys
-import tomllib
 from pathlib import Path
 
-_CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
+from local_whisper import config
+
+logger = logging.getLogger("local_whisper")
 
 
-def load(path: Path = _CONFIG_PATH) -> dict[str, str]:
+def load(path: Path = config.CONFIG_PATH) -> dict[str, str]:
     """Load corrections from TOML config file.
 
     Returns empty dict if file does not exist.
@@ -21,14 +22,11 @@ def load(path: Path = _CONFIG_PATH) -> dict[str, str]:
     Returns:
         Dict mapping misheard words (lowercased) to correct replacements.
     """
-    if not path.exists():
-        return {}
     try:
-        with path.open("rb") as f:
-            data = tomllib.load(f)
-        return {k.lower(): v for k, v in data.get("corrections", {}).items()}
+        section = config.get_corrections_raw(path)
+        return {k.lower(): v for k, v in section.items() if isinstance(v, str)}
     except Exception as exc:
-        print(f"[local-whisper] Failed to load corrections: {exc}", file=sys.stderr)
+        logger.error("Failed to load corrections: %s", exc)
         return {}
 
 

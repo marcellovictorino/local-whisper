@@ -67,7 +67,7 @@ class _Cmd(StrEnum):
     AMP = "amp"
 
 
-class _Mode(StrEnum):
+class _BarMode(StrEnum):
     DICTATION = "dictation"
     COMMAND = "command"
     ADAPT = "adapt"
@@ -87,7 +87,7 @@ class _OverlayController(NSObject):
         self._bars: list = []
         self._amplitude: float = 0.0
         self._active: bool = False
-        self._mode: _Mode = _Mode.DICTATION
+        self._mode: _BarMode = _BarMode.DICTATION
         self._was_idle: bool = True
         self._last_active_t: float = 0.0  # monotonic time of last above-threshold frame
         self._last_normalized: float = 0.0  # normalized amplitude at last active frame
@@ -97,33 +97,33 @@ class _OverlayController(NSObject):
         try:
             while True:
                 cmd = self._queue.get_nowait()
-                if cmd == _Cmd.SHOW:
-                    self._active = True
-                    self._mode = _Mode.DICTATION
-                    self._fade_in()
-                elif cmd == _Cmd.SHOW_COMMAND:
-                    self._active = True
-                    self._mode = _Mode.COMMAND
-                    self._fade_in()
-                elif cmd == _Cmd.SHOW_ADAPT:
-                    self._active = True
-                    self._mode = _Mode.ADAPT
-                    self._fade_in()
-                elif cmd == _Cmd.PROCESSING:
-                    # Recording stopped — switch to processing animation without hiding.
-                    self._mode = _Mode.PROCESSING
-                    self._amplitude = 0.0
-                    self._was_idle = True
-                elif cmd == _Cmd.HIDE:
-                    self._active = False
-                    self._amplitude = 0.0
-                    self._fade_out()
-                elif cmd == _Cmd.QUIT:
-                    NSApplication.sharedApplication().terminate_(None)
-                    return
-                elif isinstance(cmd, tuple) and cmd[0] == _Cmd.AMP:
-                    raw = cmd[1]
-                    self._amplitude = _AMP_EMA_ALPHA * raw + (1 - _AMP_EMA_ALPHA) * self._amplitude
+                match cmd:
+                    case _Cmd.SHOW:
+                        self._active = True
+                        self._mode = _BarMode.DICTATION
+                        self._fade_in()
+                    case _Cmd.SHOW_COMMAND:
+                        self._active = True
+                        self._mode = _BarMode.COMMAND
+                        self._fade_in()
+                    case _Cmd.SHOW_ADAPT:
+                        self._active = True
+                        self._mode = _BarMode.ADAPT
+                        self._fade_in()
+                    case _Cmd.PROCESSING:
+                        # Recording stopped — switch to processing animation without hiding.
+                        self._mode = _BarMode.PROCESSING
+                        self._amplitude = 0.0
+                        self._was_idle = True
+                    case _Cmd.HIDE:
+                        self._active = False
+                        self._amplitude = 0.0
+                        self._fade_out()
+                    case _Cmd.QUIT:
+                        NSApplication.sharedApplication().terminate_(None)
+                        return
+                    case (_Cmd.AMP, float() as raw):
+                        self._amplitude = _AMP_EMA_ALPHA * raw + (1 - _AMP_EMA_ALPHA) * self._amplitude
         except queue.Empty:
             pass
         self._update_bars()
@@ -185,12 +185,13 @@ class _OverlayController(NSObject):
             self._build_panel()
         if self._panel is None:
             return
-        if self._mode == _Mode.COMMAND:
-            color = NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.34, 1.0)  # amber
-        elif self._mode == _Mode.ADAPT:
-            color = NSColor.colorWithRed_green_blue_alpha_(0.0, 0.85, 1.0, 1.0)  # electric cyan
-        else:
-            color = NSColor.whiteColor()
+        match self._mode:
+            case _BarMode.COMMAND:
+                color = NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.34, 1.0)  # amber
+            case _BarMode.ADAPT:
+                color = NSColor.colorWithRed_green_blue_alpha_(0.0, 0.85, 1.0, 1.0)  # electric cyan
+            case _:
+                color = NSColor.whiteColor()
         cgcolor = color.CGColor()
         for bar in self._bars:
             bar.setBackgroundColor_(cgcolor)
@@ -210,6 +211,43 @@ class _OverlayController(NSObject):
         self._panel.orderOut_(None)
 
     @objc.python_method
+    def _render_processing(self, t: float) -> None:
+        for i, bar in enumerate(self._bars):
+            phase = _BAR_PHASES[i]
+            scale = 0.18 + 0.22 * abs(math.sin(t * 4.5 - phase))
+            bar_h = max(_MIN_BAR_H, scale * _MAX_BAR_H)
+            bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - bar_h) / 2), (_BAR_W, bar_h)))
+
+    @objc.python_method
+    def _render_waveform(self, t: float) -> None:
+        amp = self._amplitude
+        if amp >= _IDLE_THRESHOLD:
+            self._last_active_t = t
+            self._was_idle = False
+            normalized = min(1.0, math.sqrt(amp * 20.0))
+            self._last_normalized = normalized
+            for i, bar in enumerate(self._bars):
+                phase = _BAR_PHASES[i]
+                osc = 0.65 + 0.35 * math.sin(t * 6.0 - phase)
+                bar_h = max(_MIN_BAR_H, normalized * osc * _MAX_BAR_H)
+                bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - bar_h) / 2), (_BAR_W, bar_h)))
+            return
+
+        hold_elapsed = t - self._last_active_t
+        if hold_elapsed < _HOLD_SECS:
+            decay = 1.0 - hold_elapsed / _HOLD_SECS
+            normalized = self._last_normalized * decay
+            for i, bar in enumerate(self._bars):
+                phase = _BAR_PHASES[i]
+                osc = 0.65 + 0.35 * math.sin(t * 6.0 - phase)
+                bar_h = max(_MIN_BAR_H, normalized * osc * _MAX_BAR_H)
+                bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - bar_h) / 2), (_BAR_W, bar_h)))
+        elif not self._was_idle:
+            for i, bar in enumerate(self._bars):
+                bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - _MIN_BAR_H) / 2), (_BAR_W, _MIN_BAR_H)))
+            self._was_idle = True
+
+    @objc.python_method
     def _update_bars(self) -> None:
         if not self._bars or not self._active:
             return
@@ -219,49 +257,14 @@ class _OverlayController(NSObject):
             self._active = False
             return
         t = time.monotonic()
-        amp = self._amplitude
         CT = self._CATransaction
         CT.begin()
         CT.setDisableActions_(True)
         try:
-            if self._mode == _Mode.PROCESSING:
-                # Transcription in progress: small bars, slow left-to-right wave.
-                # Max ~45% of pill height — clearly smaller than active recording.
-                for i, bar in enumerate(self._bars):
-                    phase = _BAR_PHASES[i]
-                    scale = 0.18 + 0.22 * abs(math.sin(t * 4.5 - phase))
-                    bar_h = max(_MIN_BAR_H, scale * _MAX_BAR_H)
-                    by = (_PILL_H - bar_h) / 2
-                    bar.setFrame_(((_BAR_X_POSITIONS[i], by), (_BAR_W, bar_h)))
-            elif amp >= _IDLE_THRESHOLD:
-                # Speaking: track time, drive bars by amplitude.
-                self._last_active_t = t
-                self._was_idle = False
-                normalized = min(1.0, math.sqrt(amp * 20.0))
-                self._last_normalized = normalized
-                for i, bar in enumerate(self._bars):
-                    phase = _BAR_PHASES[i]
-                    osc = 0.65 + 0.35 * math.sin(t * 6.0 - phase)
-                    bar_h = max(_MIN_BAR_H, normalized * osc * _MAX_BAR_H)
-                    by = (_PILL_H - bar_h) / 2
-                    bar.setFrame_(((_BAR_X_POSITIONS[i], by), (_BAR_W, bar_h)))
+            if self._mode == _BarMode.PROCESSING:
+                self._render_processing(t)
             else:
-                # Silence: decay from last active level over _HOLD_SECS then snap to static.
-                hold_elapsed = t - self._last_active_t
-                if hold_elapsed < _HOLD_SECS:
-                    decay = 1.0 - hold_elapsed / _HOLD_SECS
-                    normalized = self._last_normalized * decay
-                    for i, bar in enumerate(self._bars):
-                        phase = _BAR_PHASES[i]
-                        osc = 0.65 + 0.35 * math.sin(t * 6.0 - phase)
-                        bar_h = max(_MIN_BAR_H, normalized * osc * _MAX_BAR_H)
-                        by = (_PILL_H - bar_h) / 2
-                        bar.setFrame_(((_BAR_X_POSITIONS[i], by), (_BAR_W, bar_h)))
-                elif not self._was_idle:
-                    for i, bar in enumerate(self._bars):
-                        by = (_PILL_H - _MIN_BAR_H) / 2
-                        bar.setFrame_(((_BAR_X_POSITIONS[i], by), (_BAR_W, _MIN_BAR_H)))
-                    self._was_idle = True
+                self._render_waveform(t)
         finally:
             CT.commit()
 

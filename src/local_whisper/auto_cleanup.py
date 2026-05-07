@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import re
-import sys
-import tomllib
 from pathlib import Path
 
-_CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
+from local_whisper import config
+
+logger = logging.getLogger("local_whisper")
 
 _FILLER_PATTERNS = [
     r"\byou\s+know\b",
@@ -22,7 +23,7 @@ _REPETITION_RE = re.compile(r"\b(\w+)\b(\s+\1)+\b", re.IGNORECASE)
 _MULTI_SPACE_RE = re.compile(r" {2,}")
 
 
-def _is_enabled(path: Path = _CONFIG_PATH) -> bool:
+def _is_enabled(path: Path = config.CONFIG_PATH) -> bool:
     """Return True unless [auto_cleanup] enabled = false in config.
 
     Args:
@@ -31,18 +32,10 @@ def _is_enabled(path: Path = _CONFIG_PATH) -> bool:
     Returns:
         True if auto-cleanup is enabled (default when file or section absent).
     """
-    if not path.exists():
-        return True
-    try:
-        with path.open("rb") as f:
-            data = tomllib.load(f)
-        return data.get("auto_cleanup", {}).get("enabled", True)
-    except Exception as exc:
-        print(f"[local-whisper] auto_cleanup config error: {exc}", file=sys.stderr)
-        return True
+    return config.is_auto_cleanup_enabled(path)
 
 
-def apply(text: str, path: Path = _CONFIG_PATH) -> str:
+def apply(text: str, path: Path = config.CONFIG_PATH) -> str:
     """Remove filler words and collapse immediate word repetitions.
 
     Fillers stripped: um, uh, er, ah, hmm, you know.
@@ -64,5 +57,5 @@ def apply(text: str, path: Path = _CONFIG_PATH) -> str:
             text = re.sub(pattern, "", text, flags=re.IGNORECASE)
         text = _MULTI_SPACE_RE.sub(" ", text).strip()
     except Exception as exc:
-        print(f"[local-whisper] auto_cleanup failed: {exc}", file=sys.stderr)
+        logger.error("auto_cleanup failed: %s", exc)
     return text

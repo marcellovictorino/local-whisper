@@ -8,6 +8,24 @@ import numpy as np
 from local_whisper.audio import record_until_event
 
 
+class FakeInputStream:
+    """Minimal sounddevice.InputStream stub that delivers one chunk and sets the stop event."""
+
+    def __init__(self, chunk: np.ndarray, stop: threading.Event, **kwargs: object) -> None:
+        self._callback = kwargs["callback"]
+        self._chunk = chunk
+        self._stop = stop
+
+    def __enter__(self) -> "FakeInputStream":
+        frames = len(self._chunk)
+        self._callback(self._chunk, frames, None, None)
+        self._stop.set()
+        return self
+
+    def __exit__(self, *args: object) -> bool:
+        return False
+
+
 def test_returns_empty_array_when_no_audio_captured() -> None:
     stop = threading.Event()
     stop.set()  # stops immediately
@@ -28,20 +46,7 @@ def test_returns_1d_float32_array() -> None:
     stop = threading.Event()
     chunk = np.ones((1024, 1), dtype="float32") * 0.5
 
-    class FakeInputStream:
-        def __init__(self, **kwargs: object) -> None:
-            self._callback = kwargs["callback"]
-
-        def __enter__(self) -> "FakeInputStream":
-            # Deliver one chunk then unblock wait()
-            self._callback(chunk, 1024, None, None)
-            stop.set()
-            return self
-
-        def __exit__(self, *args: object) -> bool:
-            return False
-
-    with patch("sounddevice.InputStream", FakeInputStream):
+    with patch("sounddevice.InputStream", lambda **kw: FakeInputStream(chunk, stop, **kw)):
         result = record_until_event(stop)
 
     assert result.ndim == 1
@@ -52,20 +57,8 @@ def test_on_amplitude_called_with_rms_per_chunk() -> None:
     stop = threading.Event()
     chunk = np.ones((512, 1), dtype="float32") * 0.5
 
-    class FakeInputStream:
-        def __init__(self, **kwargs: object) -> None:
-            self._callback = kwargs["callback"]
-
-        def __enter__(self) -> "FakeInputStream":
-            self._callback(chunk, 512, None, None)
-            stop.set()
-            return self
-
-        def __exit__(self, *args: object) -> bool:
-            return False
-
     amplitudes: list[float] = []
-    with patch("sounddevice.InputStream", FakeInputStream):
+    with patch("sounddevice.InputStream", lambda **kw: FakeInputStream(chunk, stop, **kw)):
         result = record_until_event(stop, on_amplitude=amplitudes.append)
 
     assert len(amplitudes) == 1

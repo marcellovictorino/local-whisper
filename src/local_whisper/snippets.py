@@ -12,12 +12,13 @@ Longer keys take precedence over shorter ones on overlap.
 
 from __future__ import annotations
 
+import logging
 import re
-import sys
-import tomllib
 from pathlib import Path
 
-_CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
+from local_whisper import config
+
+logger = logging.getLogger("local_whisper")
 
 
 def _load(path: Path) -> dict[str, str]:
@@ -30,52 +31,28 @@ def _load(path: Path) -> dict[str, str]:
         Mapping of shorthand → expansion (keys casefolded), or empty dict if
         file absent or malformed.
     """
-    try:
-        with open(path, "rb") as f:
-            data = tomllib.load(f)
-    except FileNotFoundError:
-        return {}
-    except OSError as exc:
-        print(f"[local-whisper] Cannot read snippets config: {exc}", file=sys.stderr, flush=True)
-        return {}
-    except tomllib.TOMLDecodeError as exc:
-        print(f"[local-whisper] Snippets config parse error: {exc}", file=sys.stderr, flush=True)
-        return {}
+    raw = config.get_snippets_raw(path)
 
-    raw = data.get("snippets", {})
     if not isinstance(raw, dict):
-        print(
-            "[local-whisper] Snippets config: 'snippets' must be a table; ignoring",
-            file=sys.stderr,
-            flush=True,
-        )
+        logger.warning("Snippets config: 'snippets' must be a table; ignoring")
         return {}
 
     invalid = [k for k, v in raw.items() if not isinstance(v, str)]
     if invalid:
-        print(
-            f"[local-whisper] Snippets config: non-string values ignored: {invalid!r}",
-            file=sys.stderr,
-            flush=True,
-        )
+        logger.warning("Snippets config: non-string values ignored: %r", invalid)
 
-    # Filter empty/whitespace-only keys — they match everywhere and blow up output.
     result: dict[str, str] = {}
     for k, v in raw.items():
         if not isinstance(v, str):
             continue
         if not k.strip():
-            print(
-                f"[local-whisper] Snippets config: empty/whitespace key ignored: {k!r}",
-                file=sys.stderr,
-                flush=True,
-            )
+            logger.warning("Snippets config: empty/whitespace key ignored: %r", k)
             continue
         result[k.casefold()] = v
     return result
 
 
-def expand(text: str, config_path: Path = _CONFIG_PATH) -> str:
+def expand(text: str, config_path: Path = config.CONFIG_PATH) -> str:
     """Replace snippet keywords in text with their predefined expansions.
 
     Applies all substitutions in a single pass — earlier replacements cannot
@@ -84,7 +61,7 @@ def expand(text: str, config_path: Path = _CONFIG_PATH) -> str:
     Args:
         text: Transcribed text to process.
         config_path: Path to snippets TOML config. Defaults to
-            ~/.config/local-whisper/snippets.toml.
+            ~/.config/local-whisper/config.toml.
 
     Returns:
         Text with all matching snippet keys replaced by their values.
@@ -107,14 +84,10 @@ def expand(text: str, config_path: Path = _CONFIG_PATH) -> str:
             return mapping[key]
 
         expanded = pattern.sub(_replace, text)
-    except Exception as exc:  # noqa: BLE001
-        print(f"[local-whisper] Snippet expansion failed: {exc}", file=sys.stderr, flush=True)
+    except Exception as exc:
+        logger.error("Snippet expansion failed: %s", exc)
         return text
 
     if matched_keys:
-        print(
-            f"[local-whisper] Snippet expanded using keys: {matched_keys!r}",
-            file=sys.stderr,
-            flush=True,
-        )
+        logger.info("Snippet expanded using keys: %r", matched_keys)
     return expanded

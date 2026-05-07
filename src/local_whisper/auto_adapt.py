@@ -2,27 +2,14 @@
 
 from __future__ import annotations
 
-import html
-import os
-import sys
-import tomllib
+import logging
 from pathlib import Path
 
-try:
-    from AppKit import NSWorkspace as _NSWorkspace
+from local_whisper import config, llm
+from local_whisper._macos import HAS_APPKIT
+from local_whisper._macos import NSWorkspace as _NSWorkspace
 
-    _HAS_APPKIT = True
-except Exception:
-    _NSWorkspace = None
-    _HAS_APPKIT = False
-
-try:
-    import openai
-except ImportError:
-    openai = None  # type: ignore[assignment]
-
-
-_CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
+logger = logging.getLogger("local_whisper")
 
 _EMAIL_PROMPT = "Professional email. Fix grammar, clear paragraphs, formal tone."
 
@@ -43,7 +30,7 @@ def get_active_app() -> str:
     Returns:
         App name, or empty string if AppKit unavailable or on any error.
     """
-    if not _HAS_APPKIT:
+    if not HAS_APPKIT:
         return ""
     try:
         app = _NSWorkspace.sharedWorkspace().frontmostApplication()
@@ -77,7 +64,7 @@ def _get_prompt(app_name: str, section: dict) -> str | None:
     return _BUILTIN_PROMPTS.get(app_name)
 
 
-def is_active(app_name: str, path: Path = _CONFIG_PATH) -> bool:
+def is_active(app_name: str, path: Path = config.CONFIG_PATH) -> bool:
     """Return True if auto-adapt will reshape output for this app.
 
     Reads config at call time. Used to pick overlay colour at press time.
@@ -92,26 +79,14 @@ def is_active(app_name: str, path: Path = _CONFIG_PATH) -> bool:
     """
     if not app_name:
         return False
-    if openai is None:
+    if not llm.is_available():
         return False
-    api_key = os.environ.get("LOCAL_WHISPER_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
-    if not api_key:
+    if not config.is_auto_adapt_enabled(path):
         return False
-    try:
-        with path.open("rb") as f:
-            data = tomllib.load(f)
-    except FileNotFoundError:
-        return False
-    except Exception as exc:
-        print(f"[local-whisper] auto_adapt config error: {exc}", file=sys.stderr)
-        return False
-    section = data.get("auto_adapt", {})
-    if not isinstance(section, dict) or not section.get("enabled", False):
-        return False
-    return _get_prompt(app_name, section) is not None
+    return _get_prompt(app_name, config.get_auto_adapt_section(path)) is not None
 
 
-def apply(text: str, app_name: str = "", path: Path = _CONFIG_PATH) -> str:
+def apply(text: str, app_name: str = "", path: Path = config.CONFIG_PATH) -> str:
     """Reshape transcription via LLM using per-app prompt if configured.
 
     Opt-in: does nothing unless [auto_adapt] enabled = true in config.
@@ -128,60 +103,11 @@ def apply(text: str, app_name: str = "", path: Path = _CONFIG_PATH) -> str:
     if not app_name:
         return text
 
-    try:
-        with path.open("rb") as f:
-            data = tomllib.load(f)
-    except FileNotFoundError:
-        return text
-    except Exception as exc:
-        print(f"[local-whisper] auto_adapt config error: {exc}", file=sys.stderr)
+    if not config.is_auto_adapt_enabled(path):
         return text
 
-    section = data.get("auto_adapt", {})
-    if not isinstance(section, dict) or not section.get("enabled", False):
-        return text
-
-    prompt = _get_prompt(app_name, section)
+    prompt = _get_prompt(app_name, config.get_auto_adapt_section(path))
     if prompt is None:
         return text
 
-    api_key = os.environ.get("LOCAL_WHISPER_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
-    if not api_key:
-        print(
-            "[local-whisper] No OpenAI API key found. Set LOCAL_WHISPER_OPENAI_API_KEY or OPENAI_API_KEY env var.",
-            file=sys.stderr,
-        )
-        return text
-
-    if openai is None:
-        print(
-            "[local-whisper] auto-adapt dependencies not installed. Run: uv sync --extra command",
-            file=sys.stderr,
-        )
-        return text
-
-    model = os.environ.get("LOCAL_WHISPER_COMMAND_MODEL", "gpt-5-nano")
-    base_url = os.environ.get("LOCAL_WHISPER_OPENAI_BASE_URL")
-    try:
-        client = openai.OpenAI(
-            api_key=api_key,
-            **({"base_url": base_url} if base_url else {}),
-        )
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (f"{prompt} Return only the reformatted text — no explanation, no preamble."),
-                },
-                {
-                    "role": "user",
-                    "content": f"<text>{html.escape(text)}</text>",
-                },
-            ],
-            max_completion_tokens=4096,
-        )
-        return response.choices[0].message.content or text
-    except Exception as exc:
-        print(f"[local-whisper] auto_adapt error: {exc}", file=sys.stderr)
-        return text
+    return llm.reshape_for_app(text, prompt)

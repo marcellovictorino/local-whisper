@@ -1,7 +1,9 @@
-import sys
+import logging
 from collections.abc import Callable
 
 from pynput import keyboard
+
+logger = logging.getLogger("local_whisper")
 
 
 class HotkeyListener:
@@ -42,11 +44,11 @@ class HotkeyListener:
             )
             self._listener.start()
         except Exception as exc:  # noqa: BLE001
-            print(
-                f"[local-whisper] Failed to start hotkey listener: {exc}\n"
+            logger.error(
+                "Failed to start hotkey listener: %s\n"
                 "  → Grant Accessibility permission: System Settings → "
                 "Privacy & Security → Accessibility → add your terminal app.",
-                file=sys.stderr,
+                exc,
             )
             raise
 

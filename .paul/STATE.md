@@ -2,29 +2,29 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-05-05 after Phase 14)
+See: .paul/PROJECT.md (updated 2026-05-06 after Phase 15)
 
 **Core value:** Mac users can transcribe speech to text instantly with a single keypress, using free local models, with zero network dependency.
-**Current focus:** v0.7 evaluated and closed — SFSpeech benchmarked (57.1% WER, 2.5s) vs distil-whisper (12.2% WER, 1.85s); SFSpeech dropped. Milestone closed as research outcome.
+**Current focus:** v0.8 Architecture Deepening — Phase 17 (LLM Module Interface) complete; callers now use intention-level functions, no LLM mechanics leak into command.py or auto_adapt.py.
 
 ## Current Position
 
-Milestone: v0.7 Sub-second ASR — ❌ Closed (negative result)
-Phase: 14 (SFSpeech Evaluation + Revert) — ✅ Complete
-Plan: 14-01 complete
-Status: Milestone closed — SFSpeech benchmarked (57.1% WER) and dropped; no net code change from v0.6
-Last activity: 2026-05-05 — SFSpeech reverted after benchmark; PR #15 opened
+Milestone: v0.8 Architecture Deepening
+Phase: 18 of 18 (Session + Logging Bootstrap) — Not started
+Plan: None created yet
+Status: Phase 17 complete; Phase 18 pending
+Last activity: 2026-05-06 — Phase 17 APPLY + UNIFY complete
 
 Progress:
-- v0.6 Speed: [██████████] 100% (complete)
-- v0.7 Sub-second ASR: [██████████] 100% (2/2 phases)
+- v0.7 Sub-second ASR: [██████████] 100% (complete)
+- v0.8 Architecture Deepening: [██████░░░░] 75% (3/4 phases)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop complete — Phase 14 done, v0.7 milestone complete]
+  ✓        ✓        ✓     [Phase 17 complete]
 ```
 
 ## Accumulated Context
@@ -57,6 +57,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | CoreML/ANE Python backend deferred | Phase 12 | No pip-installable Python CoreML Whisper package exists as of 2026-05-04 |
 | 2026-05-05: SFSpeechRecognizer viable for v0.7 | Phase 13 | 200–700ms warm latency, zero install, on-device; whisper.cpp spike skipped |
 | SFSpeech dropped after benchmark | Phase 14 post | WER 57.1% vs distil-whisper 12.2%; on-device Siri model quality unacceptable for dictation; privacy dialog also misleading |
+| config.py typed accessor pattern | Phase 15 | get_whisper_model, is_auto_cleanup_enabled, is_auto_adapt_enabled, get_corrections_raw, get_snippets_raw, get_auto_adapt_section — callers own no TOML keys |
+| write_and_paste explicit contract | Phase 16 | settle_ms + retries params; retry loop; defaults 0/0 preserve all existing call sites |
+| apply_voice_command + reshape_for_app intention-level functions | Phase 17 | Callers express WHAT not HOW; LLM mechanics (system prompt, escape, fallback, default_model) owned entirely by llm.py |
 
 ### Deferred Issues
 | Issue | Origin | Effort | Revisit |
@@ -76,10 +79,10 @@ PLAN ──▶ APPLY ──▶ UNIFY
 
 ## Session Continuity
 
-Last session: 2026-05-05
-Stopped at: v0.7 closed — SFSpeech benchmarked and dropped; implementation reverted
-Next action: Start next milestone or close branch with PR documenting the research outcome
-Resume file: .paul/ROADMAP.md
+Last session: 2026-05-06
+Stopped at: Phase 17 complete (PLAN + APPLY + UNIFY)
+Next action: /paul:plan for Phase 18 (Session + Logging Bootstrap)
+Resume file: .paul/phases/17-llm-interface/17-01-SUMMARY.md
 
 ---
 *STATE.md — Updated after every significant action*
