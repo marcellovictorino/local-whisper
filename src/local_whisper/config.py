@@ -2,33 +2,38 @@
 
 from __future__ import annotations
 
+import logging
 import tomllib
 from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
 
-# Cache maps (path, mtime) → parsed dict. Cleared before each new entry to avoid unbounded growth.
-_toml_cache: dict[tuple[Path, float], dict] = {}
+logger = logging.getLogger("local_whisper")
+
+# Single-slot cache: (key, data) tuple swapped atomically on invalidation.
+_toml_cache: tuple[tuple[Path, float], dict] | None = None
 
 
 def _load_toml(path: Path = CONFIG_PATH) -> dict:
+    global _toml_cache
     try:
         mtime = path.stat().st_mtime
-    except FileNotFoundError:
-        return {}
     except OSError:
         return {}
     key = (path, mtime)
-    if key not in _toml_cache:
-        try:
-            with path.open("rb") as f:
-                data = tomllib.load(f)
-        except Exception:
-            return {}
-        _toml_cache.clear()
-        _toml_cache[key] = data
-        return data
-    return _toml_cache.get(key, {})
+    cached = _toml_cache  # local ref — single read is atomic in CPython
+    if cached is not None and cached[0] == key:
+        return cached[1]
+    try:
+        with path.open("rb") as f:
+            data = tomllib.load(f)
+    except tomllib.TOMLDecodeError as exc:
+        logger.warning("config.toml parse error: %s", exc)
+        return {}
+    except OSError:
+        return {}
+    _toml_cache = (key, data)  # atomic ref swap
+    return data
 
 
 def load_section(name: str, path: Path = CONFIG_PATH) -> dict:
@@ -47,7 +52,8 @@ def load_section(name: str, path: Path = CONFIG_PATH) -> dict:
 
 def invalidate() -> None:
     """Clear the config cache (call on SIGHUP to pick up changes immediately)."""
-    _toml_cache.clear()
+    global _toml_cache
+    _toml_cache = None
 
 
 def get_whisper_model(path: Path = CONFIG_PATH) -> str | None:

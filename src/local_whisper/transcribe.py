@@ -192,8 +192,7 @@ def run(
     Returns:
         Transcribed text string, stripped of leading/trailing whitespace.
     """
-    if _model_is_cached(model):
-        _suppress_progress_bars()
+    _suppress_progress_bars()
 
     logger.info("Transcribing with %s (%s)...", model, backend)
     start = time.perf_counter()

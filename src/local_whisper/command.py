@@ -1,4 +1,4 @@
-"""Command mode — apply spoken prompt to selected text via OpenAI-compatible API."""
+"""Command mode — capture current text selection via macOS clipboard."""
 
 from __future__ import annotations
 
@@ -8,15 +8,8 @@ import time
 
 import pyperclip
 
-try:
-    from AppKit import NSPasteboard as _NSPasteboard
-
-    _HAS_APPKIT = True
-except Exception:
-    _NSPasteboard = None
-    _HAS_APPKIT = False
-
-from local_whisper import llm
+from local_whisper._macos import HAS_APPKIT
+from local_whisper._macos import NSPasteboard as _NSPasteboard
 
 logger = logging.getLogger("local_whisper")
 
@@ -34,7 +27,7 @@ def get_selection() -> str:
     Returns:
         Selected text, or empty string if nothing is selected or on failure.
     """
-    if _HAS_APPKIT:
+    if HAS_APPKIT:
         pb = _NSPasteboard.generalPasteboard()
         count_before = pb.changeCount()
     else:
@@ -55,28 +48,10 @@ def get_selection() -> str:
         logger.error("get_selection failed: %s", exc)
         return ""
 
-    if _HAS_APPKIT:
+    if HAS_APPKIT:
         if pb.changeCount() > count_before:
             return pb.stringForType_("public.utf8-plain-text") or ""
         return ""
 
     current = pyperclip.paste()
     return current if current != previous else ""
-
-
-def apply_command(selected_text: str, voice_command: str) -> str:
-    """Apply voice command to selected text using an OpenAI-compatible API.
-
-    Reads LOCAL_WHISPER_OPENAI_API_KEY from the environment. Optionally reads
-    LOCAL_WHISPER_OPENAI_BASE_URL (for Gemini or other OpenAI-compatible providers)
-    and LOCAL_WHISPER_COMMAND_MODEL to override the default model. Falls back to returning
-    voice_command unchanged if the key is absent or the request fails.
-
-    Args:
-        selected_text: Text from the active selection (may be empty).
-        voice_command: Transcribed instruction to apply.
-
-    Returns:
-        Transformed text, or voice_command if API is unavailable.
-    """
-    return llm.apply_voice_command(selected_text, voice_command)

@@ -67,7 +67,7 @@ class _Cmd(StrEnum):
     AMP = "amp"
 
 
-class _Mode(StrEnum):
+class _BarMode(StrEnum):
     DICTATION = "dictation"
     COMMAND = "command"
     ADAPT = "adapt"
@@ -87,7 +87,7 @@ class _OverlayController(NSObject):
         self._bars: list = []
         self._amplitude: float = 0.0
         self._active: bool = False
-        self._mode: _Mode = _Mode.DICTATION
+        self._mode: _BarMode = _BarMode.DICTATION
         self._was_idle: bool = True
         self._last_active_t: float = 0.0  # monotonic time of last above-threshold frame
         self._last_normalized: float = 0.0  # normalized amplitude at last active frame
@@ -100,19 +100,19 @@ class _OverlayController(NSObject):
                 match cmd:
                     case _Cmd.SHOW:
                         self._active = True
-                        self._mode = _Mode.DICTATION
+                        self._mode = _BarMode.DICTATION
                         self._fade_in()
                     case _Cmd.SHOW_COMMAND:
                         self._active = True
-                        self._mode = _Mode.COMMAND
+                        self._mode = _BarMode.COMMAND
                         self._fade_in()
                     case _Cmd.SHOW_ADAPT:
                         self._active = True
-                        self._mode = _Mode.ADAPT
+                        self._mode = _BarMode.ADAPT
                         self._fade_in()
                     case _Cmd.PROCESSING:
                         # Recording stopped — switch to processing animation without hiding.
-                        self._mode = _Mode.PROCESSING
+                        self._mode = _BarMode.PROCESSING
                         self._amplitude = 0.0
                         self._was_idle = True
                     case _Cmd.HIDE:
@@ -186,9 +186,9 @@ class _OverlayController(NSObject):
         if self._panel is None:
             return
         match self._mode:
-            case _Mode.COMMAND:
+            case _BarMode.COMMAND:
                 color = NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.34, 1.0)  # amber
-            case _Mode.ADAPT:
+            case _BarMode.ADAPT:
                 color = NSColor.colorWithRed_green_blue_alpha_(0.0, 0.85, 1.0, 1.0)  # electric cyan
             case _:
                 color = NSColor.whiteColor()
@@ -261,7 +261,7 @@ class _OverlayController(NSObject):
         CT.begin()
         CT.setDisableActions_(True)
         try:
-            if self._mode == _Mode.PROCESSING:
+            if self._mode == _BarMode.PROCESSING:
                 self._render_processing(t)
             else:
                 self._render_waveform(t)

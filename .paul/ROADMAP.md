@@ -60,7 +60,7 @@ Phases: 4 of 4 complete
 |-------|------|-------|--------|-----------|
 | 15 | Config Module Deepening | 1 | ✅ Complete | 2026-05-06 |
 | 16 | Clipboard Reliability Policy | 1 | ✅ Complete | 2026-05-06 |
-| 17 | LLM Module Interface | TBD | Not started | - |
+| 17 | LLM Module Interface | 1 | Planning | - |
 | 18 | Session + Logging Bootstrap | TBD | Not started | - |
 
 ### v0.7 Sub-second ASR

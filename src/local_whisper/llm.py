@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 import os
 
@@ -12,6 +13,29 @@ except ImportError:
 
 logger = logging.getLogger("local_whisper")
 
+# Cached clients keyed by (api_key, base_url) to reuse connection pools across calls.
+_client_cache: dict[tuple[str, str | None], openai.OpenAI] = {}  # type: ignore[type-arg]
+
+
+def _get_api_key() -> str:
+    return os.environ.get("LOCAL_WHISPER_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+
+
+def is_available() -> bool:
+    """Return True if the OpenAI package is installed and an API key is configured.
+
+    Returns:
+        True if LLM calls can be attempted, False otherwise.
+    """
+    return openai is not None and bool(_get_api_key())
+
+
+def _get_client(api_key: str, base_url: str | None) -> openai.OpenAI:  # type: ignore[name-defined]
+    key = (api_key, base_url)
+    if key not in _client_cache:
+        _client_cache[key] = openai.OpenAI(api_key=api_key, **({"base_url": base_url} if base_url else {}))
+    return _client_cache[key]
+
 
 def transform(
     system: str,
@@ -19,7 +43,6 @@ def transform(
     *,
     default_model: str,
     fallback: str,
-    escape: bool = False,
 ) -> str:
     """Send a single chat completion turn and return the response text.
 
@@ -28,12 +51,11 @@ def transform(
         user: Input text (user role).
         default_model: Model ID used unless LOCAL_WHISPER_COMMAND_MODEL overrides.
         fallback: Returned on missing API key, missing package, or API error.
-        escape: If True, HTML-escape user and wrap in <text>…</text>.
 
     Returns:
         Model response text, or fallback on any failure.
     """
-    api_key = os.environ.get("LOCAL_WHISPER_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+    api_key = _get_api_key()
     if not api_key:
         logger.warning("No OpenAI API key. Set LOCAL_WHISPER_OPENAI_API_KEY or OPENAI_API_KEY.")
         return fallback
@@ -42,18 +64,10 @@ def transform(
         logger.warning("openai package not installed. Run: uv sync --extra command")
         return fallback
 
-    if escape:
-        import html
-
-        user = f"<text>{html.escape(user)}</text>"
-
     model = os.environ.get("LOCAL_WHISPER_COMMAND_MODEL", default_model)
     base_url = os.environ.get("LOCAL_WHISPER_OPENAI_BASE_URL")
     try:
-        client = openai.OpenAI(
-            api_key=api_key,
-            **({"base_url": base_url} if base_url else {}),
-        )
+        client = _get_client(api_key, base_url)
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -96,4 +110,5 @@ def reshape_for_app(text: str, prompt: str) -> str:
         Reshaped text, or original text unchanged if API unavailable.
     """
     system = f"{prompt} Return only the reformatted text — no explanation, no preamble."
-    return transform(system, text, default_model="gpt-5-nano", fallback=text, escape=True)
+    user = f"<text>{html.escape(text)}</text>"
+    return transform(system, user, default_model="gpt-5-nano", fallback=text)

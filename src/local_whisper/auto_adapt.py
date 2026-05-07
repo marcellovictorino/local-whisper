@@ -3,23 +3,11 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 
-try:
-    from AppKit import NSWorkspace as _NSWorkspace
-
-    _HAS_APPKIT = True
-except Exception:
-    _NSWorkspace = None
-    _HAS_APPKIT = False
-
-try:
-    import openai
-except ImportError:
-    openai = None  # type: ignore[assignment]
-
 from local_whisper import config, llm
+from local_whisper._macos import HAS_APPKIT
+from local_whisper._macos import NSWorkspace as _NSWorkspace
 
 logger = logging.getLogger("local_whisper")
 
@@ -42,7 +30,7 @@ def get_active_app() -> str:
     Returns:
         App name, or empty string if AppKit unavailable or on any error.
     """
-    if not _HAS_APPKIT:
+    if not HAS_APPKIT:
         return ""
     try:
         app = _NSWorkspace.sharedWorkspace().frontmostApplication()
@@ -91,10 +79,7 @@ def is_active(app_name: str, path: Path = config.CONFIG_PATH) -> bool:
     """
     if not app_name:
         return False
-    if openai is None:
-        return False
-    api_key = os.environ.get("LOCAL_WHISPER_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
-    if not api_key:
+    if not llm.is_available():
         return False
     if not config.is_auto_adapt_enabled(path):
         return False

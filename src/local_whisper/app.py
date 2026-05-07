@@ -9,7 +9,18 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from local_whisper import audio, auto_adapt, auto_cleanup, clipboard, command, config, corrections, snippets, transcribe
+from local_whisper import (
+    audio,
+    auto_adapt,
+    auto_cleanup,
+    clipboard,
+    command,
+    config,
+    corrections,
+    llm,
+    snippets,
+    transcribe,
+)
 from local_whisper.hotkey import HotkeyListener
 
 if TYPE_CHECKING:
@@ -135,7 +146,7 @@ class App:
                     text = snippets.expand(text)
                     clipboard.write_and_paste(text)
                 case _Mode.COMMAND:
-                    result = command.apply_command(session.selection, text)
+                    result = llm.apply_voice_command(session.selection, text)
                     clipboard.write_and_paste(result)
         except Exception as exc:
             logger.error("Session error: %s", exc)
