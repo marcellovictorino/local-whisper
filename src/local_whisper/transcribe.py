@@ -51,7 +51,7 @@ _BACKEND_MAP: dict[str, Backend] = {
 # Parakeet model instance cached at warm_up time so from_pretrained() runs once per session.
 _parakeet_cache: dict[str, Any] = {}
 
-# Set by warm_up() when the model is loaded and Metal shaders compiled.
+# Set by warm_up() when the warm-up attempt completes (success or failure).
 _warmed = threading.Event()
 
 _progress_bars_suppressed = False
@@ -185,13 +185,13 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
 
 
 def wait_warmed(timeout: float | None = 60) -> bool:
-    """Block until warm_up() has completed (or failed). Returns True if warmed within timeout.
+    """Block until warm_up() has completed (success or failure).
 
     Args:
-        timeout: Seconds to wait. None = wait forever.
+        timeout: Seconds to wait. None = wait forever. 0 = non-blocking check.
 
     Returns:
-        True if model is ready; False if timeout elapsed before warm-up finished.
+        True if warm-up finished within timeout; False if timeout elapsed first.
     """
     return _warmed.wait(timeout=timeout)
 

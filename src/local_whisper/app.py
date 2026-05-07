@@ -142,9 +142,10 @@ class App:
             if np.max(np.abs(audio_data)) < _SILENCE_PEAK_THRESHOLD:
                 logger.info("Skipping: silence detected.")
                 return
-            if not transcribe._warmed.is_set():
+            if not transcribe.wait_warmed(timeout=0):
                 logger.info("Waiting for model warm-up...")
-                transcribe.wait_warmed(timeout=60)
+                if not transcribe.wait_warmed(timeout=60):
+                    logger.warning("Warm-up timed out after 60s; proceeding anyway.")
             text = transcribe.run(audio_data, model=self._model, backend=self._backend)
             if not text:
                 logger.info("Empty transcription.")
