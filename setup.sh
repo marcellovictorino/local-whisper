@@ -72,6 +72,8 @@ cat > "$PLIST_DEST" <<PLIST
         <string>--run</string>
     </array>
     <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><true/>
+    <key>ThrottleInterval</key><integer>30</integer>
     <key>WorkingDirectory</key><string>$PROJECT_DIR</string>
     <key>StandardOutPath</key><string>$LOG_FILE</string>
     <key>StandardErrorPath</key><string>$LOG_FILE</string>

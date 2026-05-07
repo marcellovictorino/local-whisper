@@ -2,6 +2,7 @@ import contextlib
 import logging
 import os
 import tempfile
+import threading
 import time
 from enum import StrEnum
 from pathlib import Path
@@ -49,6 +50,9 @@ _BACKEND_MAP: dict[str, Backend] = {
 
 # Parakeet model instance cached at warm_up time so from_pretrained() runs once per session.
 _parakeet_cache: dict[str, Any] = {}
+
+# Set by warm_up() when the model is loaded and Metal shaders compiled.
+_warmed = threading.Event()
 
 _progress_bars_suppressed = False
 
@@ -146,35 +150,50 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
         model: HuggingFace model ID to pre-load.
         backend: Backend name ("mlx-whisper" or "parakeet-mlx").
     """
-    if backend == Backend.PARAKEET:
-        try:
-            import parakeet_mlx
-        except ImportError:
+    try:
+        if backend == Backend.PARAKEET:
+            try:
+                import parakeet_mlx
+            except ImportError:
+                return
+            try:
+                _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
+                logger.info("Model ready.")
+            except Exception as exc:
+                logger.warning("Warm-up failed (non-fatal): %s", exc)
             return
+
+        if not _model_is_cached(model):
+            logger.info(
+                "Downloading model '%s' (%s)...",
+                model,
+                _MODEL_SIZES.get(model, "unknown size"),
+            )
+        else:
+            _suppress_progress_bars()
+
+        import mlx_whisper
+
+        silence = np.zeros(int(0.5 * 16000), dtype="float32")
         try:
-            _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
+            mlx_whisper.transcribe(silence, path_or_hf_repo=model, verbose=False)
             logger.info("Model ready.")
         except Exception as exc:
             logger.warning("Warm-up failed (non-fatal): %s", exc)
-        return
+    finally:
+        _warmed.set()
 
-    if not _model_is_cached(model):
-        logger.info(
-            "Downloading model '%s' (%s)...",
-            model,
-            _MODEL_SIZES.get(model, "unknown size"),
-        )
-    else:
-        _suppress_progress_bars()
 
-    import mlx_whisper
+def wait_warmed(timeout: float | None = 60) -> bool:
+    """Block until warm_up() has completed (or failed). Returns True if warmed within timeout.
 
-    silence = np.zeros(int(0.5 * 16000), dtype="float32")
-    try:
-        mlx_whisper.transcribe(silence, path_or_hf_repo=model, verbose=False)
-        logger.info("Model ready.")
-    except Exception as exc:
-        logger.warning("Warm-up failed (non-fatal): %s", exc)
+    Args:
+        timeout: Seconds to wait. None = wait forever.
+
+    Returns:
+        True if model is ready; False if timeout elapsed before warm-up finished.
+    """
+    return _warmed.wait(timeout=timeout)
 
 
 def run(
