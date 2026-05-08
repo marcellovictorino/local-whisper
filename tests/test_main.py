@@ -1,11 +1,23 @@
 """Tests for __main__._check_accessibility — Accessibility permission gate."""
 
-import importlib
 import logging
 import sys
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from local_whisper.__main__ import _check_accessibility
+
+
+@pytest.fixture()
+def _clean_logger_handlers():
+    """Save and restore local_whisper logger handlers to prevent cross-test side-effects."""
+    lw_logger = logging.getLogger("local_whisper")
+    original = lw_logger.handlers[:]
+    lw_logger.handlers.clear()
+    yield lw_logger
+    lw_logger.handlers.clear()
+    lw_logger.handlers.extend(original)
 
 
 def test_returns_true_when_library_not_found() -> None:
@@ -41,25 +53,16 @@ def test_returns_true_on_exception() -> None:
         assert _check_accessibility() is True
 
 
-def test_logging_not_configured_on_import() -> None:
+def test_logging_not_configured_on_import(_clean_logger_handlers: logging.Logger) -> None:
     """Importing local_whisper must NOT add handlers to the logger."""
-    import local_whisper
+    import local_whisper  # noqa: F401
 
-    lw_logger = logging.getLogger("local_whisper")
-    # Clear any handlers that may have been configured by a prior main() call
-    # in this test session, then reload to verify import does not re-add them.
-    lw_logger.handlers.clear()
-    importlib.reload(local_whisper)
-    assert lw_logger.handlers == [], f"Expected no handlers after import, got: {lw_logger.handlers}"
+    assert _clean_logger_handlers.handlers == []
 
 
-def test_logging_configured_after_main() -> None:
+def test_logging_configured_after_main(_clean_logger_handlers: logging.Logger) -> None:
     """main() must configure handlers on the local_whisper logger."""
     from local_whisper.__main__ import main
-
-    lw_logger = logging.getLogger("local_whisper")
-    # Start from a clean slate so the _setup_logging guard does not short-circuit.
-    lw_logger.handlers.clear()
 
     with patch.object(sys, "argv", ["local-whisper", "--help"]):
         try:
@@ -67,4 +70,4 @@ def test_logging_configured_after_main() -> None:
         except SystemExit:
             pass
 
-    assert lw_logger.handlers, "Expected handlers to be configured after main() runs"
+    assert _clean_logger_handlers.handlers

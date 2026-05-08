@@ -44,49 +44,21 @@ class _Session:
     selection: str = ""
 
 
-class DictationSession:
-    """Owns the dictation post-processing pipeline."""
-
-    def run_pipeline(
-        self,
-        text: str,
-        active_app: str,
-        corrections_map: dict[str, str],
-    ) -> str:
-        """Apply post-processing pipeline and paste result.
-
-        Args:
-            text: Raw transcribed text.
-            active_app: Name of the currently active application.
-            corrections_map: Mapping of correction substitutions to apply.
-
-        Returns:
-            The fully processed text after all pipeline steps.
-        """
-        text = auto_cleanup.apply(text)
-        text = auto_adapt.apply(text, active_app)
-        text = corrections.apply(text, corrections_map)
-        text = snippets.expand(text)
-        clipboard.write_and_paste(text)
-        return text
+def _run_dictation_pipeline(text: str, active_app: str, corrections_map: dict[str, str]) -> str:
+    """Apply dictation post-processing pipeline and paste result."""
+    text = auto_cleanup.apply(text)
+    text = auto_adapt.apply(text, active_app)
+    text = corrections.apply(text, corrections_map)
+    text = snippets.expand(text)
+    clipboard.write_and_paste(text)
+    return text
 
 
-class CommandSession:
-    """Owns the voice-command pipeline."""
-
-    def run_pipeline(self, selection: str, instruction: str) -> str:
-        """Apply the voice command to the selection and paste result.
-
-        Args:
-            selection: The currently selected text to transform.
-            instruction: The voice instruction describing the transformation.
-
-        Returns:
-            The result produced by the LLM voice command.
-        """
-        result = llm.apply_voice_command(selection, instruction)
-        clipboard.write_and_paste(result)
-        return result
+def _run_command_pipeline(selection: str, instruction: str) -> str:
+    """Apply voice command to selection via LLM and paste result."""
+    result = llm.apply_voice_command(selection, instruction)
+    clipboard.write_and_paste(result)
+    return result
 
 
 class App:
@@ -198,9 +170,9 @@ class App:
 
             match session.mode:
                 case _SessionMode.DICTATION:
-                    DictationSession().run_pipeline(text, self._active_app, self._corrections)
+                    _run_dictation_pipeline(text, self._active_app, self._corrections)
                 case _SessionMode.COMMAND:
-                    CommandSession().run_pipeline(session.selection, text)
+                    _run_command_pipeline(session.selection, text)
         except Exception as exc:
             logger.error("Session error: %s", exc)
         finally:

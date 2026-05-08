@@ -1,10 +1,10 @@
-"""Tests for DictationSession and CommandSession pipeline adapters."""
+"""Tests for _run_dictation_pipeline and _run_command_pipeline."""
 
 from __future__ import annotations
 
 from unittest.mock import patch
 
-from local_whisper.app import CommandSession, DictationSession
+from local_whisper.app import _run_command_pipeline, _run_dictation_pipeline
 
 
 def test_dictation_pipeline_order() -> None:
@@ -16,7 +16,7 @@ def test_dictation_pipeline_order() -> None:
         patch("local_whisper.app.snippets.expand", return_value="expanded") as mock_snippets,
         patch("local_whisper.app.clipboard.write_and_paste") as mock_paste,
     ):
-        result = DictationSession().run_pipeline("hello", "Slack", {"teh": "the"})
+        result = _run_dictation_pipeline("hello", "Slack", {"teh": "the"})
 
     mock_cleanup.assert_called_once_with("hello")
     mock_adapt.assert_called_once_with("cleaned", "Slack")
@@ -34,7 +34,7 @@ def test_dictation_pipeline_applies_corrections() -> None:
         patch("local_whisper.app.snippets.expand", side_effect=lambda t: t),
         patch("local_whisper.app.clipboard.write_and_paste"),
     ):
-        result = DictationSession().run_pipeline("teh world", "Terminal", {"teh": "the"})
+        result = _run_dictation_pipeline("teh world", "Terminal", {"teh": "the"})
 
     assert result == "the world"
 
@@ -45,7 +45,7 @@ def test_command_pipeline() -> None:
         patch("local_whisper.app.llm.apply_voice_command", return_value="fixed") as mock_llm,
         patch("local_whisper.app.clipboard.write_and_paste") as mock_paste,
     ):
-        result = CommandSession().run_pipeline("original", "fix grammar")
+        result = _run_command_pipeline("original", "fix grammar")
 
     mock_llm.assert_called_once_with("original", "fix grammar")
     mock_paste.assert_called_once_with("fixed")
@@ -58,7 +58,7 @@ def test_command_pipeline_llm_failure() -> None:
         patch("local_whisper.app.llm.apply_voice_command", return_value="") as mock_llm,
         patch("local_whisper.app.clipboard.write_and_paste") as mock_paste,
     ):
-        result = CommandSession().run_pipeline("original", "translate to French")
+        result = _run_command_pipeline("original", "translate to French")
 
     mock_llm.assert_called_once_with("original", "translate to French")
     mock_paste.assert_called_once_with("")
