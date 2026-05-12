@@ -4,7 +4,7 @@ import logging
 import sys
 import threading
 
-from local_whisper import audio, transcribe
+from local_whisper import _setup_logging, audio, transcribe
 
 logger = logging.getLogger("local_whisper")
 
@@ -28,6 +28,7 @@ def _check_accessibility() -> bool:
 
 def main() -> None:
     """CLI entry point for local-whisper."""
+    _setup_logging()
     parser = argparse.ArgumentParser(
         prog="local-whisper",
         description="Local offline speech-to-text on Apple Silicon.",

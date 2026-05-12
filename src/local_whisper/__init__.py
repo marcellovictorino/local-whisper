@@ -31,6 +31,3 @@ def _setup_logging() -> None:
         logger.addHandler(fh)
     except OSError:
         pass
-
-
-_setup_logging()

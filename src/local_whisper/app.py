@@ -44,6 +44,23 @@ class _Session:
     selection: str = ""
 
 
+def _run_dictation_pipeline(text: str, active_app: str, corrections_map: dict[str, str]) -> str:
+    """Apply dictation post-processing pipeline and paste result."""
+    text = auto_cleanup.apply(text)
+    text = auto_adapt.apply(text, active_app)
+    text = corrections.apply(text, corrections_map)
+    text = snippets.expand(text)
+    clipboard.write_and_paste(text)
+    return text
+
+
+def _run_command_pipeline(selection: str, instruction: str) -> str:
+    """Apply voice command to selection via LLM and paste result."""
+    result = llm.apply_voice_command(selection, instruction)
+    clipboard.write_and_paste(result)
+    return result
+
+
 class App:
     """Orchestrates hotkey → record → transcribe → paste flow.
 
@@ -153,14 +170,9 @@ class App:
 
             match session.mode:
                 case _SessionMode.DICTATION:
-                    text = auto_cleanup.apply(text)
-                    text = auto_adapt.apply(text, self._active_app)
-                    text = corrections.apply(text, self._corrections)
-                    text = snippets.expand(text)
-                    clipboard.write_and_paste(text)
+                    _run_dictation_pipeline(text, self._active_app, self._corrections)
                 case _SessionMode.COMMAND:
-                    result = llm.apply_voice_command(session.selection, text)
-                    clipboard.write_and_paste(result)
+                    _run_command_pipeline(session.selection, text)
         except Exception as exc:
             logger.error("Session error: %s", exc)
         finally:
