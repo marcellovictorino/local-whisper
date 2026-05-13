@@ -228,6 +228,8 @@ def run(
     start = time.perf_counter()
 
     if backend == Backend.PARAKEET:
+        if initial_prompt:
+            logger.warning("initial_prompt ignored: Parakeet backend does not support vocabulary seeding.")
         text = _run_parakeet(audio, model)
     else:
         text = _run_mlx_whisper(audio, model, initial_prompt=initial_prompt)

@@ -33,7 +33,7 @@ def test_dictation_pipeline_applies_corrections() -> None:
         patch("local_whisper.app.snippets.expand", side_effect=lambda t: t),
         patch("local_whisper.app.clipboard.write_and_paste"),
     ):
-        # duration_s=0.0 so backtrack and auto_adapt stages are skipped
+        # duration_s=0.0 so auto_adapt stage is skipped
         result = _run_dictation_pipeline("teh world", "Terminal", {"teh": "the"}, duration_s=0.0)
 
     assert result == "the world"
