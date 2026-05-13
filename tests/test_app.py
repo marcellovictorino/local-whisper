@@ -16,7 +16,7 @@ def test_dictation_pipeline_order() -> None:
         patch("local_whisper.app.snippets.expand", return_value="expanded") as mock_snippets,
         patch("local_whisper.app.clipboard.write_and_paste") as mock_paste,
     ):
-        result = _run_dictation_pipeline("hello", "Slack", {"teh": "the"})
+        result = _run_dictation_pipeline("hello", "Slack", {"teh": "the"}, duration_s=15.0)
 
     mock_cleanup.assert_called_once_with("hello")
     mock_adapt.assert_called_once_with("cleaned", "Slack")
@@ -30,11 +30,11 @@ def test_dictation_pipeline_applies_corrections() -> None:
     """Corrections substitution is applied without mocking (integration-style)."""
     with (
         patch("local_whisper.app.auto_cleanup.apply", side_effect=lambda t: t),
-        patch("local_whisper.app.auto_adapt.apply", side_effect=lambda t, _a: t),
         patch("local_whisper.app.snippets.expand", side_effect=lambda t: t),
         patch("local_whisper.app.clipboard.write_and_paste"),
     ):
-        result = _run_dictation_pipeline("teh world", "Terminal", {"teh": "the"})
+        # duration_s=0.0 so backtrack and auto_adapt stages are skipped
+        result = _run_dictation_pipeline("teh world", "Terminal", {"teh": "the"}, duration_s=0.0)
 
     assert result == "the world"
 

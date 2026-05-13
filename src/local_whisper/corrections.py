@@ -10,6 +10,28 @@ from local_whisper import config
 
 logger = logging.getLogger("local_whisper")
 
+_PROMPT_CHAR_LIMIT = 800  # ~200 tokens; mlx-whisper hard limit is ~224 tokens
+
+
+def build_prompt(corrections_map: dict[str, str]) -> str:
+    """Build an initial_prompt string from corrections to bias Whisper's vocabulary.
+
+    Feeds the correct forms (values) into mlx-whisper's decoder prompt so known
+    terms are transcribed correctly on the first pass, not only post-corrected.
+
+    Args:
+        corrections_map: Loaded corrections dict (keys=wrong form, values=correct form).
+
+    Returns:
+        Comma-joined correct forms, truncated to fit Whisper's ~224-token limit.
+        Empty string if map is empty.
+    """
+    if not corrections_map:
+        return ""
+    unique_terms = list(dict.fromkeys(corrections_map.values()))
+    prompt = ", ".join(unique_terms)
+    return prompt[:_PROMPT_CHAR_LIMIT]
+
 
 def load(path: Path = config.CONFIG_PATH) -> dict[str, str]:
     """Load corrections from TOML config file.

@@ -105,14 +105,19 @@ def _suppress_progress_bars() -> None:
     _progress_bars_suppressed = True
 
 
-def _run_mlx_whisper(audio: np.ndarray, model: str) -> str:
+def _run_mlx_whisper(audio: np.ndarray, model: str, initial_prompt: str | None = None) -> str:
     import mlx.core as mx
     import mlx_whisper
 
     # MLX Metal streams are thread-local; warm_up runs on a different thread than
     # each keypress transcription thread, so we create a fresh stream here.
     with mx.stream(mx.gpu):
-        result = mlx_whisper.transcribe(audio, path_or_hf_repo=model, verbose=False)
+        result = mlx_whisper.transcribe(
+            audio,
+            path_or_hf_repo=model,
+            verbose=False,
+            initial_prompt=initial_prompt,
+        )
     return result["text"].strip()
 
 
@@ -202,6 +207,7 @@ def run(
     audio: np.ndarray,
     model: str = DEFAULT_MODEL,
     backend: str = DEFAULT_BACKEND,
+    initial_prompt: str | None = None,
 ) -> str:
     """Transcribe audio array to text using local MLX Whisper model.
 
@@ -209,6 +215,9 @@ def run(
         audio: Float32 numpy array at 16kHz sample rate.
         model: HuggingFace model ID.
         backend: Backend name ("mlx-whisper" or "parakeet-mlx").
+        initial_prompt: Optional text to seed Whisper's decoder. Biases token
+            probabilities toward terms in the prompt (e.g. personal vocabulary).
+            Ignored for Parakeet backend. ~224-token limit.
 
     Returns:
         Transcribed text string, stripped of leading/trailing whitespace.
@@ -221,7 +230,7 @@ def run(
     if backend == Backend.PARAKEET:
         text = _run_parakeet(audio, model)
     else:
-        text = _run_mlx_whisper(audio, model)
+        text = _run_mlx_whisper(audio, model, initial_prompt=initial_prompt)
 
     elapsed = time.perf_counter() - start
     logger.info("Transcription done in %.2fs", elapsed)

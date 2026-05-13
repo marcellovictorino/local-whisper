@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("local_whisper")
 
 _MIN_RECORD_DURATION_S = 0.3
+_MIN_AUTO_ADAPT_DURATION_S = 10.0
 _SILENCE_PEAK_THRESHOLD = 0.01
 
 
@@ -44,10 +45,13 @@ class _Session:
     selection: str = ""
 
 
-def _run_dictation_pipeline(text: str, active_app: str, corrections_map: dict[str, str]) -> str:
+def _run_dictation_pipeline(text: str, active_app: str, corrections_map: dict[str, str], duration_s: float) -> str:
     """Apply dictation post-processing pipeline and paste result."""
     text = auto_cleanup.apply(text)
-    text = auto_adapt.apply(text, active_app)
+    if duration_s >= _MIN_AUTO_ADAPT_DURATION_S:
+        text = auto_adapt.apply(text, active_app)
+    elif auto_adapt.is_active(active_app):
+        logger.info("Skipping auto-adapt: recording too short (%.1fs < %.0fs)", duration_s, _MIN_AUTO_ADAPT_DURATION_S)
     text = corrections.apply(text, corrections_map)
     text = snippets.expand(text)
     clipboard.write_and_paste(text)
@@ -163,14 +167,16 @@ class App:
                 logger.info("Waiting for model warm-up...")
                 if not transcribe.wait_warmed(timeout=60):
                     logger.warning("Warm-up timed out after 60s; proceeding anyway.")
-            text = transcribe.run(audio_data, model=self._model, backend=self._backend)
+            duration_s = audio_data.size / 16000
+            vocab_prompt = corrections.build_prompt(self._corrections) or None
+            text = transcribe.run(audio_data, model=self._model, backend=self._backend, initial_prompt=vocab_prompt)
             if not text:
                 logger.info("Empty transcription.")
                 return
 
             match session.mode:
                 case _SessionMode.DICTATION:
-                    _run_dictation_pipeline(text, self._active_app, self._corrections)
+                    _run_dictation_pipeline(text, self._active_app, self._corrections, duration_s)
                 case _SessionMode.COMMAND:
                     _run_command_pipeline(session.selection, text)
         except Exception as exc:
