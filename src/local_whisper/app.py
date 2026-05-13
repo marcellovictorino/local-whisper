@@ -168,7 +168,7 @@ class App:
                 if not transcribe.wait_warmed(timeout=60):
                     logger.warning("Warm-up timed out after 60s; proceeding anyway.")
             duration_s = audio_data.size / 16000
-            vocab_prompt = corrections.build_prompt(self._corrections) or None
+            vocab_prompt = corrections.build_prompt(self._corrections)
             text = transcribe.run(audio_data, model=self._model, backend=self._backend, initial_prompt=vocab_prompt)
             if not text:
                 logger.info("Empty transcription.")
