@@ -269,7 +269,7 @@ prompt = "Formal French email. Fix grammar, clear paragraphs."
 
 Uses [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) — MLX-native, runs on Apple Neural Engine + GPU.
 
-Default: **distil-whisper-large-v3** (~600 MB, English only, ~2× faster than turbo).
+Default: **whisper-small.en-mlx** (~250 MB, English only, ~500ms latency).
 
 ### Changing the model
 
@@ -290,9 +290,10 @@ just stop && just start
 
 | Model | Size | Languages | Speed | Accuracy | Best for |
 |-------|------|-----------|-------|----------|----------|
-| `mlx-community/distil-whisper-large-v3` *(default)* | ~600 MB | English only | ⚡⚡ fastest | ★★★★ | English dictation, lowest latency |
-| `mlx-community/whisper-large-v3-turbo` | ~1.5 GB | 99 languages | ⚡ fast | ★★★★★ | Multilingual, mixed-language, highest accuracy |
-| `mlx-community/parakeet-tdt-0.6b-v2` | ~600 MB | English only | ⚡ fast | ★★★★ | English only; requires optional install (see below) |
+| `mlx-community/whisper-small.en-mlx` *(default)* | ~250 MB | English only | ⚡⚡⚡ fast | ★★★★ | Best latency/accuracy balance; ~500ms on real speech |
+| `mlx-community/distil-whisper-large-v3` | ~600 MB | English only | ⚡⚡ moderate | ★★★★ | Higher accuracy; ~1.3s on real speech |
+| `mlx-community/whisper-large-v3-turbo` | ~1.5 GB | 99 languages | ⚡ slow | ★★★★★ | Multilingual or highest accuracy required |
+| `mlx-community/parakeet-tdt-0.6b-v2` | ~600 MB | English only | ⚡⚡ fast | ★★★★ | English only; requires optional install (see below) |
 
 **Parakeet** requires an optional dependency and `ffmpeg` (used internally to load audio):
 
@@ -315,14 +316,25 @@ To switch to multilingual/higher accuracy:
 model = "mlx-community/whisper-large-v3-turbo"
 ```
 
-To switch back to the fast default, remove the `[whisper]` section or set it explicitly:
+To switch back to the default, remove the `[whisper]` section or set it explicitly:
 
 ```toml
 [whisper]
-model = "mlx-community/distil-whisper-large-v3"
+model = "mlx-community/whisper-small.en-mlx"
 ```
 
 Models download automatically on first use (once, to `~/.cache/huggingface/hub/`).
+
+### Model benchmark history
+
+Benchmarked 2026-05-13 on 30s real-speech audio (49 words, English, technical vocabulary including `Tmux`, `NeoVim`, `dbt`).
+
+| Model | Size | WER% | Latency | Verdict |
+|-------|------|------|---------|---------|
+| `mlx-community/whisper-small.en-mlx` | 250 MB | **16.3%** | **508ms** | ✅ Default — strict improvement over distil-large |
+| `mlx-community/distil-whisper-large-v3` | 600 MB | 18.4% | 1,268ms | Prior default; superseded |
+| `mlx-community/whisper-base.en-mlx` | 150 MB | 28.6% | 163ms | ❌ WER too high for dictation |
+| `mlx-community/whisper-tiny.en-mlx` | 75 MB | 32.6% | 116ms | ❌ WER too high; mangled technical terms |
 
 ## Roadmap
 

@@ -21,9 +21,10 @@ class KnownModel(StrEnum):
     Add new models here to register them. Unknown IDs fall back to mlx-whisper.
     """
 
-    DISTIL_WHISPER = "mlx-community/distil-whisper-large-v3"  # default; fast English
-    WHISPER_TURBO = "mlx-community/whisper-large-v3-turbo"  # multilingual, accurate
-    PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # fastest; English only
+    WHISPER_SMALL_EN = "mlx-community/whisper-small.en-mlx"  # default; best latency/accuracy; English only; ~250 MB
+    DISTIL_WHISPER = "mlx-community/distil-whisper-large-v3"  # high accuracy; English only; ~600 MB
+    WHISPER_TURBO = "mlx-community/whisper-large-v3-turbo"  # multilingual, accurate; ~1.5 GB
+    PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # fastest; English only; requires --extra parakeet
 
 
 class Backend(StrEnum):
@@ -33,13 +34,14 @@ class Backend(StrEnum):
     PARAKEET = "parakeet-mlx"
 
 
-DEFAULT_MODEL = KnownModel.DISTIL_WHISPER
+DEFAULT_MODEL = KnownModel.WHISPER_SMALL_EN
 DEFAULT_BACKEND = Backend.MLX_WHISPER
 
 _MODEL_SIZES: dict[str, str] = {
     KnownModel.WHISPER_TURBO: "~1.5 GB",
     KnownModel.DISTIL_WHISPER: "~600 MB",
     KnownModel.PARAKEET_V2: "~600 MB",
+    KnownModel.WHISPER_SMALL_EN: "~250 MB",
 }
 
 _BACKEND_MAP: dict[str, Backend] = {
