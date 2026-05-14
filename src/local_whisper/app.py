@@ -21,6 +21,7 @@ from local_whisper import (
     snippets,
     transcribe,
 )
+from local_whisper.audio import SAMPLE_RATE_HZ
 from local_whisper.hotkey import HotkeyListener
 
 if TYPE_CHECKING:
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("local_whisper")
 
 _MIN_RECORD_DURATION_S = 0.3
+_MIN_AUTO_ADAPT_DURATION_S = 10.0
 _SILENCE_PEAK_THRESHOLD = 0.01
 
 
@@ -44,10 +46,13 @@ class _Session:
     selection: str = ""
 
 
-def _run_dictation_pipeline(text: str, active_app: str, corrections_map: dict[str, str]) -> str:
+def _run_dictation_pipeline(text: str, active_app: str, corrections_map: dict[str, str], duration_s: float) -> str:
     """Apply dictation post-processing pipeline and paste result."""
     text = auto_cleanup.apply(text)
-    text = auto_adapt.apply(text, active_app)
+    if duration_s >= _MIN_AUTO_ADAPT_DURATION_S:
+        text = auto_adapt.apply(text, active_app)
+    elif auto_adapt.is_active(active_app):
+        logger.info("Skipping auto-adapt: recording too short (%.1fs < %.0fs)", duration_s, _MIN_AUTO_ADAPT_DURATION_S)
     text = corrections.apply(text, corrections_map)
     text = snippets.expand(text)
     clipboard.write_and_paste(text)
@@ -83,6 +88,7 @@ class App:
         self._active_app: str = ""
         self._active: _Session | None = None
         self._corrections: dict[str, str] = corrections.load()
+        self._vocab_prompt: str | None = corrections.build_prompt(self._corrections)
         self._listener = HotkeyListener(
             on_activate=self._on_key_press,
             on_deactivate=self._on_key_release,
@@ -113,6 +119,7 @@ class App:
         """Reload all config caches without restarting."""
         config.invalidate()
         self._corrections = corrections.load()
+        self._vocab_prompt = corrections.build_prompt(self._corrections)
         logger.info("Config reloaded.")
 
     def _on_key_press(self) -> None:
@@ -153,7 +160,8 @@ class App:
             if audio_data.size == 0:
                 logger.info("No audio captured.")
                 return
-            if audio_data.size / 16000 < _MIN_RECORD_DURATION_S:
+            duration_s = audio_data.size / SAMPLE_RATE_HZ
+            if duration_s < _MIN_RECORD_DURATION_S:
                 logger.info("Skipping: recording too short.")
                 return
             if np.max(np.abs(audio_data)) < _SILENCE_PEAK_THRESHOLD:
@@ -163,14 +171,16 @@ class App:
                 logger.info("Waiting for model warm-up...")
                 if not transcribe.wait_warmed(timeout=60):
                     logger.warning("Warm-up timed out after 60s; proceeding anyway.")
-            text = transcribe.run(audio_data, model=self._model, backend=self._backend)
+            text = transcribe.run(
+                audio_data, model=self._model, backend=self._backend, initial_prompt=self._vocab_prompt
+            )
             if not text:
                 logger.info("Empty transcription.")
                 return
 
             match session.mode:
                 case _SessionMode.DICTATION:
-                    _run_dictation_pipeline(text, self._active_app, self._corrections)
+                    _run_dictation_pipeline(text, self._active_app, self._corrections, duration_s)
                 case _SessionMode.COMMAND:
                     _run_command_pipeline(session.selection, text)
         except Exception as exc:

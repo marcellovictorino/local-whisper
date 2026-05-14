@@ -21,9 +21,10 @@ class KnownModel(StrEnum):
     Add new models here to register them. Unknown IDs fall back to mlx-whisper.
     """
 
-    DISTIL_WHISPER = "mlx-community/distil-whisper-large-v3"  # default; fast English
-    WHISPER_TURBO = "mlx-community/whisper-large-v3-turbo"  # multilingual, accurate
-    PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # fastest; English only
+    WHISPER_SMALL_EN = "mlx-community/whisper-small.en-mlx"  # default; best latency/accuracy; English only; ~250 MB
+    DISTIL_WHISPER = "mlx-community/distil-whisper-large-v3"  # high accuracy; English only; ~600 MB
+    WHISPER_TURBO = "mlx-community/whisper-large-v3-turbo"  # multilingual, accurate; ~1.5 GB
+    PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # fastest; English only; requires --extra parakeet
 
 
 class Backend(StrEnum):
@@ -33,13 +34,14 @@ class Backend(StrEnum):
     PARAKEET = "parakeet-mlx"
 
 
-DEFAULT_MODEL = KnownModel.DISTIL_WHISPER
+DEFAULT_MODEL = KnownModel.WHISPER_SMALL_EN
 DEFAULT_BACKEND = Backend.MLX_WHISPER
 
 _MODEL_SIZES: dict[str, str] = {
     KnownModel.WHISPER_TURBO: "~1.5 GB",
     KnownModel.DISTIL_WHISPER: "~600 MB",
     KnownModel.PARAKEET_V2: "~600 MB",
+    KnownModel.WHISPER_SMALL_EN: "~250 MB",
 }
 
 _BACKEND_MAP: dict[str, Backend] = {
@@ -103,14 +105,19 @@ def _suppress_progress_bars() -> None:
     _progress_bars_suppressed = True
 
 
-def _run_mlx_whisper(audio: np.ndarray, model: str) -> str:
+def _run_mlx_whisper(audio: np.ndarray, model: str, initial_prompt: str | None = None) -> str:
     import mlx.core as mx
     import mlx_whisper
 
     # MLX Metal streams are thread-local; warm_up runs on a different thread than
     # each keypress transcription thread, so we create a fresh stream here.
     with mx.stream(mx.gpu):
-        result = mlx_whisper.transcribe(audio, path_or_hf_repo=model, verbose=False)
+        result = mlx_whisper.transcribe(
+            audio,
+            path_or_hf_repo=model,
+            verbose=False,
+            initial_prompt=initial_prompt,
+        )
     return result["text"].strip()
 
 
@@ -200,6 +207,7 @@ def run(
     audio: np.ndarray,
     model: str = DEFAULT_MODEL,
     backend: str = DEFAULT_BACKEND,
+    initial_prompt: str | None = None,
 ) -> str:
     """Transcribe audio array to text using local MLX Whisper model.
 
@@ -207,6 +215,9 @@ def run(
         audio: Float32 numpy array at 16kHz sample rate.
         model: HuggingFace model ID.
         backend: Backend name ("mlx-whisper" or "parakeet-mlx").
+        initial_prompt: Optional text to seed Whisper's decoder. Biases token
+            probabilities toward terms in the prompt (e.g. personal vocabulary).
+            Ignored for Parakeet backend. ~224-token limit.
 
     Returns:
         Transcribed text string, stripped of leading/trailing whitespace.
@@ -217,9 +228,11 @@ def run(
     start = time.perf_counter()
 
     if backend == Backend.PARAKEET:
+        if initial_prompt:
+            logger.warning("initial_prompt ignored: Parakeet backend does not support vocabulary seeding.")
         text = _run_parakeet(audio, model)
     else:
-        text = _run_mlx_whisper(audio, model)
+        text = _run_mlx_whisper(audio, model, initial_prompt=initial_prompt)
 
     elapsed = time.perf_counter() - start
     logger.info("Transcription done in %.2fs", elapsed)

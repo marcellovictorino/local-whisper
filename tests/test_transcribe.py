@@ -106,8 +106,8 @@ def test_get_backend(model: str, expected_backend: str) -> None:
     assert get_backend(model) == expected_backend
 
 
-def test_default_model_is_distil_whisper() -> None:
-    assert DEFAULT_MODEL == KnownModel.DISTIL_WHISPER
+def test_default_model_is_whisper_small_en() -> None:
+    assert DEFAULT_MODEL == KnownModel.WHISPER_SMALL_EN
 
 
 # --- parakeet model caching ---

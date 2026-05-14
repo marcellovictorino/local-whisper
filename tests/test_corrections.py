@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from local_whisper.corrections import apply, load
+from local_whisper.corrections import _PROMPT_CHAR_LIMIT, apply, build_prompt, load
 
 
 def test_load_returns_empty_when_file_missing(tmp_path: Path) -> None:
@@ -56,6 +56,41 @@ def test_apply_returns_unchanged_when_no_corrections() -> None:
 
 def test_apply_returns_unchanged_when_no_match() -> None:
     assert apply("hello world", {"foo": "bar"}) == "hello world"
+
+
+def test_build_prompt_returns_none_for_empty_map() -> None:
+    assert build_prompt({}) is None
+
+
+def test_build_prompt_returns_correct_forms() -> None:
+    result = build_prompt({"wispy": "Wispr", "gpt": "GPT"})
+    assert result == "Wispr, GPT"
+
+
+def test_build_prompt_deduplicates_values() -> None:
+    result = build_prompt({"wispy": "Wispr", "whispy": "Wispr"})
+    assert result == "Wispr"
+
+
+def test_build_prompt_truncates_at_term_boundary() -> None:
+    # Build a map whose joined prompt exceeds _PROMPT_CHAR_LIMIT.
+    # Each value is "Term000" ... "Term999" (7 chars + ", " separator = 9 chars each).
+    many = {f"wrong{i}": f"Term{i:03d}" for i in range(200)}
+    result = build_prompt(many)
+    assert result is not None
+    assert len(result) <= _PROMPT_CHAR_LIMIT
+    # Must not end mid-word — last char is a digit (complete term), not a comma/space.
+    assert not result.endswith(",")
+    assert not result.endswith(", ")
+
+
+def test_build_prompt_truncation_edge_case_single_long_term() -> None:
+    # If the first (and only) term exceeds the limit, rsplit finds no ", " and
+    # returns the raw slice — still bounded by _PROMPT_CHAR_LIMIT.
+    long_term = "A" * (_PROMPT_CHAR_LIMIT + 100)
+    result = build_prompt({"wrong": long_term})
+    assert result is not None
+    assert len(result) <= _PROMPT_CHAR_LIMIT
 
 
 def test_apply_does_not_partially_match_hyphenated_token() -> None:

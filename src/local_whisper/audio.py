@@ -8,8 +8,10 @@ import sounddevice
 
 logger = logging.getLogger("local_whisper")
 
+SAMPLE_RATE_HZ = 16_000  # Whisper expects 16 kHz input
 
-def record(duration: float, sample_rate: int = 16000) -> np.ndarray:
+
+def record(duration: float, sample_rate: int = SAMPLE_RATE_HZ) -> np.ndarray:
     """Record audio from default microphone.
 
     Args:
@@ -33,7 +35,7 @@ def record(duration: float, sample_rate: int = 16000) -> np.ndarray:
 
 def record_until_event(
     stop_event: threading.Event,
-    sample_rate: int = 16000,
+    sample_rate: int = SAMPLE_RATE_HZ,
     chunk_size: int = 512,
     on_amplitude: Callable[[float], None] | None = None,
 ) -> np.ndarray:
