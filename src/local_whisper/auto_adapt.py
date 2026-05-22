@@ -13,7 +13,8 @@ logger = logging.getLogger("local_whisper")
 
 _EMAIL_PROMPT = (
     "Transform the following text into a well-structured email, maintaining the original language of the input text. "
-    "Analyze the tone and style of the input text (casual, professional, cordial, informal, etc.) and maintain that same tone throughout. "
+    "Analyze the tone and style of the input text (casual, professional, cordial, informal, etc.) "
+    "and maintain that same tone throughout. "
     'Add an appropriate greeting like "Hi," and closing like "Cheers," that matches the detected tone. '
     "Do not use placeholders like [name] or [signature]. "
     "Organize the information in clear paragraphs. Only return the email text, without subject."

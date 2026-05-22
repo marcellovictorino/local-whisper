@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from local_whisper.app import _run_command_pipeline, _run_dictation_pipeline
 

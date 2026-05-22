@@ -206,8 +206,10 @@ def _keepalive_loop(model: str, interval_s: int) -> None:
             logger.debug("Keepalive ping failed (non-fatal): %s", exc)
 
 
-def start_keepalive(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND, interval_s: int = _KEEPALIVE_INTERVAL_S) -> None:
-    """Spawn daemon thread that runs silent transcription every interval_s to prevent macOS from evicting model from GPU memory.
+def start_keepalive(
+    model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND, interval_s: int = _KEEPALIVE_INTERVAL_S
+) -> None:
+    """Spawn daemon thread that runs silent transcription every interval_s to prevent GPU memory eviction.
 
     No-op for non-MLX backends: Parakeet caches its model in a Python dict, not GPU pages.
     """
