@@ -17,6 +17,7 @@ logger = logging.getLogger("local_whisper")
 class LLMUnavailable(Exception):
     """Raised when an LLM call cannot complete (missing key, package, or API error)."""
 
+
 # Cached clients keyed by (api_key, base_url) to reuse connection pools across calls.
 _client_cache: dict[tuple[str, str | None], openai.OpenAI] = {}  # type: ignore[type-arg]
 
