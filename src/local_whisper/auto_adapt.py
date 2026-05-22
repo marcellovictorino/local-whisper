@@ -20,7 +20,7 @@ _EMAIL_PROMPT = (
 )
 
 _SLACK_PROMPT = (
-    "Clean up and format the following transcription maintaining the original language, tone, style and words. "
+    "Clean up and format the following transcription, maintaining the original language, tone, style and words. "
     "Only fix small inconsistencies, errors, and organize the text into proper paragraphs with correct punctuation. "
     "Do not add emojis, greetings, or closings. Do not change the conversational style or add formalities. "
     "Simply present the cleaned transcription with proper formatting."

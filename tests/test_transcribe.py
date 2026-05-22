@@ -9,12 +9,15 @@ import pytest
 import local_whisper.transcribe as _tr
 from local_whisper.transcribe import (
     DEFAULT_MODEL,
+    Backend,
     KnownModel,
+    _keepalive_loop,
     _model_is_cached,
     _parakeet_cache,
     _run_parakeet,
     get_backend,
     get_model,
+    start_keepalive,
 )
 
 MODEL = "mlx-community/whisper-large-v3-turbo"
@@ -156,3 +159,33 @@ def test_run_parakeet_falls_back_on_import_error() -> None:
         result = _run_parakeet(audio, "mlx-community/parakeet-tdt-0.6b-v2")
     mock_mlx.assert_called_once_with(audio, DEFAULT_MODEL)
     assert result == "fallback text"
+
+
+# --- keepalive ---
+
+
+def test_start_keepalive_skips_non_mlx_backend() -> None:
+    with patch("local_whisper.transcribe.threading.Thread") as mock_thread:
+        start_keepalive(model=DEFAULT_MODEL, backend=Backend.PARAKEET, interval_s=1)
+    mock_thread.assert_not_called()
+
+
+def test_start_keepalive_spawns_thread_for_mlx() -> None:
+    with patch("local_whisper.transcribe.threading.Thread") as mock_thread:
+        start_keepalive(model=DEFAULT_MODEL, backend=Backend.MLX_WHISPER, interval_s=1)
+    mock_thread.assert_called_once()
+    _, kwargs = mock_thread.call_args
+    assert kwargs.get("daemon") is True
+
+
+def test_keepalive_loop_calls_mlx_whisper_each_iteration() -> None:
+    with (
+        patch("local_whisper.transcribe.wait_warmed"),
+        patch("local_whisper.transcribe._run_mlx_whisper") as mock_mlx,
+        patch("local_whisper.transcribe.time.sleep", side_effect=[None, StopIteration]),
+    ):
+        with pytest.raises(StopIteration):
+            _keepalive_loop(DEFAULT_MODEL, interval_s=1)
+
+    mock_mlx.assert_called_once()
+    assert mock_mlx.call_args.args[1] == DEFAULT_MODEL
