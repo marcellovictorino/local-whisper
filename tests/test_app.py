@@ -24,8 +24,8 @@ def test_dictation_pipeline_order() -> None:
     mock_adapt.assert_called_once_with("cleaned", "Slack")
     mock_corrections.assert_called_once_with("adapted", {"teh": "the"})
     mock_snippets.assert_called_once_with("corrected")
-    mock_paste.assert_called_once_with("expanded")
-    assert result == "expanded"
+    mock_paste.assert_called_once_with("expanded ")
+    assert result == "expanded "
 
 
 def test_dictation_pipeline_applies_corrections() -> None:
@@ -38,7 +38,7 @@ def test_dictation_pipeline_applies_corrections() -> None:
         # duration_s=0.0 so auto_adapt stage is skipped
         result = _run_dictation_pipeline("teh world", "Terminal", {"teh": "the"}, duration_s=0.0, min_auto_adapt_s=3.0)
 
-    assert result == "the world"
+    assert result == "the world "
 
 
 def test_command_pipeline() -> None:

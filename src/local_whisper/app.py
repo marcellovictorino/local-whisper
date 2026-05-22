@@ -61,6 +61,7 @@ def _run_dictation_pipeline(
         logger.info("Skipping auto-adapt: recording too short (%.1fs < %.0fs)", duration_s, min_auto_adapt_s)
     text = corrections.apply(text, corrections_map)
     text = snippets.expand(text)
+    text = text.rstrip() + " "
     clipboard.write_and_paste(text)
     return text
 
