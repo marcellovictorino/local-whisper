@@ -13,6 +13,10 @@ except ImportError:
 
 logger = logging.getLogger("local_whisper")
 
+
+class LLMUnavailable(Exception):
+    """Raised when an LLM call cannot complete (missing key, package, or API error)."""
+
 # Cached clients keyed by (api_key, base_url) to reuse connection pools across calls.
 _client_cache: dict[tuple[str, str | None], openai.OpenAI] = {}  # type: ignore[type-arg]
 
@@ -82,6 +86,57 @@ def transform(
         return fallback
 
 
+def transform_strict(
+    system: str,
+    user: str,
+    *,
+    default_model: str,
+) -> str:
+    """Like transform() but raises LLMUnavailable instead of returning a fallback.
+
+    Use when the caller must distinguish success from failure (e.g. command mode,
+    where falling back would overwrite the user's selected text).
+
+    Args:
+        system: Instruction prompt (system role).
+        user: Input text (user role).
+        default_model: Model ID used unless LOCAL_WHISPER_COMMAND_MODEL overrides.
+
+    Returns:
+        Model response text.
+
+    Raises:
+        LLMUnavailable: on missing API key, missing package, empty response, or API error.
+    """
+    api_key = _get_api_key()
+    if not api_key:
+        raise LLMUnavailable("No OpenAI API key. Set LOCAL_WHISPER_OPENAI_API_KEY or OPENAI_API_KEY.")
+
+    if openai is None:
+        raise LLMUnavailable("openai package not installed. Run: uv sync --extra command")
+
+    model = os.environ.get("LOCAL_WHISPER_COMMAND_MODEL", default_model)
+    base_url = os.environ.get("LOCAL_WHISPER_OPENAI_BASE_URL")
+    try:
+        client = _get_client(api_key, base_url)
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            max_completion_tokens=4096,
+        )
+        result = response.choices[0].message.content
+        if result is None:
+            raise LLMUnavailable("Model returned empty response.")
+        return result
+    except LLMUnavailable:
+        raise
+    except Exception as exc:
+        raise LLMUnavailable(str(exc)) from exc
+
+
 def apply_voice_command(text: str, instruction: str) -> str:
     """Apply a spoken instruction to selected text via LLM.
 
@@ -90,13 +145,16 @@ def apply_voice_command(text: str, instruction: str) -> str:
         instruction: Voice command describing the transformation.
 
     Returns:
-        Transformed text, or instruction unchanged if API unavailable.
+        Transformed text.
+
+    Raises:
+        LLMUnavailable: if API unavailable or call fails. Caller preserves selection.
     """
     system = (
         "Apply the instruction to the provided text. Return only the transformed text — no explanation, no preamble."
     )
     user = f"{instruction}\n\n{text}"
-    return transform(system, user, default_model="gpt-5-nano", fallback=instruction)
+    return transform_strict(system, user, default_model="gpt-5-nano")
 
 
 def reshape_for_app(text: str, prompt: str) -> str:

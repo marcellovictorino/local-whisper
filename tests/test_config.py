@@ -94,6 +94,7 @@ def test_invalidate_clears_cache(tmp_path: Path) -> None:
         (cfg.get_corrections_raw, {}),
         (cfg.get_snippets_raw, {}),
         (cfg.get_auto_adapt_section, {}),
+        (cfg.get_auto_adapt_min_duration, 3.0),
     ],
 )
 def test_accessor_returns_default_when_file_missing(tmp_path: Path, accessor, expected) -> None:
@@ -136,3 +137,13 @@ def test_get_auto_adapt_section_returns_full_section(tmp_path: Path) -> None:
     result = cfg.get_auto_adapt_section(p)
     assert result["enabled"] is True
     assert result["slack"]["prompt"] == "casual"
+
+
+def test_get_auto_adapt_min_duration_default(tmp_path: Path) -> None:
+    p = _write(tmp_path / "c.toml", "[auto_adapt]\nenabled = true\n")
+    assert cfg.get_auto_adapt_min_duration(p) == 3.0
+
+
+def test_get_auto_adapt_min_duration_custom(tmp_path: Path) -> None:
+    p = _write(tmp_path / "c.toml", "[auto_adapt]\nmin_duration_s = 5.5\n")
+    assert cfg.get_auto_adapt_min_duration(p) == 5.5

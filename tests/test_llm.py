@@ -189,20 +189,63 @@ def test_reshape_for_app_escapes_text_and_uses_prompt(monkeypatch: pytest.Monkey
     assert "&lt;world&gt;" in call["messages"][1]["content"]
 
 
-@pytest.mark.parametrize(
-    "fn_name,args,expected_fallback",
-    [
-        ("apply_voice_command", ("some text", "translate to French"), "translate to French"),
-        ("reshape_for_app", ("original text", "some prompt"), "original text"),
-    ],
-)
-def test_intention_helpers_fallback_when_no_api_key(
-    monkeypatch: pytest.MonkeyPatch, fn_name, args, expected_fallback
-) -> None:
+def test_reshape_for_app_fallback_when_no_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    import importlib
+    from local_whisper.llm import reshape_for_app
 
-    mod = importlib.import_module("local_whisper.llm")
-    fn = getattr(mod, fn_name)
-    assert fn(*args) == expected_fallback
+    assert reshape_for_app("original text", "some prompt") == "original text"
+
+
+# --- transform_strict ---
+
+
+def test_transform_strict_raises_on_no_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    from local_whisper.llm import LLMUnavailable, transform_strict
+
+    with pytest.raises(LLMUnavailable, match="No OpenAI API key"):
+        transform_strict("sys", "user", default_model="m")
+
+
+def test_transform_strict_raises_on_missing_package(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
+    with patch("local_whisper.llm.openai", None):
+        from local_whisper.llm import LLMUnavailable, transform_strict
+
+        with pytest.raises(LLMUnavailable, match="openai package"):
+            transform_strict("sys", "user", default_model="m")
+
+
+def test_transform_strict_raises_on_api_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
+    mock_openai = MagicMock()
+    mock_openai.OpenAI.return_value.chat.completions.create.side_effect = RuntimeError("down")
+    with patch("local_whisper.llm.openai", mock_openai):
+        from local_whisper.llm import LLMUnavailable, transform_strict
+
+        with pytest.raises(LLMUnavailable):
+            transform_strict("sys", "user", default_model="m")
+
+
+def test_transform_strict_raises_on_empty_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
+    mock_openai, _ = _mock_openai(None)  # type: ignore[arg-type]
+    with patch("local_whisper.llm.openai", mock_openai):
+        from local_whisper.llm import LLMUnavailable, transform_strict
+
+        with pytest.raises(LLMUnavailable, match="empty response"):
+            transform_strict("sys", "user", default_model="m")
+
+
+# --- apply_voice_command raises ---
+
+
+def test_apply_voice_command_raises_on_no_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    from local_whisper.llm import LLMUnavailable, apply_voice_command
+
+    with pytest.raises(LLMUnavailable):
+        apply_voice_command("some text", "translate to French")

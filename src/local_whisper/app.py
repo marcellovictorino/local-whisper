@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger("local_whisper")
 
 _MIN_RECORD_DURATION_S = 0.3
-_MIN_AUTO_ADAPT_DURATION_S = 10.0
 _SILENCE_PEAK_THRESHOLD = 0.01
 
 
@@ -46,13 +45,20 @@ class _Session:
     selection: str = ""
 
 
-def _run_dictation_pipeline(text: str, active_app: str, corrections_map: dict[str, str], duration_s: float) -> str:
+def _run_dictation_pipeline(
+    text: str,
+    active_app: str,
+    corrections_map: dict[str, str],
+    duration_s: float,
+    *,
+    min_auto_adapt_s: float,
+) -> str:
     """Apply dictation post-processing pipeline and paste result."""
     text = auto_cleanup.apply(text)
-    if duration_s >= _MIN_AUTO_ADAPT_DURATION_S:
+    if duration_s >= min_auto_adapt_s:
         text = auto_adapt.apply(text, active_app)
     elif auto_adapt.is_active(active_app):
-        logger.info("Skipping auto-adapt: recording too short (%.1fs < %.0fs)", duration_s, _MIN_AUTO_ADAPT_DURATION_S)
+        logger.info("Skipping auto-adapt: recording too short (%.1fs < %.0fs)", duration_s, min_auto_adapt_s)
     text = corrections.apply(text, corrections_map)
     text = snippets.expand(text)
     clipboard.write_and_paste(text)
@@ -60,7 +66,11 @@ def _run_dictation_pipeline(text: str, active_app: str, corrections_map: dict[st
 
 
 def _run_command_pipeline(selection: str, instruction: str) -> str:
-    """Apply voice command to selection via LLM and paste result."""
+    """Apply voice command to selection via LLM and paste result.
+
+    Raises:
+        llm.LLMUnavailable: if LLM call fails. Caller preserves the selection.
+    """
     result = llm.apply_voice_command(selection, instruction)
     clipboard.write_and_paste(result)
     return result
@@ -89,6 +99,7 @@ class App:
         self._active: _Session | None = None
         self._corrections: dict[str, str] = corrections.load()
         self._vocab_prompt: str | None = corrections.build_prompt(self._corrections)
+        self._min_auto_adapt_s: float = config.get_auto_adapt_min_duration()
         self._listener = HotkeyListener(
             on_activate=self._on_key_press,
             on_deactivate=self._on_key_release,
@@ -99,6 +110,11 @@ class App:
         signal.signal(signal.SIGHUP, lambda _s, _f: self._reload_config())
         self._listener.start()
         logger.info("local-whisper running. Hold Right ⌘ to dictate (or apply command to selection). Ctrl+C to quit.")
+        if not llm.is_available():
+            logger.warning(
+                "LLM features disabled (auto-adapt and command mode unavailable). "
+                "Export OPENAI_API_KEY to the daemon — re-run setup.sh."
+            )
 
     def stop(self) -> None:
         """Stop the keyboard listener."""
@@ -120,6 +136,7 @@ class App:
         config.invalidate()
         self._corrections = corrections.load()
         self._vocab_prompt = corrections.build_prompt(self._corrections)
+        self._min_auto_adapt_s = config.get_auto_adapt_min_duration()
         logger.info("Config reloaded.")
 
     def _on_key_press(self) -> None:
@@ -180,9 +197,17 @@ class App:
 
             match session.mode:
                 case _SessionMode.DICTATION:
-                    _run_dictation_pipeline(text, self._active_app, self._corrections, duration_s)
+                    _run_dictation_pipeline(
+                        text, self._active_app, self._corrections, duration_s, min_auto_adapt_s=self._min_auto_adapt_s
+                    )
                 case _SessionMode.COMMAND:
-                    _run_command_pipeline(session.selection, text)
+                    try:
+                        _run_command_pipeline(session.selection, text)
+                    except llm.LLMUnavailable as exc:
+                        logger.error("Command failed (selection preserved): %s", exc)
+                        if self._overlay:
+                            self._overlay.show_error()
+                        return
         except Exception as exc:
             logger.error("Session error: %s", exc)
         finally:

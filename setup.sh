@@ -53,6 +53,17 @@ LOG_FILE="$HOME/Library/Logs/local-whisper.log"
 
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
 
+# Snapshot LLM-related env vars from the current shell into the plist.
+# launchd agents do not inherit ~/.zshrc / ~/.bashrc environment.
+LLM_ENV_VARS=""
+for _var in OPENAI_API_KEY LOCAL_WHISPER_OPENAI_API_KEY LOCAL_WHISPER_COMMAND_MODEL LOCAL_WHISPER_OPENAI_BASE_URL; do
+    _val="${!_var:-}"
+    if [[ -n "$_val" ]]; then
+        LLM_ENV_VARS="${LLM_ENV_VARS}        <key>${_var}</key><string>${_val}</string>
+"
+    fi
+done
+
 cat > "$PLIST_DEST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -81,7 +92,7 @@ cat > "$PLIST_DEST" <<PLIST
     <dict>
         <key>PYTHONWARNINGS</key>
         <string>ignore::UserWarning:multiprocessing</string>
-    </dict>
+${LLM_ENV_VARS}    </dict>
 </dict>
 </plist>
 PLIST
@@ -93,6 +104,18 @@ launchctl bootstrap "gui/$(id -u)" "$PLIST_DEST"
 
 echo ""
 echo "✓ local-whisper installed. Starts automatically on login."
+echo ""
+echo "LLM env vars captured in daemon (auto-adapt + command mode):"
+_captured=0
+for _var in OPENAI_API_KEY LOCAL_WHISPER_OPENAI_API_KEY LOCAL_WHISPER_COMMAND_MODEL LOCAL_WHISPER_OPENAI_BASE_URL; do
+    if [[ -n "${!_var:-}" ]]; then
+        echo "  ✓ $_var"
+        _captured=$((_captured + 1))
+    fi
+done
+if [[ $_captured -eq 0 ]]; then
+    echo "  ✗ None found — set OPENAI_API_KEY in your shell and re-run setup.sh to enable LLM features."
+fi
 echo ""
 echo "IMPORTANT: Grant Accessibility permission to complete setup:"
 echo "  System Settings → Privacy & Security → Accessibility"
