@@ -11,10 +11,24 @@ from local_whisper._macos import NSWorkspace as _NSWorkspace
 
 logger = logging.getLogger("local_whisper")
 
-_EMAIL_PROMPT = "Professional email. Fix grammar, clear paragraphs, formal tone."
+_EMAIL_PROMPT = (
+    "Transform the following text into a well-structured email, maintaining the original language of the input text. "
+    "Analyze the tone and style of the input text (casual, professional, cordial, informal, etc.) "
+    "and maintain that same tone throughout. "
+    'Add an appropriate greeting like "Hi," and closing like "Cheers," that matches the detected tone. '
+    "Do not use placeholders like [name] or [signature]. "
+    "Organize the information in clear paragraphs. Only return the email text, without subject."
+)
+
+_SLACK_PROMPT = (
+    "Clean up and format the following transcription, maintaining the original language, tone, style and words. "
+    "Only fix small inconsistencies, errors, and organize the text into proper paragraphs with correct punctuation. "
+    "Do not add emojis, greetings, or closings. Do not change the conversational style or add formalities. "
+    "Simply present the cleaned transcription with proper formatting."
+)
 
 _BUILTIN_PROMPTS: dict[str, str] = {
-    "Slack": "Casual Slack message. Bullet points, short sentences, natural emojis.",
+    "Slack": _SLACK_PROMPT,
     "Mail": _EMAIL_PROMPT,
     "Notion Mail": _EMAIL_PROMPT,
     "Mimestream": _EMAIL_PROMPT,

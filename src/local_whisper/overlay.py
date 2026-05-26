@@ -61,6 +61,7 @@ class _Cmd(StrEnum):
     SHOW = "show"
     SHOW_COMMAND = "show_command"
     SHOW_ADAPT = "show_adapt"
+    SHOW_ERROR = "show_error"
     PROCESSING = "processing"
     HIDE = "hide"
     QUIT = "quit"
@@ -71,6 +72,7 @@ class _BarMode(StrEnum):
     DICTATION = "dictation"
     COMMAND = "command"
     ADAPT = "adapt"
+    ERROR = "error"
     PROCESSING = "processing"
 
 
@@ -91,6 +93,7 @@ class _OverlayController(NSObject):
         self._was_idle: bool = True
         self._last_active_t: float = 0.0  # monotonic time of last above-threshold frame
         self._last_normalized: float = 0.0  # normalized amplitude at last active frame
+        self._error_until: float = 0.0  # suppress HIDE until this monotonic timestamp
         self._CATransaction = objc.lookUpClass("CATransaction")
 
     def pollQueue_(self, _timer: object) -> None:
@@ -110,15 +113,23 @@ class _OverlayController(NSObject):
                         self._active = True
                         self._mode = _BarMode.ADAPT
                         self._fade_in()
+                    case _Cmd.SHOW_ERROR:
+                        self._active = True
+                        self._mode = _BarMode.ERROR
+                        self._error_until = time.monotonic() + 1.0
+                        self._fade_in()
                     case _Cmd.PROCESSING:
                         # Recording stopped — switch to processing animation without hiding.
                         self._mode = _BarMode.PROCESSING
                         self._amplitude = 0.0
                         self._was_idle = True
                     case _Cmd.HIDE:
-                        self._active = False
-                        self._amplitude = 0.0
-                        self._fade_out()
+                        if time.monotonic() < self._error_until:
+                            pass  # suppressed — error display takes precedence
+                        else:
+                            self._active = False
+                            self._amplitude = 0.0
+                            self._fade_out()
                     case _Cmd.QUIT:
                         NSApplication.sharedApplication().terminate_(None)
                         return
@@ -190,6 +201,8 @@ class _OverlayController(NSObject):
                 color = NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.34, 1.0)  # amber
             case _BarMode.ADAPT:
                 color = NSColor.colorWithRed_green_blue_alpha_(0.0, 0.85, 1.0, 1.0)  # electric cyan
+            case _BarMode.ERROR:
+                color = NSColor.colorWithRed_green_blue_alpha_(1.0, 0.27, 0.27, 1.0)  # red
             case _:
                 color = NSColor.whiteColor()
         cgcolor = color.CGColor()
@@ -256,6 +269,11 @@ class _OverlayController(NSObject):
         if self._panel is None or self._panel.alphaValue() < 0.1:
             self._active = False
             return
+        if self._error_until > 0 and time.monotonic() >= self._error_until:
+            self._error_until = 0.0
+            self._active = False
+            self._fade_out()
+            return
         t = time.monotonic()
         CT = self._CATransaction
         CT.begin()
@@ -291,6 +309,10 @@ class RecordingOverlay:
     def show_adapt(self) -> None:
         """Fade in the overlay (auto-adapt mode, cyan bars). Thread-safe."""
         self._queue.put(_Cmd.SHOW_ADAPT)
+
+    def show_error(self) -> None:
+        """Flash overlay red for ~1s to signal command failure. Thread-safe."""
+        self._queue.put(_Cmd.SHOW_ERROR)
 
     def set_processing(self) -> None:
         """Switch to processing animation after recording stops. Thread-safe."""

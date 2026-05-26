@@ -191,6 +191,35 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
         _warmed.set()
 
 
+_KEEPALIVE_INTERVAL_S = 20 * 60  # 20 minutes — keeps model pages active before macOS compresses them
+
+
+def _keepalive_loop(model: str, interval_s: int) -> None:
+    wait_warmed(timeout=None)  # wait indefinitely — model download may exceed 60s
+    silence = np.zeros(int(0.5 * 16_000), dtype="float32")
+    while True:
+        time.sleep(interval_s)
+        try:
+            _run_mlx_whisper(silence, model)
+            logger.debug("Keepalive: model warm.")
+        except Exception as exc:
+            logger.debug("Keepalive ping failed (non-fatal): %s", exc)
+
+
+def start_keepalive(
+    model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND, interval_s: int = _KEEPALIVE_INTERVAL_S
+) -> None:
+    """Spawn daemon thread that runs silent transcription every interval_s to prevent GPU memory eviction.
+
+    No-op for non-MLX backends: Parakeet caches its model in a Python dict, not GPU pages.
+    """
+    if backend != Backend.MLX_WHISPER:
+        return
+    t = threading.Thread(target=_keepalive_loop, args=(model, interval_s), daemon=True)
+    t.start()
+    logger.debug("Keepalive started (interval: %ds).", interval_s)
+
+
 def wait_warmed(timeout: float | None = 60) -> bool:
     """Block until warm_up() has completed (success or failure).
 
