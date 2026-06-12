@@ -50,9 +50,10 @@ def test_transform_returns_fallback_on_api_exception(monkeypatch: pytest.MonkeyP
         assert transform("sys", "user", default_model="m", fallback="FALLBACK") == "FALLBACK"
 
 
-def test_transform_returns_fallback_when_content_is_none(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("content", [None, "", "   \n"])
+def test_transform_returns_fallback_when_content_empty(monkeypatch: pytest.MonkeyPatch, content) -> None:
     monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
-    mock_openai, _ = _mock_openai(None)  # type: ignore[arg-type]
+    mock_openai, _ = _mock_openai(content)  # type: ignore[arg-type]
     with patch("local_whisper.llm.openai", mock_openai):
         from local_whisper.llm import transform
 
@@ -229,9 +230,10 @@ def test_transform_strict_raises_on_api_error(monkeypatch: pytest.MonkeyPatch) -
             transform_strict("sys", "user", default_model="m")
 
 
-def test_transform_strict_raises_on_empty_response(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("content", [None, "", "   \n"])
+def test_transform_strict_raises_on_empty_response(monkeypatch: pytest.MonkeyPatch, content) -> None:
     monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "sk-test")
-    mock_openai, _ = _mock_openai(None)  # type: ignore[arg-type]
+    mock_openai, _ = _mock_openai(content)  # type: ignore[arg-type]
     with patch("local_whisper.llm.openai", mock_openai):
         from local_whisper.llm import LLMUnavailable, transform_strict
 

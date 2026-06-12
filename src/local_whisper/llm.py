@@ -81,7 +81,11 @@ def transform(
             ],
             max_completion_tokens=4096,
         )
-        return response.choices[0].message.content or fallback
+        content = response.choices[0].message.content
+        if not content or not content.strip():
+            logger.warning("LLM returned empty response; using fallback.")
+            return fallback
+        return content
     except Exception as exc:
         logger.error("LLM call failed: %s", exc)
         return fallback
@@ -129,7 +133,7 @@ def transform_strict(
             max_completion_tokens=4096,
         )
         result = response.choices[0].message.content
-        if result is None:
+        if not result or not result.strip():
             raise LLMUnavailable("Model returned empty response.")
         return result
     except LLMUnavailable:
