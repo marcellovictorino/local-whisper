@@ -165,18 +165,14 @@ def test_run_parakeet_falls_back_on_import_error() -> None:
 # --- keepalive ---
 
 
-def test_start_keepalive_skips_non_mlx_backend() -> None:
+@pytest.mark.parametrize("backend", [Backend.MLX_WHISPER, Backend.PARAKEET])
+def test_start_keepalive_spawns_daemon_thread(backend: Backend) -> None:
     with patch("local_whisper.transcribe.threading.Thread") as mock_thread:
-        start_keepalive(model=DEFAULT_MODEL, backend=Backend.PARAKEET, interval_s=1)
-    mock_thread.assert_not_called()
-
-
-def test_start_keepalive_spawns_thread_for_mlx() -> None:
-    with patch("local_whisper.transcribe.threading.Thread") as mock_thread:
-        start_keepalive(model=DEFAULT_MODEL, backend=Backend.MLX_WHISPER, interval_s=1)
+        start_keepalive(model=DEFAULT_MODEL, backend=backend, interval_s=1)
     mock_thread.assert_called_once()
     _, kwargs = mock_thread.call_args
     assert kwargs.get("daemon") is True
+    assert kwargs["args"][2] == backend
 
 
 def test_keepalive_loop_calls_mlx_whisper_each_iteration() -> None:
@@ -186,7 +182,22 @@ def test_keepalive_loop_calls_mlx_whisper_each_iteration() -> None:
         patch("local_whisper.transcribe.time.sleep", side_effect=[None, StopIteration]),
     ):
         with pytest.raises(StopIteration):
-            _keepalive_loop(DEFAULT_MODEL, interval_s=1)
+            _keepalive_loop("some/whisper-model", interval_s=1, backend=Backend.MLX_WHISPER)
 
     mock_mlx.assert_called_once()
-    assert mock_mlx.call_args.args[1] == DEFAULT_MODEL
+    assert mock_mlx.call_args.args[1] == "some/whisper-model"
+
+
+def test_keepalive_loop_calls_parakeet_for_parakeet_backend() -> None:
+    with (
+        patch("local_whisper.transcribe.wait_warmed"),
+        patch("local_whisper.transcribe._run_parakeet") as mock_parakeet,
+        patch("local_whisper.transcribe._run_mlx_whisper") as mock_mlx,
+        patch("local_whisper.transcribe.time.sleep", side_effect=[None, StopIteration]),
+    ):
+        with pytest.raises(StopIteration):
+            _keepalive_loop(DEFAULT_MODEL, interval_s=1, backend=Backend.PARAKEET)
+
+    mock_parakeet.assert_called_once()
+    mock_mlx.assert_not_called()
+    assert mock_parakeet.call_args.args[1] == DEFAULT_MODEL
