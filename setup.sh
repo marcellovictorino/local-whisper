@@ -22,6 +22,16 @@ if ! command -v uv &>/dev/null; then
     exit 1
 fi
 
+if ! command -v ffmpeg &>/dev/null; then
+    echo "Error: ffmpeg is not installed (required by the parakeet backend)." >&2
+    echo "" >&2
+    echo "Install ffmpeg first:" >&2
+    echo "  brew install ffmpeg" >&2
+    echo "" >&2
+    echo "Then re-run: bash setup.sh" >&2
+    exit 1
+fi
+
 # --- Install Python dependencies ---
 
 echo "Installing dependencies..."
@@ -31,15 +41,16 @@ uv sync
 
 echo ""
 uv run python -c "
-from local_whisper.transcribe import DEFAULT_MODEL, _model_is_cached, _MODEL_SIZES
-size = _MODEL_SIZES.get(DEFAULT_MODEL, 'unknown size')
+from local_whisper.transcribe import get_model, _model_is_cached, _MODEL_SIZES
+model = get_model()
+size = _MODEL_SIZES.get(model, 'unknown size')
 print(f'Checking model cache (may download {size} on first run)...', flush=True)
-if _model_is_cached(DEFAULT_MODEL):
+if _model_is_cached(model):
     print('Model already cached.', flush=True)
 else:
     print(f'Downloading model (one-time, {size})...', flush=True)
     from huggingface_hub import snapshot_download
-    snapshot_download(DEFAULT_MODEL)
+    snapshot_download(model)
 "
 echo "Model ready."
 

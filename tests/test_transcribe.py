@@ -99,6 +99,7 @@ def test_known_model_members_are_valid_hf_ids() -> None:
 @pytest.mark.parametrize(
     "model,expected_backend",
     [
+        (KnownModel.WHISPER_SMALL_EN, "mlx-whisper"),
         (KnownModel.DISTIL_WHISPER, "mlx-whisper"),
         (KnownModel.WHISPER_TURBO, "mlx-whisper"),
         (KnownModel.PARAKEET_V2, "parakeet-mlx"),
@@ -109,8 +110,8 @@ def test_get_backend(model: str, expected_backend: str) -> None:
     assert get_backend(model) == expected_backend
 
 
-def test_default_model_is_whisper_small_en() -> None:
-    assert DEFAULT_MODEL == KnownModel.WHISPER_SMALL_EN
+def test_default_model_is_parakeet() -> None:
+    assert DEFAULT_MODEL == KnownModel.PARAKEET_V2
 
 
 # --- parakeet model caching ---
@@ -157,7 +158,7 @@ def test_run_parakeet_falls_back_on_import_error() -> None:
         patch("local_whisper.transcribe._run_mlx_whisper", return_value="fallback text") as mock_mlx,
     ):
         result = _run_parakeet(audio, "mlx-community/parakeet-tdt-0.6b-v2")
-    mock_mlx.assert_called_once_with(audio, DEFAULT_MODEL)
+    mock_mlx.assert_called_once_with(audio, KnownModel.WHISPER_SMALL_EN)
     assert result == "fallback text"
 
 

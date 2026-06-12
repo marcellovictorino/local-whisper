@@ -727,15 +727,11 @@ dependencies = [
     { name = "mlx-whisper" },
     { name = "numpy" },
     { name = "openai" },
+    { name = "parakeet-mlx" },
     { name = "pynput" },
     { name = "pyperclip" },
     { name = "sounddevice" },
     { name = "soundfile" },
-]
-
-[package.optional-dependencies]
-parakeet = [
-    { name = "parakeet-mlx" },
 ]
 
 [package.dev-dependencies]
@@ -750,7 +746,7 @@ requires-dist = [
     { name = "mlx-whisper", specifier = ">=0.4.0" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "openai", specifier = ">=1.0" },
-    { name = "parakeet-mlx", marker = "extra == 'parakeet'", specifier = ">=0.5.1" },
+    { name = "parakeet-mlx", specifier = ">=0.5.1" },
     { name = "pynput", specifier = ">=1.7" },
     { name = "pyperclip", specifier = ">=1.8" },
     { name = "sounddevice", specifier = ">=0.4.7" },

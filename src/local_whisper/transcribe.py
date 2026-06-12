@@ -21,10 +21,10 @@ class KnownModel(StrEnum):
     Add new models here to register them. Unknown IDs fall back to mlx-whisper.
     """
 
-    WHISPER_SMALL_EN = "mlx-community/whisper-small.en-mlx"  # default; best latency/accuracy; English only; ~250 MB
+    WHISPER_SMALL_EN = "mlx-community/whisper-small.en-mlx"  # good latency/accuracy; English only; ~250 MB
     DISTIL_WHISPER = "mlx-community/distil-whisper-large-v3"  # high accuracy; English only; ~600 MB
     WHISPER_TURBO = "mlx-community/whisper-large-v3-turbo"  # multilingual, accurate; ~1.5 GB
-    PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # fastest; English only; requires --extra parakeet
+    PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # default; fastest; English only; ~600 MB
 
 
 class Backend(StrEnum):
@@ -34,8 +34,11 @@ class Backend(StrEnum):
     PARAKEET = "parakeet-mlx"
 
 
-DEFAULT_MODEL = KnownModel.WHISPER_SMALL_EN
-DEFAULT_BACKEND = Backend.MLX_WHISPER
+DEFAULT_MODEL = KnownModel.PARAKEET_V2
+DEFAULT_BACKEND = Backend.PARAKEET
+
+# Unknown HF model IDs are assumed whisper-compatible — independent of DEFAULT_BACKEND.
+_UNKNOWN_MODEL_BACKEND = Backend.MLX_WHISPER
 
 _MODEL_SIZES: dict[str, str] = {
     KnownModel.WHISPER_TURBO: "~1.5 GB",
@@ -68,7 +71,7 @@ def get_backend(model: str) -> Backend:
     Returns:
         Backend enum value.
     """
-    return _BACKEND_MAP.get(model, DEFAULT_BACKEND)
+    return _BACKEND_MAP.get(model, _UNKNOWN_MODEL_BACKEND)
 
 
 def get_model(path: Path = config.CONFIG_PATH) -> str:
@@ -125,8 +128,8 @@ def _run_parakeet(audio: np.ndarray, model: str) -> str:
     try:
         import parakeet_mlx
     except ImportError:
-        logger.warning("parakeet-mlx not installed. Run: uv sync --extra parakeet\nFalling back to mlx-whisper.")
-        return _run_mlx_whisper(audio, DEFAULT_MODEL)
+        logger.warning("parakeet-mlx not installed. Run: uv sync\nFalling back to mlx-whisper.")
+        return _run_mlx_whisper(audio, KnownModel.WHISPER_SMALL_EN)
 
     import soundfile as sf
 
@@ -258,7 +261,7 @@ def run(
 
     if backend == Backend.PARAKEET:
         if initial_prompt:
-            logger.warning("initial_prompt ignored: Parakeet backend does not support vocabulary seeding.")
+            logger.debug("initial_prompt ignored: Parakeet backend does not support vocabulary seeding.")
         text = _run_parakeet(audio, model)
     else:
         text = _run_mlx_whisper(audio, model, initial_prompt=initial_prompt)
