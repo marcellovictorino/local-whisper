@@ -22,7 +22,7 @@ from local_whisper import (
     transcribe,
 )
 from local_whisper.audio import SAMPLE_RATE_HZ
-from local_whisper.hotkey import HotkeyListener
+from local_whisper.hotkey import HotkeyListener, Trigger
 
 if TYPE_CHECKING:
     from local_whisper.overlay import RecordingOverlay
@@ -36,29 +36,31 @@ _SILENCE_PEAK_THRESHOLD = 0.01
 class _SessionMode(StrEnum):
     DICTATION = "dictation"
     COMMAND = "command"
+    ADAPT = "adapt"
 
 
 @dataclass
 class _Session:
     mode: _SessionMode
+    trigger: Trigger = Trigger.DICTATE
     stop_event: threading.Event = field(default_factory=threading.Event)
     selection: str = ""
 
 
-def _run_dictation_pipeline(
-    text: str,
-    active_app: str,
-    corrections_map: dict[str, str],
-    duration_s: float,
-    *,
-    min_auto_adapt_s: float,
-) -> str:
+def _run_dictation_pipeline(text: str, corrections_map: dict[str, str]) -> str:
     """Apply dictation post-processing pipeline and paste result."""
     text = auto_cleanup.apply(text)
-    if duration_s >= min_auto_adapt_s:
-        text = auto_adapt.apply(text, active_app)
-    elif auto_adapt.is_active(active_app):
-        logger.info("Skipping auto-adapt: recording too short (%.1fs < %.0fs)", duration_s, min_auto_adapt_s)
+    text = corrections.apply(text, corrections_map)
+    text = snippets.expand(text)
+    text = text.rstrip() + " "
+    clipboard.write_and_paste(text)
+    return text
+
+
+def _run_adapt_pipeline(text: str, active_app: str, corrections_map: dict[str, str]) -> str:
+    """Apply dictation pipeline with LLM reshaping for the frontmost app, then paste."""
+    text = auto_cleanup.apply(text)
+    text = auto_adapt.apply(text, active_app)
     text = corrections.apply(text, corrections_map)
     text = snippets.expand(text)
     text = text.rstrip() + " "
@@ -84,6 +86,9 @@ class App:
     - Text selected → command mode: voice instruction applied to selection via API.
     - No selection  → dictation mode: transcription pasted at cursor.
 
+    Hold Right Option to dictate with LLM reshaping for the frontmost app
+    (adapt mode). Selection is ignored in adapt mode.
+
     Runs as a persistent background listener until interrupted.
     """
 
@@ -100,7 +105,6 @@ class App:
         self._active: _Session | None = None
         self._corrections: dict[str, str] = corrections.load()
         self._vocab_prompt: str | None = self._build_vocab_prompt()
-        self._min_auto_adapt_s: float = config.get_auto_adapt_min_duration()
         self._listener = HotkeyListener(
             on_activate=self._on_key_press,
             on_deactivate=self._on_key_release,
@@ -110,7 +114,10 @@ class App:
         """Start the keyboard listener in a daemon thread. Non-blocking."""
         signal.signal(signal.SIGHUP, lambda _s, _f: self._reload_config())
         self._listener.start()
-        logger.info("local-whisper running. Hold Right ⌘ to dictate (or apply command to selection). Ctrl+C to quit.")
+        logger.info(
+            "local-whisper running. Hold Right ⌘ to dictate (or transform selection); "
+            "hold Right ⌥ to dictate with app-adapted formatting. Ctrl+C to quit."
+        )
         if not llm.is_available():
             logger.warning(
                 "LLM features disabled (auto-adapt and command mode unavailable). "
@@ -147,35 +154,35 @@ class App:
         config.invalidate()
         self._corrections = corrections.load()
         self._vocab_prompt = self._build_vocab_prompt()
-        self._min_auto_adapt_s = config.get_auto_adapt_min_duration()
         logger.info("Config reloaded.")
 
-    def _on_key_press(self) -> None:
-        """Detect mode from selection, then start recording in a background thread."""
+    def _on_key_press(self, trigger: Trigger) -> None:
+        """Detect mode from trigger and selection, then start recording in a background thread."""
         if self._active is not None:
             return
 
-        self._active_app = auto_adapt.get_active_app()
-        selection = command.get_selection()
-
-        if selection:
-            session = _Session(mode=_SessionMode.COMMAND, selection=selection)
+        if trigger == Trigger.ADAPT:
+            self._active_app = auto_adapt.get_active_app()
+            session = _Session(mode=_SessionMode.ADAPT, trigger=trigger)
             if self._overlay:
-                self._overlay.show_command()
+                self._overlay.show_adapt()
         else:
-            session = _Session(mode=_SessionMode.DICTATION)
-            if self._overlay:
-                if auto_adapt.is_active(self._active_app):
-                    self._overlay.show_adapt()
-                else:
+            selection = command.get_selection()
+            if selection:
+                session = _Session(mode=_SessionMode.COMMAND, trigger=trigger, selection=selection)
+                if self._overlay:
+                    self._overlay.show_command()
+            else:
+                session = _Session(mode=_SessionMode.DICTATION, trigger=trigger)
+                if self._overlay:
                     self._overlay.show()
 
         self._active = session
         threading.Thread(target=self._run_session, args=(session,), daemon=True).start()
 
-    def _on_key_release(self) -> None:
-        """Signal the active recording to stop."""
-        if self._active is not None:
+    def _on_key_release(self, trigger: Trigger) -> None:
+        """Signal the active recording to stop, if this trigger started it."""
+        if self._active is not None and self._active.trigger == trigger:
             self._active.stop_event.set()
 
     def _run_session(self, session: _Session) -> None:
@@ -208,9 +215,9 @@ class App:
 
             match session.mode:
                 case _SessionMode.DICTATION:
-                    _run_dictation_pipeline(
-                        text, self._active_app, self._corrections, duration_s, min_auto_adapt_s=self._min_auto_adapt_s
-                    )
+                    _run_dictation_pipeline(text, self._corrections)
+                case _SessionMode.ADAPT:
+                    _run_adapt_pipeline(text, self._active_app, self._corrections)
                 case _SessionMode.COMMAND:
                     try:
                         _run_command_pipeline(session.selection, text)

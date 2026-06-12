@@ -1,17 +1,32 @@
 import logging
 from collections.abc import Callable
+from enum import StrEnum
 
 from pynput import keyboard
 
 logger = logging.getLogger("local_whisper")
 
 
+class Trigger(StrEnum):
+    """Hold-to-record hotkeys, each mapped to a recording behavior."""
+
+    DICTATE = "dictate"  # Right Command — plain dictation (or command mode if text selected)
+    ADAPT = "adapt"  # Right Option — dictation reshaped for the frontmost app
+
+
+_KEY_TO_TRIGGER: dict[keyboard.Key, Trigger] = {
+    keyboard.Key.cmd_r: Trigger.DICTATE,
+    keyboard.Key.alt_r: Trigger.ADAPT,
+}
+
+
 class HotkeyListener:
-    """Listen for Right Command key globally.
+    """Listen globally for hold-to-record modifier keys.
 
-    Right Command (hold/release): on_activate / on_deactivate.
+    Right Command (hold/release): on_activate / on_deactivate with Trigger.DICTATE.
+    Right Option (hold/release): same callbacks with Trigger.ADAPT.
 
-    Debounced — repeated press events while held do not re-trigger.
+    Debounced per key — repeated press events while held do not re-trigger.
 
     Requires macOS Accessibility permission for the running
     terminal app (System Settings → Privacy & Security →
@@ -20,18 +35,18 @@ class HotkeyListener:
 
     def __init__(
         self,
-        on_activate: Callable[[], None],
-        on_deactivate: Callable[[], None],
+        on_activate: Callable[[Trigger], None],
+        on_deactivate: Callable[[Trigger], None],
     ) -> None:
         """Initialise the listener.
 
         Args:
-            on_activate: Called once when Right Command is pressed.
-            on_deactivate: Called once when Right Command is released.
+            on_activate: Called once when a trigger key is pressed.
+            on_deactivate: Called once when that trigger key is released.
         """
         self._on_activate = on_activate
         self._on_deactivate = on_deactivate
-        self._pressed = False
+        self._pressed: set[Trigger] = set()
         self._listener: keyboard.Listener | None = None
 
     def start(self) -> None:
@@ -59,11 +74,13 @@ class HotkeyListener:
             self._listener = None
 
     def _handle_press(self, key: keyboard.Key | keyboard.KeyCode) -> None:
-        if key == keyboard.Key.cmd_r and not self._pressed:
-            self._pressed = True
-            self._on_activate()
+        trigger = _KEY_TO_TRIGGER.get(key)  # type: ignore[arg-type]
+        if trigger is not None and trigger not in self._pressed:
+            self._pressed.add(trigger)
+            self._on_activate(trigger)
 
     def _handle_release(self, key: keyboard.Key | keyboard.KeyCode) -> None:
-        if key == keyboard.Key.cmd_r and self._pressed:
-            self._pressed = False
-            self._on_deactivate()
+        trigger = _KEY_TO_TRIGGER.get(key)  # type: ignore[arg-type]
+        if trigger is not None and trigger in self._pressed:
+            self._pressed.discard(trigger)
+            self._on_deactivate(trigger)

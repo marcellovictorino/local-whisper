@@ -76,16 +76,6 @@ def get_snippets_raw(path: Path = CONFIG_PATH) -> dict:
     return load_section("snippets", path)
 
 
-def is_auto_adapt_enabled(path: Path = CONFIG_PATH) -> bool:
-    """Return [auto_adapt] enabled flag. Defaults to False (opt-in)."""
-    return bool(load_section("auto_adapt", path).get("enabled", False))
-
-
 def get_auto_adapt_section(path: Path = CONFIG_PATH) -> dict:
     """Return full [auto_adapt] section dict (for app-prompt resolution)."""
     return load_section("auto_adapt", path)
-
-
-def get_auto_adapt_min_duration(path: Path = CONFIG_PATH) -> float:
-    """Return [auto_adapt] min_duration_s. Defaults to 3.0 seconds."""
-    return float(load_section("auto_adapt", path).get("min_duration_s", 3.0))

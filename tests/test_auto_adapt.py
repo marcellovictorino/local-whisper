@@ -1,4 +1,4 @@
-"""Tests for auto_adapt module — opt-in gate, preset matching, LLM path, passthrough."""
+"""Tests for auto_adapt module — preset matching, default prompt, LLM path."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from local_whisper.auto_adapt import _get_prompt, apply, get_active_app, is_active
+from local_whisper.auto_adapt import _DEFAULT_PROMPT, _get_prompt, apply, get_active_app
 
 
 def _mock_llm(content: str) -> tuple[MagicMock, MagicMock]:
@@ -49,34 +49,26 @@ def test_get_prompt_config_apps_list_matches_any() -> None:
     assert _get_prompt("Finder", section) is None
 
 
-# --- apply: passthrough cases ---
+# --- apply: default prompt + graceful degradation ---
 
 
-@pytest.mark.parametrize(
-    "toml,app_name,text",
-    [
-        ("[auto_adapt]\nenabled = false\n", "Slack", "hello world"),
-        ("[auto_adapt]\nenabled = true\n", "", "hello"),
-        ("[auto_adapt]\nenabled = true\n", "Finder", "hello"),
-        ('auto_adapt = "bad"\n', "Slack", "hello"),
-    ],
-)
-def test_apply_passthrough(tmp_path: Path, toml: str, app_name: str, text: str) -> None:
-    config = tmp_path / "config.toml"
-    config.write_text(toml)
-    assert apply(text, app_name=app_name, path=config) == text
+@pytest.mark.parametrize("app_name", ["", "Finder"])
+def test_apply_uses_default_prompt_for_unknown_app(
+    app_name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Explicit adapt press always reshapes — unmatched apps get the generic prompt."""
+    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "test-key")
+    mock_openai, mock_client = _mock_llm("reshaped")
+    with patch("local_whisper.llm.openai", mock_openai):
+        result = apply("hello", app_name=app_name, path=tmp_path / "missing.toml")
+    assert result == "reshaped"
+    assert _DEFAULT_PROMPT in mock_client.chat.completions.create.call_args.kwargs["messages"][0]["content"]
 
 
-def test_apply_passthrough_when_no_config(tmp_path: Path) -> None:
-    assert apply("hello", app_name="Slack", path=tmp_path / "missing.toml") == "hello"
-
-
-def test_apply_passthrough_when_no_api_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    config = tmp_path / "config.toml"
-    config.write_text("[auto_adapt]\nenabled = true\n")
+def test_apply_returns_original_when_no_api_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    assert apply("hello", app_name="Slack", path=config) == "hello"
+    assert apply("hello", app_name="Slack", path=tmp_path / "missing.toml") == "hello"
 
 
 # --- apply: LLM path ---
@@ -134,25 +126,6 @@ def test_apply_falls_back_to_openai_env_var(tmp_path: Path, monkeypatch: pytest.
     mock_openai, _ = _mock_llm("reshaped")
     with patch("local_whisper.llm.openai", mock_openai):
         assert apply("original", app_name="Slack", path=config) == "reshaped"
-
-
-# --- is_active ---
-
-
-def test_is_active_false_when_openai_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    config = tmp_path / "config.toml"
-    config.write_text("[auto_adapt]\nenabled = true\n")
-    monkeypatch.setenv("LOCAL_WHISPER_OPENAI_API_KEY", "test-key")
-    with patch("local_whisper.llm.openai", None):
-        assert is_active("Slack", path=config) is False
-
-
-def test_is_active_false_when_no_api_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    config = tmp_path / "config.toml"
-    config.write_text("[auto_adapt]\nenabled = true\n")
-    monkeypatch.delenv("LOCAL_WHISPER_OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    assert is_active("Slack", path=config) is False
 
 
 # --- get_active_app ---
