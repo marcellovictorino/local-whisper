@@ -258,7 +258,7 @@ def run(
     """
     _suppress_progress_bars()
 
-    logger.info("Transcribing with %s (%s)...", model, backend)
+    logger.debug("Transcribing with %s (%s)...", model, backend)
     start = time.perf_counter()
 
     if backend == Backend.PARAKEET:
@@ -269,6 +269,6 @@ def run(
         text = _run_mlx_whisper(audio, model, initial_prompt=initial_prompt)
 
     elapsed = time.perf_counter() - start
-    logger.info("Transcription done in %.2fs", elapsed)
+    logger.debug("Transcription done in %.2fs", elapsed)
 
     return text

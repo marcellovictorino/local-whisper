@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import signal
 import threading
+import time
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -48,35 +49,29 @@ class _Session:
 
 
 def _run_dictation_pipeline(text: str, corrections_map: dict[str, str]) -> str:
-    """Apply dictation post-processing pipeline and paste result."""
+    """Apply dictation post-processing pipeline; returns the text to paste."""
     text = auto_cleanup.apply(text)
     text = corrections.apply(text, corrections_map)
     text = snippets.expand(text)
-    text = text.rstrip() + " "
-    clipboard.write_and_paste(text)
-    return text
+    return text.rstrip() + " "
 
 
 def _run_adapt_pipeline(text: str, active_app: str, corrections_map: dict[str, str]) -> str:
-    """Apply dictation pipeline with LLM reshaping for the frontmost app, then paste."""
+    """Apply dictation pipeline with LLM reshaping for the frontmost app; returns the text to paste."""
     text = auto_cleanup.apply(text)
     text = auto_adapt.apply(text, active_app)
     text = corrections.apply(text, corrections_map)
     text = snippets.expand(text)
-    text = text.rstrip() + " "
-    clipboard.write_and_paste(text)
-    return text
+    return text.rstrip() + " "
 
 
 def _run_command_pipeline(selection: str, instruction: str) -> str:
-    """Apply voice command to selection via LLM and paste result.
+    """Apply voice command to selection via LLM; returns the text to paste.
 
     Raises:
         llm.LLMUnavailable: if LLM call fails. Caller preserves the selection.
     """
-    result = llm.apply_voice_command(selection, instruction)
-    clipboard.write_and_paste(result)
-    return result
+    return llm.apply_voice_command(selection, instruction)
 
 
 class App:
@@ -206,26 +201,41 @@ class App:
                 logger.info("Waiting for model warm-up...")
                 if not transcribe.wait_warmed(timeout=60):
                     logger.warning("Warm-up timed out after 60s; proceeding anyway.")
+
+            t0 = time.perf_counter()
             text = transcribe.run(
                 audio_data, model=self._model, backend=self._backend, initial_prompt=self._vocab_prompt
             )
+            t_transcribed = time.perf_counter()
             if not text:
                 logger.info("Empty transcription.")
                 return
 
             match session.mode:
                 case _SessionMode.DICTATION:
-                    _run_dictation_pipeline(text, self._corrections)
+                    result = _run_dictation_pipeline(text, self._corrections)
                 case _SessionMode.ADAPT:
-                    _run_adapt_pipeline(text, self._active_app, self._corrections)
+                    result = _run_adapt_pipeline(text, self._active_app, self._corrections)
                 case _SessionMode.COMMAND:
                     try:
-                        _run_command_pipeline(session.selection, text)
+                        result = _run_command_pipeline(session.selection, text)
                     except llm.LLMUnavailable as exc:
                         logger.error("Command failed (selection preserved): %s", exc)
                         if self._overlay:
                             self._overlay.show_error()
                         return
+            t_pipeline = time.perf_counter()
+            clipboard.write_and_paste(result)
+            t_pasted = time.perf_counter()
+            logger.info(
+                "session: mode=%s record=%.1fs transcribe=%.2fs pipeline=%.0fms paste=%.0fms total=%.2fs",
+                session.mode,
+                duration_s,
+                t_transcribed - t0,
+                (t_pipeline - t_transcribed) * 1000,
+                (t_pasted - t_pipeline) * 1000,
+                t_pasted - t0,
+            )
         except Exception as exc:
             logger.error("Session error: %s", exc)
         finally:
