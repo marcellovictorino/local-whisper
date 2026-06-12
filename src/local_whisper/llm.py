@@ -66,7 +66,7 @@ def transform(
         return fallback
 
     if openai is None:
-        logger.warning("openai package not installed. Run: uv sync --extra command")
+        logger.warning("openai package not installed. Run: uv sync")
         return fallback
 
     model = os.environ.get("LOCAL_WHISPER_COMMAND_MODEL", default_model)
@@ -118,7 +118,7 @@ def transform_strict(
         raise LLMUnavailable("No OpenAI API key. Set LOCAL_WHISPER_OPENAI_API_KEY or OPENAI_API_KEY.")
 
     if openai is None:
-        raise LLMUnavailable("openai package not installed. Run: uv sync --extra command")
+        raise LLMUnavailable("openai package not installed. Run: uv sync")
 
     model = os.environ.get("LOCAL_WHISPER_COMMAND_MODEL", default_model)
     base_url = os.environ.get("LOCAL_WHISPER_OPENAI_BASE_URL")

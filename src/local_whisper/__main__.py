@@ -39,8 +39,9 @@ def main() -> None:
         help=(
             "Start the background listener. "
             "Hold Right ⌘ to dictate. "
-            "Select text first, then hold Right ⌘ to apply a voice command to the selection "
-            "(requires LOCAL_WHISPER_OPENAI_API_KEY env var)."
+            "Select text first, then hold Right ⌘ to apply a voice command to the selection. "
+            "Hold Right ⌥ to dictate with LLM reshaping for the frontmost app "
+            "(LLM features require LOCAL_WHISPER_OPENAI_API_KEY env var)."
         ),
     )
     parser.add_argument(

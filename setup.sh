@@ -57,6 +57,16 @@ echo "Model ready."
 # --- Write and load launchd plist ---
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# The plist hard-codes PROJECT_DIR. A linked worktree gets deleted eventually,
+# leaving the daemon pointing at a dead path — refuse unless explicitly confirmed.
+if [[ "$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null)" != "$(git -C "$PROJECT_DIR" rev-parse --git-common-dir 2>/dev/null)" ]]; then
+    echo "WARNING: running from a linked git worktree ($PROJECT_DIR)." >&2
+    echo "The daemon will break when this worktree is deleted. Re-run from the canonical clone." >&2
+    read -r -p "Continue anyway? [y/N] " _ans
+    [[ "$_ans" == [yY]* ]] || exit 1
+fi
+
 UV_BIN="$(which uv)"
 PLIST_NAME="com.local-whisper"
 PLIST_DEST="$HOME/Library/LaunchAgents/$PLIST_NAME.plist"
