@@ -22,20 +22,28 @@ if ! command -v uv &>/dev/null; then
     exit 1
 fi
 
-if ! command -v ffmpeg &>/dev/null; then
-    echo "Error: ffmpeg is not installed (required by the parakeet backend)." >&2
-    echo "" >&2
-    echo "Install ffmpeg first:" >&2
-    echo "  brew install ffmpeg" >&2
-    echo "" >&2
-    echo "Then re-run: bash setup.sh" >&2
-    exit 1
-fi
-
 # --- Install Python dependencies ---
 
+# The parakeet backend is opt-in: only pulled in (with its ffmpeg requirement)
+# when config.toml points the model at it.
+CONFIG_FILE="$HOME/.config/local-whisper/config.toml"
+SYNC_EXTRA=""
+if [[ -f "$CONFIG_FILE" ]] && grep -Eq '^[[:space:]]*model[[:space:]]*=.*parakeet' "$CONFIG_FILE"; then
+    if ! command -v ffmpeg &>/dev/null; then
+        echo "Error: config.toml selects a parakeet model, which requires ffmpeg." >&2
+        echo "" >&2
+        echo "Install ffmpeg first:" >&2
+        echo "  brew install ffmpeg" >&2
+        echo "" >&2
+        echo "Then re-run: bash setup.sh" >&2
+        exit 1
+    fi
+    SYNC_EXTRA="--extra parakeet"
+fi
+
 echo "Installing dependencies..."
-uv sync
+# $SYNC_EXTRA unquoted on purpose — empty means no extra flag.
+uv sync $SYNC_EXTRA
 
 # --- Pre-download model ---
 

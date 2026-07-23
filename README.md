@@ -2,14 +2,13 @@
 
 Offline speech-to-text on macOS. Hold Right ⌘, speak, release — transcribed text pastes at your cursor. No cloud, no subscription, no internet required.
 
-Runs natively on Apple Silicon via MLX. Default model: parakeet-tdt-0.6b-v2 (English, ~600 MB, sub-second transcription).
+Runs natively on Apple Silicon via MLX. Default model: whisper-small.en (English, ~250 MB, ~500ms inference).
 
 ## Requirements
 
 - macOS with Apple Silicon (M1/M2/M3/M4+)
 - [uv](https://docs.astral.sh/uv/) — Python package manager
 - [just](https://github.com/casey/just) — command runner
-- `ffmpeg` (`brew install ffmpeg`) — used by the parakeet backend to load audio
 - Accessibility permission for the process running local-whisper
 
 ## Install
@@ -255,9 +254,9 @@ If the LLM is unavailable, adapt mode pastes the cleaned raw transcription inste
 
 ## Model
 
-MLX-native inference on Apple Neural Engine + GPU, via [parakeet-mlx](https://github.com/senstella/parakeet-mlx) (default) or [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper).
+MLX-native inference on Apple Neural Engine + GPU, via [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) (default) or [parakeet-mlx](https://github.com/senstella/parakeet-mlx) (opt-in).
 
-Default: **parakeet-tdt-0.6b-v2** (~600 MB, English only, ~0.2-0.3s inference with punctuation and capitalization).
+Default: **whisper-small.en-mlx** (~250 MB, English only, ~500ms latency).
 
 ### Changing the model
 
@@ -278,10 +277,24 @@ just stop && just start
 
 | Model | Size | Languages | Speed | Accuracy | Best for |
 |-------|------|-----------|-------|----------|----------|
-| `mlx-community/parakeet-tdt-0.6b-v2` *(default)* | ~600 MB | English only | ⚡⚡⚡ fastest | ★★★★ | Sub-second dictation; native punctuation/capitalization |
-| `mlx-community/whisper-small.en-mlx` | ~250 MB | English only | ⚡⚡ fast | ★★★★ | Whisper-style output + vocabulary seeding; ~500ms inference |
+| `mlx-community/whisper-small.en-mlx` *(default)* | ~250 MB | English only | ⚡⚡⚡ fast | ★★★★ | Best latency/accuracy balance; ~500ms on real speech |
 | `mlx-community/distil-whisper-large-v3` | ~600 MB | English only | ⚡⚡ moderate | ★★★★ | Higher accuracy; ~1.3s on real speech |
 | `mlx-community/whisper-large-v3-turbo` | ~1.5 GB | 99 languages | ⚡ slow | ★★★★★ | Multilingual or highest accuracy required |
+| `mlx-community/parakeet-tdt-0.6b-v2` | ~600 MB | English only | ⚡⚡⚡ fastest | unbenchmarked | Experimental; requires optional install (see below) |
+
+**Parakeet** is opt-in and unbenchmarked on this repo's test audio (no WER row below yet). It requires an optional dependency and `ffmpeg` (used internally to load audio):
+
+```bash
+brew install ffmpeg
+uv sync --extra parakeet
+```
+
+Then set the model in config and restart:
+
+```toml
+[whisper]
+model = "mlx-community/parakeet-tdt-0.6b-v2"
+```
 
 Note: vocabulary seeding from `[corrections]` (biasing the decoder toward your terms) only works on whisper models — parakeet still applies corrections as post-processing.
 
@@ -296,7 +309,7 @@ To switch back to the default, remove the `[whisper]` section or set it explicit
 
 ```toml
 [whisper]
-model = "mlx-community/parakeet-tdt-0.6b-v2"
+model = "mlx-community/whisper-small.en-mlx"
 ```
 
 Models download automatically on first use (once, to `~/.cache/huggingface/hub/`).
@@ -328,7 +341,7 @@ Benchmarked 2026-05-13 on 30s real-speech audio (49 words, English, technical vo
 | 10 | Configurable model — distil-whisper default, config override | ✅ v0.5 |
 | 11 | Parakeet backend — optional faster English-only inference | ✅ v0.6 |
 | 12 | Model pre-load at startup — first keypress instant after warm-up | ✅ v0.6 |
-| 13 | Sub-second dictation — parakeet default, explicit adapt hotkey (Right ⌥), session timing | ✅ v0.12 |
+| 13 | Explicit adapt hotkey (Right ⌥) + per-stage session timing | ✅ v0.12 |
 
 ## Troubleshooting
 

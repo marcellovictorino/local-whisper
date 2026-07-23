@@ -10,11 +10,15 @@ dependencies = [
     "pynput>=1.7",
     "openai>=1.0",
     "soundfile>=0.12",
-    "parakeet-mlx>=0.5.1",
 ]
 
 [project.scripts]
 local-whisper = "local_whisper.__main__:main"
+
+[project.optional-dependencies]
+parakeet = [
+    "parakeet-mlx>=0.5.1",
+]
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.4", "pre-commit>=3"]

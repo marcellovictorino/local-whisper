@@ -1,12 +1,13 @@
-"""Tests for _run_dictation_pipeline, _run_adapt_pipeline, and _run_command_pipeline."""
+"""Tests for _run_dictation_pipeline, _run_command_pipeline, and _log_session."""
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import patch
 
 import pytest
 
-from local_whisper.app import _run_adapt_pipeline, _run_command_pipeline, _run_dictation_pipeline
+from local_whisper.app import _log_session, _run_command_pipeline, _run_dictation_pipeline, _SessionMode
 
 
 def test_dictation_pipeline_order() -> None:
@@ -55,7 +56,7 @@ def test_adapt_pipeline_order() -> None:
         patch("local_whisper.app.corrections.apply", return_value="corrected") as mock_corrections,
         patch("local_whisper.app.snippets.expand", return_value="expanded") as mock_snippets,
     ):
-        result = _run_adapt_pipeline("hello", "Slack", {"teh": "the"})
+        result = _run_dictation_pipeline("hello", {"teh": "the"}, adapt_app="Slack")
 
     mock_cleanup.assert_called_once_with("hello")
     mock_adapt.assert_called_once_with("cleaned", "Slack")
@@ -80,3 +81,29 @@ def test_command_pipeline_llm_failure_raises() -> None:
     with patch("local_whisper.app.llm.apply_voice_command", side_effect=LLMUnavailable("no key")):
         with pytest.raises(LLMUnavailable):
             _run_command_pipeline("original", "translate to French")
+
+
+def test_log_session_emits_line_on_failure_outcome(caplog: pytest.LogCaptureFixture) -> None:
+    """Failing sessions must still produce a timing line — they are the ones worth investigating."""
+    with caplog.at_level(logging.INFO, logger="local_whisper"):
+        _log_session(_SessionMode.COMMAND, "llm-unavailable", 2.0, t0=10.0, t_transcribed=10.5)
+
+    assert len(caplog.records) == 1
+    line = caplog.records[0].getMessage()
+    assert "outcome=llm-unavailable" in line
+    assert "transcribe=0.50s" in line
+    assert "paste=" not in line
+
+
+def test_log_session_total_sums_all_stages(caplog: pytest.LogCaptureFixture) -> None:
+    """total = record + transcribe + pipeline + paste, so the stages add up."""
+    with caplog.at_level(logging.INFO, logger="local_whisper"):
+        _log_session(_SessionMode.DICTATION, "ok", 2.0, t0=10.0, t_transcribed=10.5, t_pipeline=10.6, t_pasted=10.7)
+
+    line = caplog.records[0].getMessage()
+    assert "outcome=ok" in line
+    assert "record=2.0s" in line
+    assert "transcribe=0.50s" in line
+    assert "pipeline=100ms" in line
+    assert "paste=100ms" in line
+    assert "total=2.70s" in line

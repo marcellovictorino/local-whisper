@@ -110,23 +110,30 @@ def test_get_backend(model: str, expected_backend: str) -> None:
     assert get_backend(model) == expected_backend
 
 
-def test_default_model_is_parakeet() -> None:
-    assert DEFAULT_MODEL == KnownModel.PARAKEET_V2
+def test_default_model_is_whisper_small_en() -> None:
+    """Parakeet is opt-in only — default stays whisper until it earns a benchmark row."""
+    assert DEFAULT_MODEL == KnownModel.WHISPER_SMALL_EN
+    assert _tr.DEFAULT_BACKEND == Backend.MLX_WHISPER
 
 
 # --- parakeet model caching ---
 
 
-def test_warm_up_parakeet_caches_model_instance() -> None:
+def test_warm_up_parakeet_caches_model_instance_and_runs_dummy_inference() -> None:
     mock_parakeet = MagicMock()
     mock_instance = MagicMock()
     mock_parakeet.from_pretrained.return_value = mock_instance
     _parakeet_cache.clear()
     try:
-        with patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet}):
+        with (
+            patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet}),
+            patch("local_whisper.transcribe._run_parakeet") as mock_run,
+        ):
             _tr.warm_up(KnownModel.PARAKEET_V2, backend="parakeet-mlx")
         mock_parakeet.from_pretrained.assert_called_once_with(KnownModel.PARAKEET_V2)
         assert _parakeet_cache[KnownModel.PARAKEET_V2] is mock_instance
+        # Dummy inference pre-pays Metal shader compilation before the first keypress.
+        mock_run.assert_called_once()
     finally:
         _parakeet_cache.clear()
 
@@ -141,7 +148,10 @@ def test_run_parakeet_skips_from_pretrained_when_cached() -> None:
     audio = np.zeros(8000, dtype="float32")
     _parakeet_cache[KnownModel.PARAKEET_V2] = mock_model
     try:
-        with patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet, "soundfile": mock_sf}):
+        with (
+            patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet, "soundfile": mock_sf}),
+            patch("local_whisper.transcribe.shutil.which", return_value="/usr/bin/ffmpeg"),
+        ):
             result = _run_parakeet(audio, KnownModel.PARAKEET_V2)
         mock_parakeet.from_pretrained.assert_not_called()
         assert result == "hello"
@@ -155,6 +165,21 @@ def test_run_parakeet_falls_back_on_import_error() -> None:
     audio = np.zeros(8000, dtype="float32")
     with (
         patch.dict(sys.modules, {"parakeet_mlx": None}),
+        patch("local_whisper.transcribe._run_mlx_whisper", return_value="fallback text") as mock_mlx,
+    ):
+        result = _run_parakeet(audio, "mlx-community/parakeet-tdt-0.6b-v2")
+    mock_mlx.assert_called_once_with(audio, KnownModel.WHISPER_SMALL_EN)
+    assert result == "fallback text"
+
+
+def test_run_parakeet_falls_back_when_ffmpeg_missing() -> None:
+    """A user without ffmpeg must still get a transcription, not a dead session."""
+    import numpy as np
+
+    audio = np.zeros(8000, dtype="float32")
+    with (
+        patch.dict(sys.modules, {"parakeet_mlx": MagicMock()}),
+        patch("local_whisper.transcribe.shutil.which", return_value=None),
         patch("local_whisper.transcribe._run_mlx_whisper", return_value="fallback text") as mock_mlx,
     ):
         result = _run_parakeet(audio, "mlx-community/parakeet-tdt-0.6b-v2")

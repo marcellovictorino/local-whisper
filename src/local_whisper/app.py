@@ -43,23 +43,23 @@ class _SessionMode(StrEnum):
 @dataclass
 class _Session:
     mode: _SessionMode
-    trigger: Trigger = Trigger.DICTATE
     stop_event: threading.Event = field(default_factory=threading.Event)
     selection: str = ""
 
+    @property
+    def trigger(self) -> Trigger:
+        return Trigger.ADAPT if self.mode is _SessionMode.ADAPT else Trigger.DICTATE
 
-def _run_dictation_pipeline(text: str, corrections_map: dict[str, str]) -> str:
-    """Apply dictation post-processing pipeline; returns the text to paste."""
+
+def _run_dictation_pipeline(text: str, corrections_map: dict[str, str], adapt_app: str | None = None) -> str:
+    """Apply dictation post-processing pipeline; returns the text to paste.
+
+    When adapt_app is given, the text is additionally reshaped by the LLM
+    for that app (adapt mode) before corrections and snippets.
+    """
     text = auto_cleanup.apply(text)
-    text = corrections.apply(text, corrections_map)
-    text = snippets.expand(text)
-    return text.rstrip() + " "
-
-
-def _run_adapt_pipeline(text: str, active_app: str, corrections_map: dict[str, str]) -> str:
-    """Apply dictation pipeline with LLM reshaping for the frontmost app; returns the text to paste."""
-    text = auto_cleanup.apply(text)
-    text = auto_adapt.apply(text, active_app)
+    if adapt_app is not None:
+        text = auto_adapt.apply(text, adapt_app)
     text = corrections.apply(text, corrections_map)
     text = snippets.expand(text)
     return text.rstrip() + " "
@@ -72,6 +72,34 @@ def _run_command_pipeline(selection: str, instruction: str) -> str:
         llm.LLMUnavailable: if LLM call fails. Caller preserves the selection.
     """
     return llm.apply_voice_command(selection, instruction)
+
+
+def _log_session(
+    mode: _SessionMode,
+    outcome: str,
+    record_s: float,
+    t0: float,
+    t_transcribed: float,
+    t_pipeline: float | None = None,
+    t_pasted: float | None = None,
+) -> None:
+    """Emit the one-per-session timing line, on success and failure alike.
+
+    total = record + everything after key release, so stages sum to it.
+    """
+    parts = [
+        f"mode={mode}",
+        f"outcome={outcome}",
+        f"record={record_s:.1f}s",
+        f"transcribe={t_transcribed - t0:.2f}s",
+    ]
+    if t_pipeline is not None:
+        parts.append(f"pipeline={(t_pipeline - t_transcribed) * 1000:.0f}ms")
+    if t_pasted is not None and t_pipeline is not None:
+        parts.append(f"paste={(t_pasted - t_pipeline) * 1000:.0f}ms")
+    t_end = t_pasted if t_pasted is not None else time.perf_counter()
+    parts.append(f"total={record_s + (t_end - t0):.2f}s")
+    logger.info("session: %s", " ".join(parts))
 
 
 class App:
@@ -158,17 +186,17 @@ class App:
 
         if trigger == Trigger.ADAPT:
             self._active_app = auto_adapt.get_active_app()
-            session = _Session(mode=_SessionMode.ADAPT, trigger=trigger)
+            session = _Session(mode=_SessionMode.ADAPT)
             if self._overlay:
                 self._overlay.show_adapt()
         else:
             selection = command.get_selection()
             if selection:
-                session = _Session(mode=_SessionMode.COMMAND, trigger=trigger, selection=selection)
+                session = _Session(mode=_SessionMode.COMMAND, selection=selection)
                 if self._overlay:
                     self._overlay.show_command()
             else:
-                session = _Session(mode=_SessionMode.DICTATION, trigger=trigger)
+                session = _Session(mode=_SessionMode.DICTATION)
                 if self._overlay:
                     self._overlay.show()
 
@@ -209,13 +237,14 @@ class App:
             t_transcribed = time.perf_counter()
             if not text:
                 logger.info("Empty transcription.")
+                _log_session(session.mode, "empty", duration_s, t0, t_transcribed)
                 return
 
             match session.mode:
                 case _SessionMode.DICTATION:
                     result = _run_dictation_pipeline(text, self._corrections)
                 case _SessionMode.ADAPT:
-                    result = _run_adapt_pipeline(text, self._active_app, self._corrections)
+                    result = _run_dictation_pipeline(text, self._corrections, adapt_app=self._active_app)
                 case _SessionMode.COMMAND:
                     try:
                         result = _run_command_pipeline(session.selection, text)
@@ -223,19 +252,12 @@ class App:
                         logger.error("Command failed (selection preserved): %s", exc)
                         if self._overlay:
                             self._overlay.show_error()
+                        _log_session(session.mode, "llm-unavailable", duration_s, t0, t_transcribed)
                         return
             t_pipeline = time.perf_counter()
             clipboard.write_and_paste(result)
             t_pasted = time.perf_counter()
-            logger.info(
-                "session: mode=%s record=%.1fs transcribe=%.2fs pipeline=%.0fms paste=%.0fms total=%.2fs",
-                session.mode,
-                duration_s,
-                t_transcribed - t0,
-                (t_pipeline - t_transcribed) * 1000,
-                (t_pasted - t_pipeline) * 1000,
-                t_pasted - t0,
-            )
+            _log_session(session.mode, "ok", duration_s, t0, t_transcribed, t_pipeline, t_pasted)
         except Exception as exc:
             logger.error("Session error: %s", exc)
         finally:
