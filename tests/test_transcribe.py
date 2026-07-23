@@ -127,6 +127,7 @@ def test_warm_up_parakeet_caches_model_instance_and_runs_dummy_inference() -> No
     try:
         with (
             patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet}),
+            patch("local_whisper.transcribe._parakeet_unavailable_reason", return_value=None),
             patch("local_whisper.transcribe._run_parakeet") as mock_run,
         ):
             _tr.warm_up(KnownModel.PARAKEET_V2, backend="parakeet-mlx")
@@ -150,7 +151,7 @@ def test_run_parakeet_skips_from_pretrained_when_cached() -> None:
     try:
         with (
             patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet, "soundfile": mock_sf}),
-            patch("local_whisper.transcribe.shutil.which", return_value="/usr/bin/ffmpeg"),
+            patch("local_whisper.transcribe._parakeet_unavailable_reason", return_value=None),
         ):
             result = _run_parakeet(audio, KnownModel.PARAKEET_V2)
         mock_parakeet.from_pretrained.assert_not_called()
@@ -179,12 +180,25 @@ def test_run_parakeet_falls_back_when_ffmpeg_missing() -> None:
     audio = np.zeros(8000, dtype="float32")
     with (
         patch.dict(sys.modules, {"parakeet_mlx": MagicMock()}),
-        patch("local_whisper.transcribe.shutil.which", return_value=None),
+        patch("local_whisper.transcribe._has_ffmpeg", return_value=False),
         patch("local_whisper.transcribe._run_mlx_whisper", return_value="fallback text") as mock_mlx,
     ):
         result = _run_parakeet(audio, "mlx-community/parakeet-tdt-0.6b-v2")
     mock_mlx.assert_called_once_with(audio, KnownModel.WHISPER_SMALL_EN)
     assert result == "fallback text"
+
+
+def test_warm_up_warms_whisper_fallback_when_parakeet_unavailable() -> None:
+    """Broken parakeet install must not mean a cold (or mid-dictation-download) first session."""
+    mock_mlx = MagicMock()
+    with (
+        patch("local_whisper.transcribe._parakeet_unavailable_reason", return_value="ffmpeg not found"),
+        patch("local_whisper.transcribe._model_is_cached", return_value=True),
+        patch.dict(sys.modules, {"mlx_whisper": mock_mlx}),
+    ):
+        _tr.warm_up(KnownModel.PARAKEET_V2, backend="parakeet-mlx")
+    mock_mlx.transcribe.assert_called_once()
+    assert mock_mlx.transcribe.call_args.kwargs["path_or_hf_repo"] == KnownModel.WHISPER_SMALL_EN
 
 
 # --- keepalive ---

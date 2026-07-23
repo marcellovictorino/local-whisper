@@ -100,11 +100,8 @@ def apply(text: str, app_name: str = "", path: Path = config.CONFIG_PATH) -> str
     """
     prompt = _get_prompt(app_name, config.get_auto_adapt_section(path)) if app_name else None
     if prompt is None:
-        source = "default"
-        prompt = _DEFAULT_PROMPT
-    elif _BUILTIN_PROMPTS.get(app_name) == prompt:
-        source = "built-in preset"
+        prompt, source = _DEFAULT_PROMPT, "default"
     else:
-        source = "config override"
+        source = "built-in preset" if _BUILTIN_PROMPTS.get(app_name) == prompt else "config override"
     logger.info("Adapt: reshaping for %r (%s prompt).", app_name or "unknown app", source)
     return llm.reshape_for_app(text, prompt)

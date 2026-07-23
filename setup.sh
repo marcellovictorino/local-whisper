@@ -24,11 +24,17 @@ fi
 
 # --- Install Python dependencies ---
 
+echo "Installing dependencies..."
+uv sync
+
 # The parakeet backend is opt-in: only pulled in (with its ffmpeg requirement)
-# when config.toml points the model at it.
-CONFIG_FILE="$HOME/.config/local-whisper/config.toml"
-SYNC_EXTRA=""
-if [[ -f "$CONFIG_FILE" ]] && grep -Eq '^[[:space:]]*model[[:space:]]*=.*parakeet' "$CONFIG_FILE"; then
+# when config.toml resolves to it. Ask the code, not a grep — it owns the
+# model → backend mapping.
+if uv run python -c "
+from local_whisper.transcribe import Backend, get_backend, get_model
+import sys
+sys.exit(0 if get_backend(get_model()) == Backend.PARAKEET else 1)
+"; then
     if ! command -v ffmpeg &>/dev/null; then
         echo "Error: config.toml selects a parakeet model, which requires ffmpeg." >&2
         echo "" >&2
@@ -38,12 +44,9 @@ if [[ -f "$CONFIG_FILE" ]] && grep -Eq '^[[:space:]]*model[[:space:]]*=.*parakee
         echo "Then re-run: bash setup.sh" >&2
         exit 1
     fi
-    SYNC_EXTRA="--extra parakeet"
+    echo "Parakeet model configured — installing parakeet extra..."
+    uv sync --extra parakeet
 fi
-
-echo "Installing dependencies..."
-# $SYNC_EXTRA unquoted on purpose — empty means no extra flag.
-uv sync $SYNC_EXTRA
 
 # --- Pre-download model ---
 
@@ -121,6 +124,8 @@ cat > "$PLIST_DEST" <<PLIST
     <dict>
         <key>PYTHONWARNINGS</key>
         <string>ignore::UserWarning:multiprocessing</string>
+        <key>PATH</key>
+        <string>$PATH</string>
 ${LLM_ENV_VARS}    </dict>
 </dict>
 </plist>

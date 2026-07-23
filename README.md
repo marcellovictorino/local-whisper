@@ -19,7 +19,7 @@ git clone https://github.com/marcellovictorino/local-whisper && cd local-whisper
 
 `setup.sh` does everything in one shot:
 1. Installs Python dependencies via `uv sync`
-2. Pre-downloads the model (~600 MB default, only happens once)
+2. Pre-downloads the model (~250 MB default, only happens once)
 3. Installs a launchd service that starts local-whisper automatically on login
 
 After install, grant Accessibility permission when prompted — see [Accessibility permission](#accessibility-permission) below.
@@ -402,7 +402,7 @@ Re-run `bash setup.sh` to reinstall the service cleanly.
 
 ### Model download hangs or fails
 
-The model downloads once to `~/.cache/huggingface/hub/` (default: ~600 MB). If interrupted, re-run:
+The model downloads once to `~/.cache/huggingface/hub/` (default: ~250 MB). If interrupted, re-run:
 
 ```bash
 bash setup.sh

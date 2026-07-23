@@ -164,7 +164,7 @@ class App:
 
     def _build_vocab_prompt(self) -> str | None:
         """Build the Whisper vocabulary-seeding prompt; unavailable on Parakeet."""
-        if self._backend != transcribe.Backend.MLX_WHISPER:
+        if not transcribe.supports_vocab_prompt(self._backend):
             if self._corrections:
                 logger.info(
                     "Vocabulary seeding unavailable on %s; corrections still apply post-transcription.", self._backend
@@ -187,17 +187,18 @@ class App:
         if trigger == Trigger.ADAPT:
             self._active_app = auto_adapt.get_active_app()
             session = _Session(mode=_SessionMode.ADAPT)
-            if self._overlay:
-                self._overlay.show_adapt()
         else:
             selection = command.get_selection()
-            if selection:
-                session = _Session(mode=_SessionMode.COMMAND, selection=selection)
-                if self._overlay:
+            mode = _SessionMode.COMMAND if selection else _SessionMode.DICTATION
+            session = _Session(mode=mode, selection=selection)
+
+        if self._overlay:
+            match session.mode:
+                case _SessionMode.ADAPT:
+                    self._overlay.show_adapt()
+                case _SessionMode.COMMAND:
                     self._overlay.show_command()
-            else:
-                session = _Session(mode=_SessionMode.DICTATION)
-                if self._overlay:
+                case _SessionMode.DICTATION:
                     self._overlay.show()
 
         self._active = session
@@ -205,11 +206,13 @@ class App:
 
     def _on_key_release(self, trigger: Trigger) -> None:
         """Signal the active recording to stop, if this trigger started it."""
-        if self._active is not None and self._active.trigger == trigger:
-            self._active.stop_event.set()
+        active = self._active  # snapshot — the session thread nulls it on completion
+        if active is not None and active.trigger == trigger:
+            active.stop_event.set()
 
     def _run_session(self, session: _Session) -> None:
         """Record until stop_event, transcribe, apply pipeline, paste."""
+        duration_s = t0 = t_transcribed = None
         try:
             on_amp = self._overlay.update_amplitude if self._overlay else None
             audio_data: np.ndarray = audio.record_until_event(session.stop_event, on_amplitude=on_amp)
@@ -260,6 +263,14 @@ class App:
             _log_session(session.mode, "ok", duration_s, t0, t_transcribed, t_pipeline, t_pasted)
         except Exception as exc:
             logger.error("Session error: %s", exc)
+            if t0 is not None:
+                _log_session(
+                    session.mode,
+                    "error",
+                    duration_s,
+                    t0,
+                    t_transcribed if t_transcribed is not None else time.perf_counter(),
+                )
         finally:
             self._active = None
             if self._overlay:
