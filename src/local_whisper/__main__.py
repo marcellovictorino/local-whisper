@@ -1,7 +1,6 @@
 import argparse
 import json
 import logging
-import sys
 import threading
 
 from local_whisper import _setup_logging, audio, transcribe
@@ -24,6 +23,47 @@ def _check_accessibility() -> bool:
         return bool(lib.AXIsProcessTrusted())
     except Exception:
         return True  # can't check, proceed optimistically
+
+
+def _prompt_accessibility() -> None:
+    """Ask macOS to show the Accessibility grant dialog for this process.
+
+    The prompting variant pre-adds the running process (the venv Python
+    interpreter, which launchd runs directly) to the Accessibility list, so
+    the user only has to flip the toggle instead of hunting for the binary.
+    Best-effort: :func:`_check_accessibility` is the actual gate.
+    """
+    try:
+        from ApplicationServices import (
+            AXIsProcessTrustedWithOptions,
+            kAXTrustedCheckOptionPrompt,
+        )
+
+        AXIsProcessTrustedWithOptions({kAXTrustedCheckOptionPrompt: True})
+    except Exception:  # noqa: BLE001 — dialog is a convenience, not a gate
+        logger.debug("Could not trigger the Accessibility prompt dialog.", exc_info=True)
+
+
+def _ensure_accessibility() -> None:
+    """Ensure Accessibility permission, or exit cleanly so launchd respawns.
+
+    macOS does not let a *running* process observe a permission granted
+    mid-life — the trust check only re-reads on a fresh process. So if
+    permission is missing we pop the native dialog once (which pre-adds this
+    binary to the Accessibility list) and exit 0. launchd's KeepAlive +
+    ThrottleInterval respawns a fresh process that re-reads the grant, so the
+    service self-heals within ~30s of the user flipping the toggle — no manual
+    restart, and no infinite crash-loop (each spawn is throttled).
+    """
+    if _check_accessibility():
+        return
+    _prompt_accessibility()
+    logger.warning(
+        "Accessibility permission required. Enable local-whisper under System "
+        "Settings → Privacy & Security → Accessibility. The service restarts "
+        "itself and begins working within ~30s of granting."
+    )
+    raise SystemExit(0)
 
 
 def main() -> None:
@@ -64,17 +104,7 @@ def main() -> None:
 
     match (args.run, args.benchmark, args.test):
         case (True, _, _):
-            if not _check_accessibility():
-                print(
-                    "Accessibility permission required.\n"
-                    "\n"
-                    "  1. Open: System Settings → Privacy & Security → Accessibility\n"
-                    "  2. Add and enable the app running this script\n"
-                    "     (Terminal, iTerm2, or the launchd wrapper — whichever launched this)\n"
-                    "  3. Re-run: uv run python -m local_whisper --run\n",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+            _ensure_accessibility()
 
             from local_whisper.app import App
             from local_whisper.overlay import RecordingOverlay
@@ -88,6 +118,7 @@ def main() -> None:
             # Pre-load model and compile Metal shaders so first keypress is instant.
             threading.Thread(target=transcribe.warm_up, args=(model, backend), daemon=True).start()
             transcribe.start_keepalive(model, backend)
+            transcribe.start_wake_watcher(model, backend)
 
             try:
                 overlay.run()  # AppKit event loop on main thread — blocks until quit()

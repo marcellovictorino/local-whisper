@@ -240,3 +240,43 @@ def test_keepalive_loop_calls_parakeet_for_parakeet_backend() -> None:
     mock_parakeet.assert_called_once()
     mock_mlx.assert_not_called()
     assert mock_parakeet.call_args.args[1] == DEFAULT_MODEL
+
+
+def test_keepalive_ping_swallows_backend_errors() -> None:
+    """A failed ping must never crash the daemon — keepalive is best-effort."""
+    with patch("local_whisper.transcribe._run_backend", side_effect=RuntimeError("boom")):
+        _tr._keepalive_ping(DEFAULT_MODEL, Backend.MLX_WHISPER)  # must not raise
+
+
+# --- wake re-warm ---
+
+
+def test_rewarm_on_wake_pings_configured_backend() -> None:
+    """On wake we re-page the exact model/backend the watcher was started with."""
+    with (
+        patch("local_whisper.transcribe._wake_target", ("some/whisper-model", Backend.MLX_WHISPER)),
+        patch("local_whisper.transcribe._run_backend") as mock_run,
+    ):
+        _tr._rewarm_on_wake()
+    mock_run.assert_called_once()
+    assert mock_run.call_args.args[1] == "some/whisper-model"
+    assert mock_run.call_args.args[2] == Backend.MLX_WHISPER
+
+
+def test_rewarm_on_wake_noop_without_target() -> None:
+    with (
+        patch("local_whisper.transcribe._wake_target", None),
+        patch("local_whisper.transcribe._run_backend") as mock_run,
+    ):
+        _tr._rewarm_on_wake()
+    mock_run.assert_not_called()
+
+
+def test_start_wake_watcher_degrades_when_appkit_unavailable() -> None:
+    """No AppKit (e.g. headless) → no-op, no crash; keepalive still covers idle."""
+    with (
+        patch("local_whisper.transcribe._wake_observer", None),
+        patch.dict("sys.modules", {"AppKit": None}),
+    ):
+        _tr.start_wake_watcher()  # must not raise
+        assert _tr._wake_observer is None
