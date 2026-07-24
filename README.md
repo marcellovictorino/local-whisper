@@ -363,23 +363,24 @@ Restart your terminal after install so `uv` is on your PATH.
 
 ### Accessibility permission
 
+local-whisper synthesises keystrokes to paste transcribed text, which macOS
+gates behind Accessibility permission. macOS does not allow this grant to be
+automated — it must be done once by hand.
+
+On first run the service pops a system dialog and adds itself to the
+Accessibility list. Enable the `uv` entry there (launchd runs `uv` directly, so
+it is `uv` — not Terminal — that needs the grant):
+
 ```
-Accessibility permission required.
-  1. Open: System Settings → Privacy & Security → Accessibility
-  2. Add and enable the app running this script
-  3. Re-run: uv run python -m local_whisper --run
+System Settings → Privacy & Security → Accessibility → enable "uv"
 ```
 
-**Running as a service (default):** add the `uv` binary — launchd runs `uv` directly.
+No restart needed — the service polls for the grant and starts working within a
+couple of seconds. If the dialog didn't appear:
 
 ```bash
-which uv   # find the path, then add it in System Settings
-```
-
-After granting permission, restart the service:
-
-```bash
-just stop && just start
+which uv   # the path to enable
+open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
 ```
 
 ---

@@ -105,11 +105,7 @@ cat > "$PLIST_DEST" <<PLIST
     <key>Label</key><string>$PLIST_NAME</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$UV_BIN</string>
-        <string>run</string>
-        <string>--project</string>
-        <string>$PROJECT_DIR</string>
-        <string>python</string>
+        <string>$PROJECT_DIR/.venv/bin/python</string>
         <string>-m</string>
         <string>local_whisper</string>
         <string>--run</string>
@@ -151,10 +147,14 @@ if [[ $_captured -eq 0 ]]; then
     echo "  ✗ None found — set OPENAI_API_KEY in your shell and re-run setup.sh to enable LLM features."
 fi
 echo ""
-echo "IMPORTANT: Grant Accessibility permission to complete setup:"
-echo "  System Settings → Privacy & Security → Accessibility"
-echo "  Add and enable the process running local-whisper"
-echo "  (Terminal, or the uv binary: $UV_BIN)"
+echo "IMPORTANT: Grant Accessibility permission to complete setup."
+echo "The service pops a system dialog asking for it, and adds a 'Python' entry"
+echo "(the interpreter at $PROJECT_DIR/.venv/bin/python)."
+echo "Enable that entry. The service restarts itself and begins working within"
+echo "~30s — no manual restart needed."
+echo ""
+echo "Opening the Accessibility settings pane now..."
+open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" 2>/dev/null || true
 echo ""
 echo "Logs: $LOG_FILE"
 echo "To uninstall: just uninstall  (or: launchctl bootout gui/$(id -u) $PLIST_DEST && rm $PLIST_DEST)"

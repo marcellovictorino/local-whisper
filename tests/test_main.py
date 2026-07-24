@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from local_whisper.__main__ import _check_accessibility
+from local_whisper.__main__ import _check_accessibility, _ensure_accessibility
 
 
 @pytest.fixture()
@@ -51,6 +51,30 @@ def test_returns_true_on_exception() -> None:
         patch("ctypes.cdll.LoadLibrary", side_effect=OSError("load failed")),
     ):
         assert _check_accessibility() is True
+
+
+def test_ensure_returns_without_prompt_when_trusted() -> None:
+    """No dialog, no exit when permission is already granted."""
+    with (
+        patch("local_whisper.__main__._check_accessibility", return_value=True),
+        patch("local_whisper.__main__._prompt_accessibility") as prompt,
+    ):
+        _ensure_accessibility()  # must not raise
+    prompt.assert_not_called()
+
+
+def test_ensure_prompts_then_exits_for_respawn_when_untrusted() -> None:
+    """A running process can't observe a mid-life TCC grant, so when untrusted
+    the daemon prompts once and exits 0 — launchd respawns a fresh process that
+    re-reads the grant. Exiting (not looping) is what lets it self-heal."""
+    with (
+        patch("local_whisper.__main__._check_accessibility", return_value=False),
+        patch("local_whisper.__main__._prompt_accessibility") as prompt,
+        pytest.raises(SystemExit) as exc,
+    ):
+        _ensure_accessibility()
+    assert exc.value.code == 0
+    prompt.assert_called_once()
 
 
 def test_logging_not_configured_on_import(_clean_logger_handlers: logging.Logger) -> None:
