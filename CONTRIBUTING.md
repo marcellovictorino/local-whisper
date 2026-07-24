@@ -16,8 +16,8 @@ Requirements: macOS Apple Silicon, [uv](https://docs.astral.sh/uv/), Accessibili
 ```
 src/local_whisper/
   audio.py       # microphone capture (sounddevice)
-  transcribe.py  # mlx-whisper inference
-  hotkey.py      # Right ⌘ global listener (pynput)
+  transcribe.py  # STT inference (mlx-whisper default; parakeet-mlx opt-in)
+  hotkey.py      # Right ⌘ / Right ⌥ global listener (pynput)
   clipboard.py   # write + paste via osascript
   app.py         # orchestrates the full flow
   overlay.py     # NSPanel recording pill (PyObjC)
@@ -77,5 +77,5 @@ This runs to completion, commits, and exits. Open a PR in the morning.
 
 - **macOS Apple Silicon only** — no cross-platform abstractions needed
 - **No new runtime deps** without discussion — keep install simple
-- **No cloud calls** — all processing must be local and offline
+- **Core dictation stays local and offline** — LLM features (command mode, adapt mode) are opt-in via API key and must degrade gracefully without one
 - **Config files** go in `~/.config/local-whisper/` (XDG-style)

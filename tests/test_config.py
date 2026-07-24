@@ -90,11 +90,9 @@ def test_invalidate_clears_cache(tmp_path: Path) -> None:
     [
         (cfg.get_whisper_model, None),
         (cfg.is_auto_cleanup_enabled, True),
-        (cfg.is_auto_adapt_enabled, False),
         (cfg.get_corrections_raw, {}),
         (cfg.get_snippets_raw, {}),
         (cfg.get_auto_adapt_section, {}),
-        (cfg.get_auto_adapt_min_duration, 3.0),
     ],
 )
 def test_accessor_returns_default_when_file_missing(tmp_path: Path, accessor, expected) -> None:
@@ -115,12 +113,6 @@ def test_is_auto_cleanup_enabled(tmp_path: Path, enabled: bool, expected: bool) 
     assert cfg.is_auto_cleanup_enabled(p) is expected
 
 
-@pytest.mark.parametrize("enabled,expected", [(True, True), (False, False)])
-def test_is_auto_adapt_enabled(tmp_path: Path, enabled: bool, expected: bool) -> None:
-    p = _write(tmp_path / "c.toml", f"[auto_adapt]\nenabled = {str(enabled).lower()}\n")
-    assert cfg.is_auto_adapt_enabled(p) is expected
-
-
 def test_get_corrections_raw_returns_dict(tmp_path: Path) -> None:
     p = _write(tmp_path / "c.toml", '[corrections]\nteh = "the"\nadn = "and"\n')
     assert cfg.get_corrections_raw(p) == {"teh": "the", "adn": "and"}
@@ -132,18 +124,7 @@ def test_get_snippets_raw_returns_dict(tmp_path: Path) -> None:
 
 
 def test_get_auto_adapt_section_returns_full_section(tmp_path: Path) -> None:
-    toml = '[auto_adapt]\nenabled = true\n\n[auto_adapt.slack]\napps = ["Slack"]\nprompt = "casual"\n'
+    toml = '[auto_adapt.slack]\napps = ["Slack"]\nprompt = "casual"\n'
     p = _write(tmp_path / "c.toml", toml)
     result = cfg.get_auto_adapt_section(p)
-    assert result["enabled"] is True
     assert result["slack"]["prompt"] == "casual"
-
-
-def test_get_auto_adapt_min_duration_default(tmp_path: Path) -> None:
-    p = _write(tmp_path / "c.toml", "[auto_adapt]\nenabled = true\n")
-    assert cfg.get_auto_adapt_min_duration(p) == 3.0
-
-
-def test_get_auto_adapt_min_duration_custom(tmp_path: Path) -> None:
-    p = _write(tmp_path / "c.toml", "[auto_adapt]\nmin_duration_s = 5.5\n")
-    assert cfg.get_auto_adapt_min_duration(p) == 5.5

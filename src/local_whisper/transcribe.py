@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import os
+import shutil
 import tempfile
 import threading
 import time
@@ -11,6 +12,7 @@ from typing import Any
 import numpy as np
 
 from local_whisper import config
+from local_whisper.audio import SAMPLE_RATE_HZ
 
 logger = logging.getLogger("local_whisper")
 
@@ -24,7 +26,7 @@ class KnownModel(StrEnum):
     WHISPER_SMALL_EN = "mlx-community/whisper-small.en-mlx"  # default; best latency/accuracy; English only; ~250 MB
     DISTIL_WHISPER = "mlx-community/distil-whisper-large-v3"  # high accuracy; English only; ~600 MB
     WHISPER_TURBO = "mlx-community/whisper-large-v3-turbo"  # multilingual, accurate; ~1.5 GB
-    PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # fastest; English only; requires --extra parakeet
+    PARAKEET_V2 = "mlx-community/parakeet-tdt-0.6b-v2"  # fastest; English only; requires --extra parakeet + ffmpeg
 
 
 class Backend(StrEnum):
@@ -53,6 +55,32 @@ _BACKEND_MAP: dict[str, Backend] = {
 # Parakeet model instance cached at warm_up time so from_pretrained() runs once per session.
 _parakeet_cache: dict[str, Any] = {}
 
+# ffmpeg presence doesn't change mid-session; cache so the hot path skips the PATH scan.
+_ffmpeg_available: bool | None = None
+
+
+def _has_ffmpeg() -> bool:
+    global _ffmpeg_available
+    if _ffmpeg_available is None:
+        _ffmpeg_available = shutil.which("ffmpeg") is not None
+    return _ffmpeg_available
+
+
+def _parakeet_unavailable_reason() -> str | None:
+    """None when the parakeet backend can run; otherwise why it can't."""
+    try:
+        import parakeet_mlx  # noqa: F401
+    except ImportError:
+        return "parakeet-mlx not installed (run: uv sync --extra parakeet)"
+    if not _has_ffmpeg():
+        return "ffmpeg not found (run: brew install ffmpeg)"
+    return None
+
+
+def _silence(duration_s: float = 0.5) -> np.ndarray:
+    return np.zeros(int(duration_s * SAMPLE_RATE_HZ), dtype="float32")
+
+
 # Set by warm_up() when the warm-up attempt completes (success or failure).
 _warmed = threading.Event()
 
@@ -60,7 +88,7 @@ _progress_bars_suppressed = False
 
 
 def get_backend(model: str) -> Backend:
-    """Infer backend from model ID. Unknown IDs default to mlx-whisper.
+    """Infer backend from model ID. Unknown IDs are assumed whisper-compatible.
 
     Args:
         model: HuggingFace model ID (from get_model() or KnownModel).
@@ -68,7 +96,12 @@ def get_backend(model: str) -> Backend:
     Returns:
         Backend enum value.
     """
-    return _BACKEND_MAP.get(model, DEFAULT_BACKEND)
+    return _BACKEND_MAP.get(model, Backend.MLX_WHISPER)
+
+
+def supports_vocab_prompt(backend: str) -> bool:
+    """Only whisper backends accept initial_prompt vocabulary seeding."""
+    return backend == Backend.MLX_WHISPER
 
 
 def get_model(path: Path = config.CONFIG_PATH) -> str:
@@ -122,12 +155,12 @@ def _run_mlx_whisper(audio: np.ndarray, model: str, initial_prompt: str | None =
 
 
 def _run_parakeet(audio: np.ndarray, model: str) -> str:
-    try:
-        import parakeet_mlx
-    except ImportError:
-        logger.warning("parakeet-mlx not installed. Run: uv sync --extra parakeet\nFalling back to mlx-whisper.")
-        return _run_mlx_whisper(audio, DEFAULT_MODEL)
+    reason = _parakeet_unavailable_reason()
+    if reason:
+        logger.warning("Parakeet unavailable — %s. Falling back to mlx-whisper.", reason)
+        return _run_mlx_whisper(audio, KnownModel.WHISPER_SMALL_EN)
 
+    import parakeet_mlx
     import soundfile as sf
 
     if model not in _parakeet_cache:
@@ -138,7 +171,7 @@ def _run_parakeet(audio: np.ndarray, model: str) -> str:
     try:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             tmp_path = tmp.name
-        sf.write(tmp_path, audio, 16000, subtype="PCM_16")
+        sf.write(tmp_path, audio, SAMPLE_RATE_HZ, subtype="PCM_16")
         result = parakeet_model.transcribe(tmp_path)
     finally:
         if tmp_path:
@@ -159,16 +192,28 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
     """
     try:
         if backend == Backend.PARAKEET:
-            try:
+            reason = _parakeet_unavailable_reason()
+            if reason:
+                # Warm the whisper model sessions will actually fall back to,
+                # so a broken parakeet install doesn't mean a cold first dictation.
+                logger.warning(
+                    "Parakeet unavailable — %s. Sessions will fall back to %s.",
+                    reason,
+                    KnownModel.WHISPER_SMALL_EN,
+                )
+                model = KnownModel.WHISPER_SMALL_EN
+            else:
                 import parakeet_mlx
-            except ImportError:
+
+                try:
+                    _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
+                    # Dummy inference pre-pays Metal shader compilation and the ffmpeg
+                    # audio-loading path, same as the whisper branch below.
+                    _run_parakeet(_silence(), model)
+                    logger.info("Model ready.")
+                except Exception as exc:
+                    logger.warning("Warm-up failed (non-fatal): %s", exc)
                 return
-            try:
-                _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
-                logger.info("Model ready.")
-            except Exception as exc:
-                logger.warning("Warm-up failed (non-fatal): %s", exc)
-            return
 
         if not _model_is_cached(model):
             logger.info(
@@ -181,9 +226,8 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
 
         import mlx_whisper
 
-        silence = np.zeros(int(0.5 * 16000), dtype="float32")
         try:
-            mlx_whisper.transcribe(silence, path_or_hf_repo=model, verbose=False)
+            mlx_whisper.transcribe(_silence(), path_or_hf_repo=model, verbose=False)
             logger.info("Model ready.")
         except Exception as exc:
             logger.warning("Warm-up failed (non-fatal): %s", exc)
@@ -191,16 +235,27 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
         _warmed.set()
 
 
+def _run_backend(audio: np.ndarray, model: str, backend: str, initial_prompt: str | None = None) -> str:
+    """Dispatch transcription to the backend for this model.
+
+    initial_prompt is silently dropped for backends without vocabulary
+    seeding (see supports_vocab_prompt); the app logs that once at startup.
+    """
+    if backend == Backend.PARAKEET:
+        return _run_parakeet(audio, model)
+    return _run_mlx_whisper(audio, model, initial_prompt=initial_prompt)
+
+
 _KEEPALIVE_INTERVAL_S = 20 * 60  # 20 minutes — keeps model pages active before macOS compresses them
 
 
-def _keepalive_loop(model: str, interval_s: int) -> None:
+def _keepalive_loop(model: str, interval_s: int, backend: str) -> None:
     wait_warmed(timeout=None)  # wait indefinitely — model download may exceed 60s
-    silence = np.zeros(int(0.5 * 16_000), dtype="float32")
+    silence = _silence()
     while True:
         time.sleep(interval_s)
         try:
-            _run_mlx_whisper(silence, model)
+            _run_backend(silence, model, backend)
             logger.debug("Keepalive: model warm.")
         except Exception as exc:
             logger.debug("Keepalive ping failed (non-fatal): %s", exc)
@@ -211,11 +266,10 @@ def start_keepalive(
 ) -> None:
     """Spawn daemon thread that runs silent transcription every interval_s to prevent GPU memory eviction.
 
-    No-op for non-MLX backends: Parakeet caches its model in a Python dict, not GPU pages.
+    Both MLX backends keep weights in Metal unified memory, so both need
+    periodic touches to stop macOS from compressing idle pages.
     """
-    if backend != Backend.MLX_WHISPER:
-        return
-    t = threading.Thread(target=_keepalive_loop, args=(model, interval_s), daemon=True)
+    t = threading.Thread(target=_keepalive_loop, args=(model, interval_s, backend), daemon=True)
     t.start()
     logger.debug("Keepalive started (interval: %ds).", interval_s)
 
@@ -253,17 +307,12 @@ def run(
     """
     _suppress_progress_bars()
 
-    logger.info("Transcribing with %s (%s)...", model, backend)
+    logger.debug("Transcribing with %s (%s)...", model, backend)
     start = time.perf_counter()
 
-    if backend == Backend.PARAKEET:
-        if initial_prompt:
-            logger.warning("initial_prompt ignored: Parakeet backend does not support vocabulary seeding.")
-        text = _run_parakeet(audio, model)
-    else:
-        text = _run_mlx_whisper(audio, model, initial_prompt=initial_prompt)
+    text = _run_backend(audio, model, backend, initial_prompt=initial_prompt)
 
     elapsed = time.perf_counter() - start
-    logger.info("Transcription done in %.2fs", elapsed)
+    logger.debug("Transcription done in %.2fs", elapsed)
 
     return text

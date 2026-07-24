@@ -99,6 +99,7 @@ def test_known_model_members_are_valid_hf_ids() -> None:
 @pytest.mark.parametrize(
     "model,expected_backend",
     [
+        (KnownModel.WHISPER_SMALL_EN, "mlx-whisper"),
         (KnownModel.DISTIL_WHISPER, "mlx-whisper"),
         (KnownModel.WHISPER_TURBO, "mlx-whisper"),
         (KnownModel.PARAKEET_V2, "parakeet-mlx"),
@@ -110,22 +111,30 @@ def test_get_backend(model: str, expected_backend: str) -> None:
 
 
 def test_default_model_is_whisper_small_en() -> None:
+    """Parakeet is opt-in only — default stays whisper until it earns a benchmark row."""
     assert DEFAULT_MODEL == KnownModel.WHISPER_SMALL_EN
+    assert _tr.DEFAULT_BACKEND == Backend.MLX_WHISPER
 
 
 # --- parakeet model caching ---
 
 
-def test_warm_up_parakeet_caches_model_instance() -> None:
+def test_warm_up_parakeet_caches_model_instance_and_runs_dummy_inference() -> None:
     mock_parakeet = MagicMock()
     mock_instance = MagicMock()
     mock_parakeet.from_pretrained.return_value = mock_instance
     _parakeet_cache.clear()
     try:
-        with patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet}):
+        with (
+            patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet}),
+            patch("local_whisper.transcribe._parakeet_unavailable_reason", return_value=None),
+            patch("local_whisper.transcribe._run_parakeet") as mock_run,
+        ):
             _tr.warm_up(KnownModel.PARAKEET_V2, backend="parakeet-mlx")
         mock_parakeet.from_pretrained.assert_called_once_with(KnownModel.PARAKEET_V2)
         assert _parakeet_cache[KnownModel.PARAKEET_V2] is mock_instance
+        # Dummy inference pre-pays Metal shader compilation before the first keypress.
+        mock_run.assert_called_once()
     finally:
         _parakeet_cache.clear()
 
@@ -140,7 +149,10 @@ def test_run_parakeet_skips_from_pretrained_when_cached() -> None:
     audio = np.zeros(8000, dtype="float32")
     _parakeet_cache[KnownModel.PARAKEET_V2] = mock_model
     try:
-        with patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet, "soundfile": mock_sf}):
+        with (
+            patch.dict(sys.modules, {"parakeet_mlx": mock_parakeet, "soundfile": mock_sf}),
+            patch("local_whisper.transcribe._parakeet_unavailable_reason", return_value=None),
+        ):
             result = _run_parakeet(audio, KnownModel.PARAKEET_V2)
         mock_parakeet.from_pretrained.assert_not_called()
         assert result == "hello"
@@ -157,25 +169,49 @@ def test_run_parakeet_falls_back_on_import_error() -> None:
         patch("local_whisper.transcribe._run_mlx_whisper", return_value="fallback text") as mock_mlx,
     ):
         result = _run_parakeet(audio, "mlx-community/parakeet-tdt-0.6b-v2")
-    mock_mlx.assert_called_once_with(audio, DEFAULT_MODEL)
+    mock_mlx.assert_called_once_with(audio, KnownModel.WHISPER_SMALL_EN)
     assert result == "fallback text"
+
+
+def test_run_parakeet_falls_back_when_ffmpeg_missing() -> None:
+    """A user without ffmpeg must still get a transcription, not a dead session."""
+    import numpy as np
+
+    audio = np.zeros(8000, dtype="float32")
+    with (
+        patch.dict(sys.modules, {"parakeet_mlx": MagicMock()}),
+        patch("local_whisper.transcribe._has_ffmpeg", return_value=False),
+        patch("local_whisper.transcribe._run_mlx_whisper", return_value="fallback text") as mock_mlx,
+    ):
+        result = _run_parakeet(audio, "mlx-community/parakeet-tdt-0.6b-v2")
+    mock_mlx.assert_called_once_with(audio, KnownModel.WHISPER_SMALL_EN)
+    assert result == "fallback text"
+
+
+def test_warm_up_warms_whisper_fallback_when_parakeet_unavailable() -> None:
+    """Broken parakeet install must not mean a cold (or mid-dictation-download) first session."""
+    mock_mlx = MagicMock()
+    with (
+        patch("local_whisper.transcribe._parakeet_unavailable_reason", return_value="ffmpeg not found"),
+        patch("local_whisper.transcribe._model_is_cached", return_value=True),
+        patch.dict(sys.modules, {"mlx_whisper": mock_mlx}),
+    ):
+        _tr.warm_up(KnownModel.PARAKEET_V2, backend="parakeet-mlx")
+    mock_mlx.transcribe.assert_called_once()
+    assert mock_mlx.transcribe.call_args.kwargs["path_or_hf_repo"] == KnownModel.WHISPER_SMALL_EN
 
 
 # --- keepalive ---
 
 
-def test_start_keepalive_skips_non_mlx_backend() -> None:
+@pytest.mark.parametrize("backend", [Backend.MLX_WHISPER, Backend.PARAKEET])
+def test_start_keepalive_spawns_daemon_thread(backend: Backend) -> None:
     with patch("local_whisper.transcribe.threading.Thread") as mock_thread:
-        start_keepalive(model=DEFAULT_MODEL, backend=Backend.PARAKEET, interval_s=1)
-    mock_thread.assert_not_called()
-
-
-def test_start_keepalive_spawns_thread_for_mlx() -> None:
-    with patch("local_whisper.transcribe.threading.Thread") as mock_thread:
-        start_keepalive(model=DEFAULT_MODEL, backend=Backend.MLX_WHISPER, interval_s=1)
+        start_keepalive(model=DEFAULT_MODEL, backend=backend, interval_s=1)
     mock_thread.assert_called_once()
     _, kwargs = mock_thread.call_args
     assert kwargs.get("daemon") is True
+    assert kwargs["args"][2] == backend
 
 
 def test_keepalive_loop_calls_mlx_whisper_each_iteration() -> None:
@@ -185,7 +221,22 @@ def test_keepalive_loop_calls_mlx_whisper_each_iteration() -> None:
         patch("local_whisper.transcribe.time.sleep", side_effect=[None, StopIteration]),
     ):
         with pytest.raises(StopIteration):
-            _keepalive_loop(DEFAULT_MODEL, interval_s=1)
+            _keepalive_loop("some/whisper-model", interval_s=1, backend=Backend.MLX_WHISPER)
 
     mock_mlx.assert_called_once()
-    assert mock_mlx.call_args.args[1] == DEFAULT_MODEL
+    assert mock_mlx.call_args.args[1] == "some/whisper-model"
+
+
+def test_keepalive_loop_calls_parakeet_for_parakeet_backend() -> None:
+    with (
+        patch("local_whisper.transcribe.wait_warmed"),
+        patch("local_whisper.transcribe._run_parakeet") as mock_parakeet,
+        patch("local_whisper.transcribe._run_mlx_whisper") as mock_mlx,
+        patch("local_whisper.transcribe.time.sleep", side_effect=[None, StopIteration]),
+    ):
+        with pytest.raises(StopIteration):
+            _keepalive_loop(DEFAULT_MODEL, interval_s=1, backend=Backend.PARAKEET)
+
+    mock_parakeet.assert_called_once()
+    mock_mlx.assert_not_called()
+    assert mock_parakeet.call_args.args[1] == DEFAULT_MODEL

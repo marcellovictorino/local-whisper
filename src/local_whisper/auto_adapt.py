@@ -1,4 +1,9 @@
-"""Auto-adapt: reshape transcription via LLM based on frontmost macOS app."""
+"""Adapt mode: reshape transcription via LLM based on frontmost macOS app.
+
+Triggered explicitly by the adapt hotkey (Right Option) — never automatic.
+The frontmost app picks which prompt is used; unknown apps get a generic
+cleanup prompt.
+"""
 
 from __future__ import annotations
 
@@ -20,7 +25,7 @@ _EMAIL_PROMPT = (
     "Organize the information in clear paragraphs. Only return the email text, without subject."
 )
 
-_SLACK_PROMPT = (
+_DEFAULT_PROMPT = (
     "Clean up and format the following transcription, maintaining the original language, tone, style and words. "
     "Only fix small inconsistencies, errors, and organize the text into proper paragraphs with correct punctuation. "
     "Do not add emojis, greetings, or closings. Do not change the conversational style or add formalities. "
@@ -28,7 +33,7 @@ _SLACK_PROMPT = (
 )
 
 _BUILTIN_PROMPTS: dict[str, str] = {
-    "Slack": _SLACK_PROMPT,
+    "Slack": _DEFAULT_PROMPT,
     "Mail": _EMAIL_PROMPT,
     "Notion Mail": _EMAIL_PROMPT,
     "Mimestream": _EMAIL_PROMPT,
@@ -78,33 +83,12 @@ def _get_prompt(app_name: str, section: dict) -> str | None:
     return _BUILTIN_PROMPTS.get(app_name)
 
 
-def is_active(app_name: str, path: Path = config.CONFIG_PATH) -> bool:
-    """Return True if auto-adapt will reshape output for this app.
-
-    Reads config at call time. Used to pick overlay colour at press time.
-    Returns False if prerequisites (API key, openai package) are not met.
-
-    Args:
-        app_name: Localised name of the frontmost app.
-        path: Path to config.toml.
-
-    Returns:
-        True if auto-adapt is enabled, a prompt exists, and LLM is available.
-    """
-    if not app_name:
-        return False
-    if not llm.is_available():
-        return False
-    if not config.is_auto_adapt_enabled(path):
-        return False
-    return _get_prompt(app_name, config.get_auto_adapt_section(path)) is not None
-
-
 def apply(text: str, app_name: str = "", path: Path = config.CONFIG_PATH) -> str:
-    """Reshape transcription via LLM using per-app prompt if configured.
+    """Reshape transcription via LLM using a per-app prompt if configured.
 
-    Opt-in: does nothing unless [auto_adapt] enabled = true in config.
-    Falls back to original text on any error, missing API key, or unknown app.
+    An explicit adapt-hotkey press always reshapes: apps without a config
+    override or built-in preset get the generic cleanup prompt.
+    Falls back to original text on any LLM error or missing API key.
 
     Args:
         text: Transcribed text to reshape.
@@ -112,16 +96,12 @@ def apply(text: str, app_name: str = "", path: Path = config.CONFIG_PATH) -> str
         path: Path to config.toml.
 
     Returns:
-        Reshaped text, or original text if disabled, unmatched, or on error.
+        Reshaped text, or original text on error.
     """
-    if not app_name:
-        return text
-
-    if not config.is_auto_adapt_enabled(path):
-        return text
-
-    prompt = _get_prompt(app_name, config.get_auto_adapt_section(path))
+    prompt = _get_prompt(app_name, config.get_auto_adapt_section(path)) if app_name else None
     if prompt is None:
-        return text
-
+        prompt, source = _DEFAULT_PROMPT, "default"
+    else:
+        source = "built-in preset" if _BUILTIN_PROMPTS.get(app_name) == prompt else "config override"
+    logger.info("Adapt: reshaping for %r (%s prompt).", app_name or "unknown app", source)
     return llm.reshape_for_app(text, prompt)

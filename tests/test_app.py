@@ -1,31 +1,40 @@
-"""Tests for _run_dictation_pipeline and _run_command_pipeline."""
+"""Tests for _run_dictation_pipeline, _run_command_pipeline, and _log_session."""
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import patch
 
 import pytest
 
-from local_whisper.app import _run_command_pipeline, _run_dictation_pipeline
+from local_whisper.app import _log_session, _run_command_pipeline, _run_dictation_pipeline, _SessionMode
 
 
 def test_dictation_pipeline_order() -> None:
     """Each pipeline step is called in the correct order with correct args."""
     with (
         patch("local_whisper.app.auto_cleanup.apply", return_value="cleaned") as mock_cleanup,
-        patch("local_whisper.app.auto_adapt.apply", return_value="adapted") as mock_adapt,
         patch("local_whisper.app.corrections.apply", return_value="corrected") as mock_corrections,
         patch("local_whisper.app.snippets.expand", return_value="expanded") as mock_snippets,
-        patch("local_whisper.app.clipboard.write_and_paste") as mock_paste,
     ):
-        result = _run_dictation_pipeline("hello", "Slack", {"teh": "the"}, duration_s=15.0, min_auto_adapt_s=3.0)
+        result = _run_dictation_pipeline("hello", {"teh": "the"})
 
     mock_cleanup.assert_called_once_with("hello")
-    mock_adapt.assert_called_once_with("cleaned", "Slack")
-    mock_corrections.assert_called_once_with("adapted", {"teh": "the"})
+    mock_corrections.assert_called_once_with("cleaned", {"teh": "the"})
     mock_snippets.assert_called_once_with("corrected")
-    mock_paste.assert_called_once_with("expanded ")
     assert result == "expanded "
+
+
+def test_dictation_pipeline_never_calls_adapt() -> None:
+    """Plain dictation must not invoke the LLM reshaping stage."""
+    with (
+        patch("local_whisper.app.auto_cleanup.apply", side_effect=lambda t: t),
+        patch("local_whisper.app.auto_adapt.apply") as mock_adapt,
+        patch("local_whisper.app.snippets.expand", side_effect=lambda t: t),
+    ):
+        _run_dictation_pipeline("hello", {})
+
+    mock_adapt.assert_not_called()
 
 
 def test_dictation_pipeline_applies_corrections() -> None:
@@ -33,24 +42,35 @@ def test_dictation_pipeline_applies_corrections() -> None:
     with (
         patch("local_whisper.app.auto_cleanup.apply", side_effect=lambda t: t),
         patch("local_whisper.app.snippets.expand", side_effect=lambda t: t),
-        patch("local_whisper.app.clipboard.write_and_paste"),
     ):
-        # duration_s=0.0 so auto_adapt stage is skipped
-        result = _run_dictation_pipeline("teh world", "Terminal", {"teh": "the"}, duration_s=0.0, min_auto_adapt_s=3.0)
+        result = _run_dictation_pipeline("teh world", {"teh": "the"})
 
     assert result == "the world "
 
 
-def test_command_pipeline() -> None:
-    """apply_voice_command is called with correct args and result is pasted."""
+def test_adapt_pipeline_order() -> None:
+    """Adapt pipeline: cleanup → adapt → corrections → snippets → trailing space."""
     with (
-        patch("local_whisper.app.llm.apply_voice_command", return_value="fixed") as mock_llm,
-        patch("local_whisper.app.clipboard.write_and_paste") as mock_paste,
+        patch("local_whisper.app.auto_cleanup.apply", return_value="cleaned") as mock_cleanup,
+        patch("local_whisper.app.auto_adapt.apply", return_value="adapted") as mock_adapt,
+        patch("local_whisper.app.corrections.apply", return_value="corrected") as mock_corrections,
+        patch("local_whisper.app.snippets.expand", return_value="expanded") as mock_snippets,
     ):
+        result = _run_dictation_pipeline("hello", {"teh": "the"}, adapt_app="Slack")
+
+    mock_cleanup.assert_called_once_with("hello")
+    mock_adapt.assert_called_once_with("cleaned", "Slack")
+    mock_corrections.assert_called_once_with("adapted", {"teh": "the"})
+    mock_snippets.assert_called_once_with("corrected")
+    assert result == "expanded "
+
+
+def test_command_pipeline() -> None:
+    """apply_voice_command is called with correct args and its result returned."""
+    with patch("local_whisper.app.llm.apply_voice_command", return_value="fixed") as mock_llm:
         result = _run_command_pipeline("original", "fix grammar")
 
     mock_llm.assert_called_once_with("original", "fix grammar")
-    mock_paste.assert_called_once_with("fixed")
     assert result == "fixed"
 
 
@@ -58,39 +78,32 @@ def test_command_pipeline_llm_failure_raises() -> None:
     """LLMUnavailable propagates so the caller can preserve the selection."""
     from local_whisper.llm import LLMUnavailable
 
-    with (
-        patch("local_whisper.app.llm.apply_voice_command", side_effect=LLMUnavailable("no key")),
-        patch("local_whisper.app.clipboard.write_and_paste") as mock_paste,
-    ):
+    with patch("local_whisper.app.llm.apply_voice_command", side_effect=LLMUnavailable("no key")):
         with pytest.raises(LLMUnavailable):
             _run_command_pipeline("original", "translate to French")
 
-    mock_paste.assert_not_called()
+
+def test_log_session_emits_line_on_failure_outcome(caplog: pytest.LogCaptureFixture) -> None:
+    """Failing sessions must still produce a timing line — they are the ones worth investigating."""
+    with caplog.at_level(logging.INFO, logger="local_whisper"):
+        _log_session(_SessionMode.COMMAND, "llm-unavailable", 2.0, t0=10.0, t_transcribed=10.5)
+
+    assert len(caplog.records) == 1
+    line = caplog.records[0].getMessage()
+    assert "outcome=llm-unavailable" in line
+    assert "transcribe=0.50s" in line
+    assert "paste=" not in line
 
 
-def test_dictation_pipeline_skips_adapt_below_threshold() -> None:
-    """Auto-adapt is skipped when duration is below min_auto_adapt_s."""
-    with (
-        patch("local_whisper.app.auto_cleanup.apply", side_effect=lambda t: t),
-        patch("local_whisper.app.auto_adapt.apply") as mock_adapt,
-        patch("local_whisper.app.corrections.apply", side_effect=lambda t, _: t),
-        patch("local_whisper.app.snippets.expand", side_effect=lambda t: t),
-        patch("local_whisper.app.clipboard.write_and_paste"),
-    ):
-        _run_dictation_pipeline("hello", "Mail", {}, duration_s=2.9, min_auto_adapt_s=3.0)
+def test_log_session_total_sums_all_stages(caplog: pytest.LogCaptureFixture) -> None:
+    """total = record + transcribe + pipeline + paste, so the stages add up."""
+    with caplog.at_level(logging.INFO, logger="local_whisper"):
+        _log_session(_SessionMode.DICTATION, "ok", 2.0, t0=10.0, t_transcribed=10.5, t_pipeline=10.6, t_pasted=10.7)
 
-    mock_adapt.assert_not_called()
-
-
-def test_dictation_pipeline_applies_adapt_at_threshold() -> None:
-    """Auto-adapt runs when duration meets min_auto_adapt_s exactly."""
-    with (
-        patch("local_whisper.app.auto_cleanup.apply", side_effect=lambda t: t),
-        patch("local_whisper.app.auto_adapt.apply", return_value="adapted") as mock_adapt,
-        patch("local_whisper.app.corrections.apply", side_effect=lambda t, _: t),
-        patch("local_whisper.app.snippets.expand", side_effect=lambda t: t),
-        patch("local_whisper.app.clipboard.write_and_paste"),
-    ):
-        _run_dictation_pipeline("hello", "Mail", {}, duration_s=3.0, min_auto_adapt_s=3.0)
-
-    mock_adapt.assert_called_once()
+    line = caplog.records[0].getMessage()
+    assert "outcome=ok" in line
+    assert "record=2.0s" in line
+    assert "transcribe=0.50s" in line
+    assert "pipeline=100ms" in line
+    assert "paste=100ms" in line
+    assert "total=2.70s" in line

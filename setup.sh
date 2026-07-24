@@ -27,25 +27,57 @@ fi
 echo "Installing dependencies..."
 uv sync
 
+# The parakeet backend is opt-in: only pulled in (with its ffmpeg requirement)
+# when config.toml resolves to it. Ask the code, not a grep — it owns the
+# model → backend mapping.
+if uv run python -c "
+from local_whisper.transcribe import Backend, get_backend, get_model
+import sys
+sys.exit(0 if get_backend(get_model()) == Backend.PARAKEET else 1)
+"; then
+    if ! command -v ffmpeg &>/dev/null; then
+        echo "Error: config.toml selects a parakeet model, which requires ffmpeg." >&2
+        echo "" >&2
+        echo "Install ffmpeg first:" >&2
+        echo "  brew install ffmpeg" >&2
+        echo "" >&2
+        echo "Then re-run: bash setup.sh" >&2
+        exit 1
+    fi
+    echo "Parakeet model configured — installing parakeet extra..."
+    uv sync --extra parakeet
+fi
+
 # --- Pre-download model ---
 
 echo ""
 uv run python -c "
-from local_whisper.transcribe import DEFAULT_MODEL, _model_is_cached, _MODEL_SIZES
-size = _MODEL_SIZES.get(DEFAULT_MODEL, 'unknown size')
+from local_whisper.transcribe import get_model, _model_is_cached, _MODEL_SIZES
+model = get_model()
+size = _MODEL_SIZES.get(model, 'unknown size')
 print(f'Checking model cache (may download {size} on first run)...', flush=True)
-if _model_is_cached(DEFAULT_MODEL):
+if _model_is_cached(model):
     print('Model already cached.', flush=True)
 else:
     print(f'Downloading model (one-time, {size})...', flush=True)
     from huggingface_hub import snapshot_download
-    snapshot_download(DEFAULT_MODEL)
+    snapshot_download(model)
 "
 echo "Model ready."
 
 # --- Write and load launchd plist ---
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# The plist hard-codes PROJECT_DIR. A linked worktree gets deleted eventually,
+# leaving the daemon pointing at a dead path — refuse unless explicitly confirmed.
+if [[ "$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null)" != "$(git -C "$PROJECT_DIR" rev-parse --git-common-dir 2>/dev/null)" ]]; then
+    echo "WARNING: running from a linked git worktree ($PROJECT_DIR)." >&2
+    echo "The daemon will break when this worktree is deleted. Re-run from the canonical clone." >&2
+    read -r -p "Continue anyway? [y/N] " _ans
+    [[ "$_ans" == [yY]* ]] || exit 1
+fi
+
 UV_BIN="$(which uv)"
 PLIST_NAME="com.local-whisper"
 PLIST_DEST="$HOME/Library/LaunchAgents/$PLIST_NAME.plist"
@@ -92,6 +124,8 @@ cat > "$PLIST_DEST" <<PLIST
     <dict>
         <key>PYTHONWARNINGS</key>
         <string>ignore::UserWarning:multiprocessing</string>
+        <key>PATH</key>
+        <string>$PATH</string>
 ${LLM_ENV_VARS}    </dict>
 </dict>
 </plist>
