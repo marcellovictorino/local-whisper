@@ -118,6 +118,7 @@ def main() -> None:
             # Pre-load model and compile Metal shaders so first keypress is instant.
             threading.Thread(target=transcribe.warm_up, args=(model, backend), daemon=True).start()
             transcribe.start_keepalive(model, backend)
+            transcribe.start_wake_watcher(model, backend)
 
             try:
                 overlay.run()  # AppKit event loop on main thread — blocks until quit()

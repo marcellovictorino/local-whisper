@@ -249,16 +249,20 @@ def _run_backend(audio: np.ndarray, model: str, backend: str, initial_prompt: st
 _KEEPALIVE_INTERVAL_S = 20 * 60  # 20 minutes — keeps model pages active before macOS compresses them
 
 
+def _keepalive_ping(model: str, backend: str) -> None:
+    """Run one silent transcription to re-page the model's Metal memory."""
+    try:
+        _run_backend(_silence(), model, backend)
+        logger.debug("Keepalive: model warm.")
+    except Exception as exc:  # noqa: BLE001 — keepalive is best-effort
+        logger.debug("Keepalive ping failed (non-fatal): %s", exc)
+
+
 def _keepalive_loop(model: str, interval_s: int, backend: str) -> None:
     wait_warmed(timeout=None)  # wait indefinitely — model download may exceed 60s
-    silence = _silence()
     while True:
         time.sleep(interval_s)
-        try:
-            _run_backend(silence, model, backend)
-            logger.debug("Keepalive: model warm.")
-        except Exception as exc:
-            logger.debug("Keepalive ping failed (non-fatal): %s", exc)
+        _keepalive_ping(model, backend)
 
 
 def start_keepalive(
@@ -268,10 +272,57 @@ def start_keepalive(
 
     Both MLX backends keep weights in Metal unified memory, so both need
     periodic touches to stop macOS from compressing idle pages.
+
+    Covers active-idle only: during system sleep this thread is frozen and its
+    timer can't fire, so pair it with start_wake_watcher() to re-warm on wake.
     """
     t = threading.Thread(target=_keepalive_loop, args=(model, interval_s, backend), daemon=True)
     t.start()
     logger.debug("Keepalive started (interval: %ds).", interval_s)
+
+
+# Kept alive for the process lifetime so the ObjC observer isn't collected.
+_wake_observer: Any = None
+_wake_target: tuple[str, str] | None = None
+
+
+def _rewarm_on_wake() -> None:
+    if _wake_target is not None:
+        _keepalive_ping(*_wake_target)
+
+
+def start_wake_watcher(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
+    """Re-warm the model immediately when the Mac wakes from sleep.
+
+    System sleep evicts the weights from Metal unified memory *and* freezes the
+    keepalive timer, so the first post-wake dictation would otherwise be cold
+    (full reload + Metal shader recompile). NSWorkspaceDidWakeNotification fires
+    on real user wake (not the periodic maintenance DarkWakes), letting us
+    re-page the weights in the background before the user dictates.
+
+    Requires the AppKit run loop that overlay.run() provides; degrades to a
+    no-op (keepalive still covers active-idle) if AppKit is unavailable.
+    """
+    global _wake_observer, _wake_target
+    if _wake_observer is not None:
+        return
+    try:
+        from AppKit import NSWorkspace
+        from Foundation import NSObject
+    except Exception as exc:  # noqa: BLE001 — wake re-warm is an optimisation
+        logger.debug("Wake watcher unavailable (AppKit import failed): %s", exc)
+        return
+
+    class _WakeHandler(NSObject):
+        def handleWake_(self, _note: Any) -> None:
+            threading.Thread(target=_rewarm_on_wake, daemon=True).start()
+
+    _wake_target = (model, backend)
+    _wake_observer = _WakeHandler.alloc().init()
+    NSWorkspace.sharedWorkspace().notificationCenter().addObserver_selector_name_object_(
+        _wake_observer, "handleWake:", "NSWorkspaceDidWakeNotification", None
+    )
+    logger.debug("Wake watcher registered (re-warm on wake).")
 
 
 def wait_warmed(timeout: float | None = 60) -> bool:
