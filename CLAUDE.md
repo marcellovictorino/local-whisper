@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issues are tracked as local markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+Issues are tracked with the `td` CLI (local SQLite under `.todos/`, gitignored). Run `td usage --new-session` at the start of each session to see current focus and next work. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
