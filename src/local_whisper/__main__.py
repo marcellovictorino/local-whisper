@@ -28,10 +28,10 @@ def _check_accessibility() -> bool:
 def _prompt_accessibility() -> None:
     """Ask macOS to show the Accessibility grant dialog for this process.
 
-    The prompting variant pre-adds the running process (the ``uv`` binary
-    under launchd) to the Accessibility list, so the user only has to flip
-    the toggle instead of hunting for the binary. Best-effort: a silent
-    poll of :func:`_check_accessibility` still drives the actual gate.
+    The prompting variant pre-adds the running process (the venv Python
+    interpreter, which launchd runs directly) to the Accessibility list, so
+    the user only has to flip the toggle instead of hunting for the binary.
+    Best-effort: :func:`_check_accessibility` is the actual gate.
     """
     try:
         from ApplicationServices import (

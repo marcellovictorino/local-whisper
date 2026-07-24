@@ -78,10 +78,19 @@ if [[ "$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null)" != "$(git -C "$
     [[ "$_ans" == [yY]* ]] || exit 1
 fi
 
-UV_BIN="$(which uv)"
 PLIST_NAME="com.local-whisper"
 PLIST_DEST="$HOME/Library/LaunchAgents/$PLIST_NAME.plist"
 LOG_FILE="$HOME/Library/Logs/local-whisper.log"
+VENV_PYTHON="$PROJECT_DIR/.venv/bin/python"
+
+# The daemon runs this interpreter directly (stable Accessibility/TCC identity,
+# vs the ambiguous `uv run` process tree). uv sync creates it above; fail loudly
+# if a non-default venv layout (e.g. UV_PROJECT_ENVIRONMENT) put it elsewhere.
+if [[ ! -x "$VENV_PYTHON" ]]; then
+    echo "Error: expected venv interpreter not found at $VENV_PYTHON" >&2
+    echo "The launchd service needs a stable interpreter path here." >&2
+    exit 1
+fi
 
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
 
@@ -105,12 +114,18 @@ cat > "$PLIST_DEST" <<PLIST
     <key>Label</key><string>$PLIST_NAME</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$PROJECT_DIR/.venv/bin/python</string>
+        <string>$VENV_PYTHON</string>
         <string>-m</string>
         <string>local_whisper</string>
         <string>--run</string>
     </array>
     <key>RunAtLoad</key><true/>
+    <!-- KeepAlive + ThrottleInterval are load-bearing for the Accessibility
+         self-heal: __main__._ensure_accessibility() exits 0 when permission is
+         missing, and unconditional KeepAlive respawns a fresh (throttled)
+         process that re-reads the grant. Do NOT switch KeepAlive to
+         {SuccessfulExit: false} — a clean exit would then stop respawning and
+         the daemon would stay dead until next login. -->
     <key>KeepAlive</key><true/>
     <key>ThrottleInterval</key><integer>30</integer>
     <key>WorkingDirectory</key><string>$PROJECT_DIR</string>
@@ -149,7 +164,7 @@ fi
 echo ""
 echo "IMPORTANT: Grant Accessibility permission to complete setup."
 echo "The service pops a system dialog asking for it, and adds a 'Python' entry"
-echo "(the interpreter at $PROJECT_DIR/.venv/bin/python)."
+echo "(the interpreter at $VENV_PYTHON)."
 echo "Enable that entry. The service restarts itself and begins working within"
 echo "~30s — no manual restart needed."
 echo ""
