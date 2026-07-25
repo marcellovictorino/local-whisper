@@ -11,6 +11,8 @@ just run   # verify the app works
 
 Requirements: macOS Apple Silicon, [uv](https://docs.astral.sh/uv/), Accessibility permission granted to Terminal.
 
+Task tracking uses the [`td`](https://github.com/gtayl0r/td) CLI (`brew install td`). Run `td usage --new-session` at the start of a session to see current focus and next work; state is local under a gitignored `.todos/`. See [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
+
 ## Project Structure
 
 ```

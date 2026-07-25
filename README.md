@@ -343,6 +343,10 @@ Benchmarked 2026-05-13 on 30s real-speech audio (49 words, English, technical vo
 | 12 | Model pre-load at startup — first keypress instant after warm-up | ✅ v0.6 |
 | 13 | Explicit adapt hotkey (Right ⌥) + per-stage session timing | ✅ v0.12 |
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Task tracking uses the [`td`](https://github.com/gtayl0r/td) CLI (`brew install td`); run `td usage --new-session` to see current work. State lives in a local, gitignored `.todos/` — see [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
+
 ## Troubleshooting
 
 ### uv not installed
