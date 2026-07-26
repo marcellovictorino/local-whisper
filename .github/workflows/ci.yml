@@ -7,7 +7,11 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs, but never a push-to-master run — that could
+  # kill an in-flight `release` job mid-tag/push (the release job's own
+  # concurrency group only queues *separate* release runs; it can't stop
+  # the whole run being cancelled out from under it at this level).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ci:
@@ -26,9 +30,6 @@ jobs:
         with:
           enable-caching: true
 
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libportaudio2 xvfb
-
       - name: Install dependencies
         run: uv sync --all-groups
 
@@ -37,6 +38,11 @@ jobs:
 
       - name: Format check
         run: uv run ruff format --check src/ tests/
+
+      # Only Test needs these (see comment above); installing after Lint/Format
+      # check means a run that fails there doesn't pay this cost for nothing.
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2 xvfb
 
       - name: Test
         run: xvfb-run -a uv run pytest tests/ -v
