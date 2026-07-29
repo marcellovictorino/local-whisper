@@ -74,6 +74,22 @@ This runs to completion, commits, and exits. Open a PR in the morning.
 - [ ] `just run` — manual smoke test (hold Right ⌘, speak, release)
 - [ ] No new dependencies added without discussion
 - [ ] No changes to `overlay.py` or `hotkey.py` unless the issue explicitly requires it
+- [ ] PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (see below)
+
+## Releases
+
+PRs are squash-merged, so **the PR title becomes the commit message on `master`**. Releases are fully automatic: [python-semantic-release](https://python-semantic-release.readthedocs.io/) reads that history on every push to `master` and, when it finds a releasable commit, bumps the version (`pyproject.toml` + `src/local_whisper/__init__.py`), creates the git tag, updates [CHANGELOG.md](CHANGELOG.md), and cuts a GitHub Release — no manual step.
+
+This makes the PR title load-bearing, not cosmetic. Use a [Conventional Commits](https://www.conventionalcommits.org/) type:
+
+| Prefix | Effect |
+|--------|--------|
+| `feat:` | minor version bump |
+| `fix:`, `perf:` | patch version bump |
+| `feat!:`, or `BREAKING CHANGE:` in the body | major version bump (or minor, while pre-1.0 — see `major_on_zero` in `pyproject.toml`) |
+| `chore:`, `ci:`, `docs:`, `refactor:`, `style:`, `test:`, `build:` | no version bump, no changelog entry |
+
+A PR title lint (`.github/workflows/pr-title-lint.yml`) enforces this format — an unparseable title fails loudly at PR time instead of silently producing no release later.
 
 ## Constraints
 

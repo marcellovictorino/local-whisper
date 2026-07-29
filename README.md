@@ -1,5 +1,10 @@
 # local-whisper
 
+[![CI](https://github.com/marcellovictorino/local-whisper/actions/workflows/ci.yml/badge.svg)](https://github.com/marcellovictorino/local-whisper/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/marcellovictorino/local-whisper)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
+[![Platform: macOS arm64](https://img.shields.io/badge/platform-macOS%20arm64-lightgrey)](#requirements)
+
 Offline speech-to-text on macOS. Hold Right ⌘, speak, release — transcribed text pastes at your cursor. No cloud, no subscription, no internet required.
 
 Runs natively on Apple Silicon via MLX. Default model: whisper-small.en (English, ~250 MB, ~500ms inference).
@@ -346,6 +351,8 @@ Benchmarked 2026-05-13 on 30s real-speech audio (49 words, English, technical vo
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Task tracking uses the [`td`](https://github.com/gtayl0r/td) CLI (`brew install td`); run `td usage --new-session` to see current work. State lives in a local, gitignored `.todos/` — see [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
+
+Releases are versioned and tagged automatically from [Conventional Commits](https://www.conventionalcommits.org/) on merge to `master` — see [CHANGELOG.md](CHANGELOG.md) and [Releases](https://github.com/marcellovictorino/local-whisper/releases).
 
 ## Troubleshooting
 

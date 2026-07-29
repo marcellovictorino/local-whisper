@@ -5,13 +5,28 @@ on:
     branches: [master]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Cancel superseded PR runs, but never a push-to-master run — that could
+  # kill an in-flight `release` job mid-tag/push (the release job's own
+  # concurrency group only queues *separate* release runs; it can't stop
+  # the whole run being cancelled out from under it at this level).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   ci:
-    runs-on: macos-latest
+    # Tests are fully mocked (no real mic/GPU/Metal/Accessibility/network
+    # calls) — see tests/conftest.py + test_transcribe.py/test_hotkey.py.
+    # Two native pieces are still touched at *import* time though, so both
+    # need a system-level stand-in even though nothing is actually driven:
+    #  - sounddevice does a ctypes lookup for libportaudio at import.
+    #  - pynput's xorg backend (used on any non-darwin/win32 platform)
+    #    connects to a real X display while importing pynput._util.xorg.
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-caching: true
 
@@ -24,5 +39,32 @@ jobs:
       - name: Format check
         run: uv run ruff format --check src/ tests/
 
+      # Only Test needs these (see comment above); installing after Lint/Format
+      # check means a run that fails there doesn't pay this cost for nothing.
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2 xvfb
+
       - name: Test
-        run: uv run pytest tests/ -v
+        run: xvfb-run -a uv run pytest tests/ -v
+
+  release:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release-${{ github.workflow }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Release
+        uses: python-semantic-release/python-semantic-release@39dd2052f2ce8282a5d932c31d58a2ca06d2550e # v10.6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          git_committer_name: "github-actions[bot]"
+          git_committer_email: "github-actions[bot]@users.noreply.github.com"
