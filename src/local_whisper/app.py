@@ -127,7 +127,8 @@ class App:
         self._active_app: str = ""
         self._active: _Session | None = None
         self._corrections: dict[str, str] = corrections.load()
-        self._vocab_prompt: str | None = self._build_vocab_prompt()
+        vocabulary_words = config.get_vocabulary_words()
+        self._vocab_prompt: str | None = self._build_vocab_prompt(vocabulary_words)
         self._listener = HotkeyListener(
             on_activate=self._on_key_press,
             on_deactivate=self._on_key_release,
@@ -163,21 +164,27 @@ class App:
             self.stop()
             logger.info("Stopped.")
 
-    def _build_vocab_prompt(self) -> str | None:
+    def _build_vocab_prompt(self, vocabulary_words: list[str]) -> str | None:
         """Build the Whisper vocabulary-seeding prompt; unavailable on Parakeet."""
         if not transcribe.supports_vocab_prompt(self._backend):
-            if self._corrections:
+            if vocabulary_words:
+                logger.info(
+                    "Configured vocabulary unavailable on %s; corrections still apply post-transcription.",
+                    self._backend,
+                )
+            elif self._corrections:
                 logger.info(
                     "Vocabulary seeding unavailable on %s; corrections still apply post-transcription.", self._backend
                 )
             return None
-        return corrections.build_prompt(self._corrections)
+        return corrections.build_prompt(self._corrections, vocabulary_words)
 
     def _reload_config(self) -> None:
         """Reload all config caches without restarting."""
         config.invalidate()
         self._corrections = corrections.load()
-        self._vocab_prompt = self._build_vocab_prompt()
+        vocabulary_words = config.get_vocabulary_words()
+        self._vocab_prompt = self._build_vocab_prompt(vocabulary_words)
         self._signal_if_config_malformed()
         logger.info("Config reloaded.")
 
