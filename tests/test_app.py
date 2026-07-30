@@ -7,24 +7,24 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from local_whisper import config
 from local_whisper.app import _log_session, _run_command_pipeline, _run_dictation_pipeline, _SessionMode
 
 
 @pytest.mark.parametrize(
     ("config_state", "expect_error"),
     [
-        ("MALFORMED", True),
-        ("MISSING", False),
-        ("LOADED", False),
+        (config.ConfigState.MALFORMED, True),
+        (config.ConfigState.MISSING, False),
+        (config.ConfigState.LOADED, False),
     ],
 )
-def test_startup_only_signals_a_malformed_initial_config(config_state: str, expect_error: bool) -> None:
+def test_startup_only_signals_a_malformed_initial_config(config_state: config.ConfigState, expect_error: bool) -> None:
     """Startup must surface a parse failure without alarming for empty or absent config."""
-    from local_whisper import config
     from local_whisper.app import App
 
     overlay = MagicMock()
-    load = config.ConfigLoad(getattr(config.ConfigState, config_state), {})
+    load = config.ConfigLoad(config_state, {})
     with (
         patch("local_whisper.app.config.load_config", return_value=load),
         patch("local_whisper.app.corrections.load", return_value={}),
