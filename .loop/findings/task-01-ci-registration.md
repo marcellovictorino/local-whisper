@@ -1,6 +1,8 @@
 # CI registration diagnosis — task-01
 
-**Finding.** The `push` for the squash merge onto `master` registered a CI workflow in two seconds. GitHub then cancelled its automatic attempt before either job ran, with: `Canceling since a higher priority waiting request for ci-CI-refs/heads/master exists`.
+**Finding.** The `push` for the squash merge onto `master` registered a CI workflow in three seconds. GitHub then cancelled its automatic attempt before either job ran, with: `Canceling since a higher priority waiting request for ci-CI-refs/heads/master exists`.
+
+**Plain-language summary.** GitHub received the normal update to the main branch and created its automatic checks (CI) three seconds later. Before those checks started, GitHub's queue cancelled them because another, higher-priority request was waiting in the same queue. The available records confirm that queue mechanism but do not identify the other request. Restarting the run manually showed that the CI checks can pass, but it does not show that automatic checks are reliable. Separately, the release bot cannot update `master` because the repository policy requires a pull request.
 
 The evidence establishes one immediate cause: GitHub Actions' workflow-level concurrency queue cancelled the registered run. It does **not** identify the competing waiting request. The current API history has no second `master` push CI run in the relevant window, and the queried APIs do not expose a concurrency-queue member for this cancellation. Therefore the deeper cause of the collision is unresolved; a workflow defect cannot be asserted as its root cause.
 
@@ -8,7 +10,7 @@ No workflow correction is **required for registration**: the subscribed event re
 
 A separate release blocker is confirmed. The active `master` ruleset requires pull requests and has no bypass actor, so the release job's bot push was rejected with `GH013`.
 
-**Terms.** A *workflow run* is GitHub's complete CI execution; a *CI job* is one part of that run. A *ref* is the branch name GitHub updated. A *concurrency group* is GitHub's queue for runs with the same group name. A *ruleset* is the repository policy governing branch updates.
+**Terms.** *CI* means the automatic checks that validate code changes. A *workflow run* is GitHub's complete CI execution; a *CI job* is one part of that run. A *run attempt* is an execution of that workflow; a manual rerun creates a new attempt for the same run. A *SHA* is the unique full identifier for a particular commit. A *squash merge* combines a pull request's changes into one new commit on its destination branch. A *ref* is the branch name GitHub updated. A *concurrency group* is GitHub's queue for runs with the same group name. An *API* is GitHub's computer-readable record interface. A *ruleset* is the repository policy governing branch updates. A *bypass actor* is an identity allowed to ignore that policy. *GH013* is GitHub's rejection code for a push blocked by repository rules.
 
 ## Issue facts considered
 
@@ -30,7 +32,7 @@ Direct pushes to `master` are prohibited by the repository ruleset, so the trivi
 | Pull request | [#25](https://github.com/marcellovictorino/local-whisper/pull/25), opened `2026-07-30T07:31:27Z` |
 | `pull_request` CI registration | [run 30523425175](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425175), SHA `f270a2b56431fa38ddcc6e91beb5e3d4e7b875c1`, created `2026-07-30T07:35:06Z`, successful; registration delay 3m 39s from PR creation |
 | Squash push | [`refs/heads/master` at `7a24607bd5cf88f0f487a380ca5aaf7646232962`](https://github.com/marcellovictorino/local-whisper/commit/7a24607bd5cf88f0f487a380ca5aaf7646232962), merged `2026-07-30T07:35:02Z` |
-| Automatic master event | `push`; [run 30523425017, attempt 1](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/attempts/1), created `2026-07-30T07:35:05Z`; registration delay 2s; conclusion `cancelled` at `07:35:07Z` |
+| Automatic master event | `push`; [run 30523425017, attempt 1](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/attempts/1), created `2026-07-30T07:35:05Z`; registration delay 3s (`07:35:05Z − 07:35:02Z`); conclusion `cancelled` at `07:35:07Z` |
 | Registration negative control | The [commit record](https://api.github.com/repos/marcellovictorino/local-whisper/commits/7a24607bd5cf88f0f487a380ca5aaf7646232962) timestamps the master update at `07:35:02Z`; the [master history query](https://api.github.com/repos/marcellovictorino/local-whisper/commits?sha=master&per_page=100) returns `7a24607…` as its newest commit. The [attempt-1 record](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs/30523425017/attempts/1) timestamps registration at `07:35:05Z`. No subsequent master push preceded registration; no follow-up commit nudged it. |
 | Automatic-run conclusion | GitHub annotation: `Canceling since a higher priority waiting request for ci-CI-refs/heads/master exists`. Both attempt-1 jobs were cancelled with no steps: [CI job 90808800056](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/job/90808800056) and [release job 90808802742](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/job/90808802742). |
 | Manual rerun job | [CI job 90809202938, attempt 2](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/job/90809202938), SHA `7a24607bd5cf88f0f487a380ca5aaf7646232962`, `push`, successful `2026-07-30T07:37:31Z–07:38:06Z`. |
