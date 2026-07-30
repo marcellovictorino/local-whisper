@@ -65,11 +65,16 @@ jobs:
           version="$(grep '^version = ' pyproject.toml | cut -d '"' -f 2)"
           expected="chore(release): ${version}"
           subject="$(git log -1 --format=%s)"
-          if [ "$subject" != "$expected" ]; then
-            echo "Not a release merge; preparing a release pull request."
-            echo "merged=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          # A squash merge appends " (#<PR number>)" to the PR title, so match
+          # that optional suffix too instead of requiring an exact string equal.
+          case "$subject" in
+            "$expected" | "$expected"\ \(#[0-9]*\)) ;;
+            *)
+              echo "Not a release merge; preparing a release pull request."
+              echo "merged=false" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
           tag="v${version}"
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release $tag already exists."
