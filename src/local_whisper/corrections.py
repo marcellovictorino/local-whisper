@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
 
@@ -23,7 +24,7 @@ def _prompt_token_count(prompt: str) -> int:
     return len(get_tokenizer(False).encode(" " + prompt.strip()))
 
 
-def build_prompt(corrections_map: dict[str, str], vocabulary_words: list[str] | None = None) -> str | None:
+def build_prompt(corrections_map: dict[str, str], vocabulary_words: Iterable[str] | None = None) -> str | None:
     """Build an initial_prompt string from corrections and configured vocabulary.
 
     Correction values precede vocabulary words so established corrections retain
@@ -57,6 +58,8 @@ def build_prompt(corrections_map: dict[str, str], vocabulary_words: list[str] | 
         if _prompt_token_count(candidate) > _PROMPT_TOKEN_LIMIT:
             break
         complete_terms.append(term)
+        if input_length == _PROMPT_INPUT_CHAR_LIMIT:
+            break
     return ", ".join(complete_terms) or None
 
 

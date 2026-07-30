@@ -1,10 +1,33 @@
 """Tests for corrections.load() and corrections.apply()."""
 
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import local_whisper.corrections as corrections
-from local_whisper.corrections import _PROMPT_TOKEN_LIMIT, _prompt_token_count, apply, build_prompt, load
+from local_whisper.corrections import (
+    _PROMPT_INPUT_CHAR_LIMIT,
+    _PROMPT_TERM_CHAR_LIMIT,
+    _PROMPT_TOKEN_LIMIT,
+    _prompt_token_count,
+    apply,
+    build_prompt,
+    load,
+)
+
+
+def _maximal_fitting_prefix(terms: list[str]) -> list[str]:
+    """Derive the documented whole-term prefix independently of build_prompt."""
+    accepted: list[str] = []
+    for term in terms:
+        candidate = ", ".join([*accepted, term])
+        if (
+            len(term) > _PROMPT_TERM_CHAR_LIMIT
+            or len(candidate) > _PROMPT_INPUT_CHAR_LIMIT
+            or _prompt_token_count(candidate) > _PROMPT_TOKEN_LIMIT
+        ):
+            break
+        accepted.append(term)
+    return accepted
 
 
 def test_load_returns_empty_when_file_missing(tmp_path: Path) -> None:
@@ -104,22 +127,16 @@ def test_build_prompt_returns_none_when_corrections_and_vocabulary_are_empty() -
 
 def test_build_prompt_budgets_token_dense_ascii_terms_without_splitting() -> None:
     terms = [f"x{i:03d}" for i in range(131)]
-    result = build_prompt({f"wrong{i}": term for i, term in enumerate(terms)})
 
-    assert result is not None
-    assert _prompt_token_count(result) <= _PROMPT_TOKEN_LIMIT
-    assert result == ", ".join(terms[: len(result.split(", "))])
-    assert result != ", ".join(terms)
+    assert build_prompt({f"wrong{i}": term for i, term in enumerate(terms)}) == ", ".join(
+        _maximal_fitting_prefix(terms)
+    )
 
 
 def test_build_prompt_budgets_token_dense_unicode_terms_without_splitting() -> None:
     terms = [f"漢字{i:03d}" for i in range(131)]
-    result = build_prompt({}, terms)
 
-    assert result is not None
-    assert _prompt_token_count(result) <= _PROMPT_TOKEN_LIMIT
-    assert result == ", ".join(terms[: len(result.split(", "))])
-    assert result != ", ".join(terms)
+    assert build_prompt({}, terms) == ", ".join(_maximal_fitting_prefix(terms))
 
 
 def test_build_prompt_returns_none_when_all_terms_are_blank() -> None:
@@ -151,12 +168,18 @@ def test_build_prompt_rejects_oversized_first_term_before_tokenising(monkeypatch
 def test_build_prompt_stops_at_oversized_vocabulary_input(monkeypatch) -> None:
     token_count = Mock(return_value=0)
     monkeypatch.setattr(corrections, "_prompt_token_count", token_count)
-    vocabulary = ["term" * 25] * 100_000
+    first = "a" * 399
+    second = "b" * 399
 
-    result = build_prompt({}, vocabulary)
+    def vocabulary() -> object:
+        yield first
+        yield second
+        raise AssertionError("prompt construction consumed vocabulary after exhausting its character budget")
 
-    assert result == "term" * 25
-    token_count.assert_called_once_with("term" * 25)
+    result = build_prompt({}, vocabulary())
+
+    assert result == f"{first}, {second}"
+    assert token_count.call_args_list == [call(first), call(f"{first}, {second}")]
 
 
 def test_apply_does_not_partially_match_hyphenated_token() -> None:
