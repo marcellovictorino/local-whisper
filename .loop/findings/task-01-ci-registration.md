@@ -37,11 +37,31 @@ Direct pushes to `master` are prohibited by the repository ruleset, so the trivi
 
 The rerun proves the CI job passes for the exact master SHA. It does not prove automatic master-push execution is reliable: the automatic attempt was cancelled before job steps. The [attempt-2 workflow record](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs/30523425017/attempts/2) has conclusion `failure`; its release job tried to push a calculated `0.12.1` release commit and was rejected by the ruleset, while the CI job succeeded.
 
+**Successful historical CI run.** [Run 30154658873](https://github.com/marcellovictorino/local-whisper/actions/runs/30154658873) is a successful `push` workflow run on `master` for exact SHA `37f693e6b49ddb491efc0ab5f0ae912816e6c046` (created `2026-07-25T10:33:01Z`, concluded `success` at `10:33:33Z`). It predates this test and does not establish reliability under the tested configuration.
+
 **Blocked CI-run criterion.** No successful *workflow run* exists for master SHA `7a24607bd5cf88f0f487a380ca5aaf7646232962`: attempt 1 was automatically cancelled and manual attempt 2 failed overall. The successful CI job is not substituted for a successful workflow run. This criterion remains **BLOCKED** until a successful automatic `push` workflow run for this exact SHA can be linked; that evidence cannot be created safely without changing historical master.
 
 ## Concurrency evidence and limit
 
-The [attempt-1 run record](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs/30523425017/attempts/1) identifies a `push` run on `master`, SHA `7a24607…`, created at `07:35:05Z`, then cancelled at `07:35:07Z`. The [CI master-push query for 07:30–07:40Z](https://api.github.com/repos/marcellovictorino/local-whisper/actions/workflows/ci.yml/runs?event=push&branch=master&per_page=100) returns only this run. The [all-workflows query for that window](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs?per_page=100) returns that run plus the `pull_request` CI and PR-title-lint runs. It does not identify a second master request.
+The [attempt-1 run record](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs/30523425017/attempts/1) identifies a `push` run on `master`, SHA `7a24607…`, created at `07:35:05Z`, then cancelled at `07:35:07Z`.
+
+The following immutable capture was made at `2026-07-30T08:09:23Z`. It queried the [CI master-push endpoint](https://api.github.com/repos/marcellovictorino/local-whisper/actions/workflows/ci.yml/runs?event=push&branch=master&per_page=100) and the [all-workflows endpoint](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs?per_page=100), then selected records where `created_at >= "2026-07-30T07:30:00Z" and created_at < "2026-07-30T07:40:00Z"`. The endpoints are mutable; this excerpt, including its filter, preserves the evidence considered.
+
+```text
+CI master-push records:
+[
+  {"id":30523425017,"event":"push","head_branch":"master","head_sha":"7a24607bd5cf88f0f487a380ca5aaf7646232962","status":"completed","conclusion":"failure","created_at":"2026-07-30T07:35:05Z","updated_at":"2026-07-30T07:38:57Z","name":"CI"}
+]
+
+All workflow records:
+[
+  {"id":30523425175,"event":"pull_request","head_branch":"chore/verify-ci-registration","head_sha":"f270a2b56431fa38ddcc6e91beb5e3d4e7b875c1","status":"completed","conclusion":"success","created_at":"2026-07-30T07:35:06Z","updated_at":"2026-07-30T07:36:00Z","name":"CI","path":".github/workflows/ci.yml"},
+  {"id":30523425168,"event":"pull_request","head_branch":"chore/verify-ci-registration","head_sha":"f270a2b56431fa38ddcc6e91beb5e3d4e7b875c1","status":"completed","conclusion":"success","created_at":"2026-07-30T07:35:06Z","updated_at":"2026-07-30T07:35:12Z","name":"PR title lint","path":".github/workflows/pr-title-lint.yml"},
+  {"id":30523425017,"event":"push","head_branch":"master","head_sha":"7a24607bd5cf88f0f487a380ca5aaf7646232962","status":"completed","conclusion":"failure","created_at":"2026-07-30T07:35:05Z","updated_at":"2026-07-30T07:38:57Z","name":"CI","path":".github/workflows/ci.yml"}
+]
+```
+
+The run's final `failure` in this later listing reflects manual attempt 2; the separately linked attempt-1 record remains the evidence for automatic cancellation. Neither filtered response identifies a second master request.
 
 These queries are a snapshot of visible run history, not evidence that no competing request ever existed. GitHub did not expose the higher-priority request's run ID, event, SHA, timestamp, or evaluated group in the cancellation annotation or queried response. The competing request is therefore **unidentified**, rather than attributed to a PR, a prior master push, or Actions scheduler behaviour.
 
