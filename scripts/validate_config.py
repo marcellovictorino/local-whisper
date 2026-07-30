@@ -1,23 +1,20 @@
 """Validate the local-whisper TOML configuration file."""
 
 import sys
-import tomllib
-from pathlib import Path
 
-CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
+from local_whisper.config import CONFIG_PATH, ConfigState, load_config
 
 
 def main() -> int:
     """Parse the user config and report its validation outcome."""
-    if not CONFIG_PATH.exists():
+    result = load_config()
+
+    if result.state is ConfigState.MISSING:
         print(f"Config file not found: {CONFIG_PATH}")
         return 0
 
-    try:
-        with CONFIG_PATH.open("rb") as config_file:
-            tomllib.load(config_file)
-    except tomllib.TOMLDecodeError as exc:
-        print(f"Invalid TOML in {CONFIG_PATH}: {exc}", file=sys.stderr)
+    if result.state is ConfigState.MALFORMED:
+        print(f"Invalid TOML in {CONFIG_PATH}: {result.error}", file=sys.stderr)
         return 1
 
     print(f"Config file is valid: {CONFIG_PATH}")

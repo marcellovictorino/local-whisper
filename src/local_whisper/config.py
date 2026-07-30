@@ -27,6 +27,7 @@ class ConfigLoad:
 
     state: ConfigState
     data: dict
+    error: str | None = None
 
 
 # Single-slot cache: (key, result) tuple swapped atomically on invalidation.
@@ -53,7 +54,7 @@ def load_config(path: Path = CONFIG_PATH) -> ConfigLoad:
             result = ConfigLoad(ConfigState.LOADED, tomllib.load(f))
     except tomllib.TOMLDecodeError as exc:
         logger.error("config.toml parse error for %s: %s", path, exc)
-        result = ConfigLoad(ConfigState.MALFORMED, {})
+        result = ConfigLoad(ConfigState.MALFORMED, {}, error=str(exc))
     except OSError:
         return ConfigLoad(ConfigState.MISSING, {})
     _toml_cache = (key, result)  # atomic ref swap
