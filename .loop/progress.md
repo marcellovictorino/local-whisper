@@ -1,0 +1,5 @@
+2026-07-30 config-state: Added ConfigLoad state API; cached malformed reads by path/mtime and logged parse errors once at ERROR. Valid mtime/invalidation retries clear malformed state.
+2026-07-30 startup-overlay: App captures initial ConfigLoad and shows the existing red overlay once at startup only for MALFORMED; missing and loaded (including empty) remain silent.
+2026-07-30 validate-recipe: Added dev validate-config recipe and TOML validator; valid exits 0, malformed prints path plus line/column and exits 1, missing is explicit success. Gotcha: just lint baseline fails format check in config.py and test_app.py; task script passes Ruff.
+2026-07-30 pull-request: Formatted config.py and test_app.py so just lint passes; opened PR #27 with ERROR parse details, startup overlay, distinct ConfigState, and mtime-cached malformed reads.
+2026-07-30 t-r001: Documented malformed-config red startup overlay and just validate-config recovery; added validator to local/CI Ruff lint and format checks; removed loop-harness ignores. Checks: just lint, just test (191), just validate-config.

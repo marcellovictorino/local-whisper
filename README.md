@@ -95,6 +95,18 @@ your@email.com"""
 
 Keys are matched **case-insensitively**. `BRB`, `brb`, and `Brb` all expand the same entry.
 
+### Invalid configuration
+
+A malformed `config.toml` shows a brief red startup overlay when local-whisper starts. The overlay appears once per startup; valid, empty, and missing config files do not show it.
+
+From the repository checkout, validate the file and use the reported path, line, and column to correct the TOML:
+
+```bash
+just validate-config
+```
+
+Run the command again after editing. A valid or missing config exits successfully; invalid TOML exits with an error.
+
 </details>
 
 <details>
