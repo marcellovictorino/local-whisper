@@ -21,10 +21,6 @@ class ConfigState(Enum):
     LOADED = auto()
 
 
-_VOCABULARY_TERM_CHAR_LIMIT = 800
-_VOCABULARY_INPUT_CHAR_LIMIT = 800
-
-
 @dataclass(frozen=True)
 class ConfigLoad:
     """A config read result, including states that otherwise look empty."""
@@ -101,26 +97,15 @@ def get_corrections_raw(path: Path = CONFIG_PATH) -> dict:
 
 
 def get_vocabulary_words(path: Path = CONFIG_PATH) -> list[str]:
-    """Return unique, non-blank bounded [vocabulary] words in configured order."""
+    """Return non-blank [vocabulary] words in configured order.
+
+    Dedup and budget clipping happen once, at the merge point in
+    :func:`corrections.build_prompt`, not here.
+    """
     words = load_section("vocabulary", path).get("words")
     if not isinstance(words, list):
         return []
-
-    accepted: list[str] = []
-    seen: set[str] = set()
-    input_length = 0
-    for word in words:
-        if not isinstance(word, str) or not word.strip() or word in seen:
-            continue
-        seen.add(word)
-        if len(word) > _VOCABULARY_TERM_CHAR_LIMIT:
-            break
-        separator_length = 2 if accepted else 0
-        if input_length + separator_length + len(word) > _VOCABULARY_INPUT_CHAR_LIMIT:
-            break
-        input_length += separator_length + len(word)
-        accepted.append(word)
-    return accepted
+    return [word for word in words if isinstance(word, str) and word.strip()]
 
 
 def get_snippets_raw(path: Path = CONFIG_PATH) -> dict:
