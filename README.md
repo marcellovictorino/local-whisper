@@ -217,7 +217,7 @@ export LOCAL_WHISPER_OPENAI_BASE_URL=http://localhost:11434/v1
 export LOCAL_WHISPER_COMMAND_MODEL=llama3.2
 ```
 
-If `LOCAL_WHISPER_OPENAI_API_KEY` is not set, command mode falls back to pasting the raw transcription — no crash.
+If command mode cannot use the LLM (including when `LOCAL_WHISPER_OPENAI_API_KEY` is not set), it preserves the selection and pastes no replacement. Try again after restoring the provider.
 
 </details>
 
@@ -364,7 +364,7 @@ Benchmarked 2026-05-13 on 30s real-speech audio (49 words, English, technical vo
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Task tracking uses the [`td`](https://github.com/gtayl0r/td) CLI (`brew install td`); run `td usage --new-session` to see current work. State lives in a local, gitignored `.todos/` — see [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
 
-Releases are versioned and tagged automatically from [Conventional Commits](https://www.conventionalcommits.org/) on merge to `master` — see [CHANGELOG.md](CHANGELOG.md) and [Releases](https://github.com/marcellovictorino/local-whisper/releases).
+Releasable [Conventional Commits](https://www.conventionalcommits.org/) merged to `master` generate a release pull request with the version bump and [CHANGELOG.md](CHANGELOG.md) update. Review and merge that pull request; CI then creates the matching tag and [GitHub Release](https://github.com/marcellovictorino/local-whisper/releases).
 
 ## Troubleshooting
 
