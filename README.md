@@ -131,7 +131,23 @@ whisper = "Whisper"
 
 Matching is case-insensitive and whole-word only — `"open"` won't match `"openly"`.
 
-Changes take effect immediately — no restart needed. To reload without waiting, send SIGHUP to the process:
+### Vocabulary seeding
+
+Add domain terms that Whisper should recognise to a `[vocabulary]` section beside `[corrections]`:
+
+```toml
+[corrections]
+"open a I" = "OpenAI"
+
+[vocabulary]
+words = ["PyTorch", "Kubernetes", "SIGHUP"]
+```
+
+The decoder prompt merges correction replacements first, then vocabulary words. Exact duplicate terms are removed while preserving their first occurrence and configured order. It is limited to 800 characters; when it would exceed that limit, only complete terms that fit are included.
+
+The prompt is built at startup and rebuilt when the process receives SIGHUP. Parakeet ignores vocabulary seeding and logs this explicitly; corrections still apply after transcription.
+
+Configuration changes take effect after SIGHUP — no restart needed:
 
 ```bash
 kill -HUP $(pgrep -f local_whisper)
@@ -313,7 +329,7 @@ Then set the model in config and restart:
 model = "mlx-community/parakeet-tdt-0.6b-v2"
 ```
 
-Note: vocabulary seeding from `[corrections]` (biasing the decoder toward your terms) only works on whisper models — parakeet still applies corrections as post-processing.
+Note: Parakeet ignores vocabulary seeding and logs this explicitly; corrections still apply as post-processing.
 
 To switch to multilingual/higher accuracy:
 
