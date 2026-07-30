@@ -143,9 +143,9 @@ Add domain terms that Whisper should recognise to a `[vocabulary]` section besid
 words = ["PyTorch", "Kubernetes", "SIGHUP"]
 ```
 
-The decoder prompt merges correction replacements first, then vocabulary words. Empty terms and exact duplicates are removed while preserving the first occurrence and configured order. Each term and the total source input are capped at 800 characters before tokenisation. The prompt is limited to mlx-whisper's 223 prompt tokens; only complete terms that fit are included.
+The decoder prompt merges correction replacements first, then vocabulary words. `[vocabulary].words` defaults to an empty list: an absent or non-list value contributes no vocabulary terms. Empty terms and exact duplicates are removed while preserving the first occurrence and configured order. Each remaining term and the total source input are capped at 800 characters before tokenisation; construction stops at the first term that exceeds either cap. The prompt is limited to mlx-whisper's 223 prompt tokens; only complete terms that fit are included.
 
-The prompt is built at startup and rebuilt when the process receives SIGHUP. Parakeet ignores vocabulary seeding and logs this once at startup; corrections still apply after transcription.
+The prompt is built at startup and rebuilt when the process receives SIGHUP. Parakeet ignores vocabulary seeding and logs this once at startup; all configured string corrections still apply after transcription.
 
 Configuration changes take effect after SIGHUP — no restart needed:
 
@@ -329,7 +329,7 @@ Then set the model in config and restart:
 model = "mlx-community/parakeet-tdt-0.6b-v2"
 ```
 
-Note: Parakeet ignores vocabulary seeding and logs this explicitly; corrections still apply as post-processing.
+Note: Parakeet ignores vocabulary seeding and logs this explicitly; all configured string corrections still apply as post-processing.
 
 To switch to multilingual/higher accuracy:
 

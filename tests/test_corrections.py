@@ -25,10 +25,20 @@ def test_load_lowercases_keys(tmp_path: Path) -> None:
     assert "gpt" in result
 
 
-def test_load_rejects_oversized_correction_value(tmp_path: Path) -> None:
+def test_load_retains_oversized_correction_for_post_processing(tmp_path: Path) -> None:
     config = tmp_path / "corrections.toml"
-    config.write_text(f'[corrections]\nwrong = "{"x" * (corrections._PROMPT_TERM_CHAR_LIMIT + 1)}"\n')
-    assert load(config) == {}
+    replacement = "x" * (corrections._PROMPT_TERM_CHAR_LIMIT + 1)
+    config.write_text(f'[corrections]\nwrong = "{replacement}"\n')
+
+    assert load(config) == {"wrong": replacement}
+
+
+def test_load_retains_later_correction_after_prompt_budget_is_exhausted(tmp_path: Path) -> None:
+    config = tmp_path / "corrections.toml"
+    first = "x" * 799
+    config.write_text(f'[corrections]\nfirst = "{first}"\nlate = "LATE"\n')
+
+    assert apply("late", load(config)) == "LATE"
 
 
 def test_load_returns_empty_on_malformed_toml(tmp_path: Path) -> None:
@@ -118,6 +128,10 @@ def test_build_prompt_returns_none_when_all_terms_are_blank() -> None:
 
 def test_build_prompt_ignores_blank_terms_before_deduplicating() -> None:
     assert build_prompt({"empty": "", "dbt": "dbt"}, [" ", "dbt"]) == "dbt"
+
+
+def test_build_prompt_does_not_charge_blank_or_duplicate_terms_to_input_budget() -> None:
+    assert build_prompt({}, [" " * 799, "dbt", "dbt"]) == "dbt"
 
 
 def test_build_prompt_returns_none_when_first_term_exceeds_token_budget() -> None:

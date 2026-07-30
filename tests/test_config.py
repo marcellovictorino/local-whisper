@@ -201,12 +201,18 @@ def test_get_vocabulary_words_preserves_non_blank_terms_in_order(tmp_path: Path)
 
 
 def test_get_vocabulary_words_stops_at_configured_input_limit(tmp_path: Path) -> None:
-    terms = ["x" * 100] * 100
+    terms = [f"x{i:03d}" * 25 for i in range(100)]
     p = _write(tmp_path / "c.toml", f"[vocabulary]\nwords = {terms!r}\n")
 
     result = cfg.get_vocabulary_words(p)
 
     assert result == terms[:7]
+
+
+def test_get_vocabulary_words_filters_blank_and_duplicates_before_input_budget(tmp_path: Path) -> None:
+    p = _write(tmp_path / "c.toml", '[vocabulary]\nwords = ["' + " " * 799 + '", "dbt", "dbt"]\n')
+
+    assert cfg.get_vocabulary_words(p) == ["dbt"]
 
 
 @pytest.mark.parametrize(

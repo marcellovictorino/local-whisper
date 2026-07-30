@@ -101,24 +101,25 @@ def get_corrections_raw(path: Path = CONFIG_PATH) -> dict:
 
 
 def get_vocabulary_words(path: Path = CONFIG_PATH) -> list[str]:
-    """Return valid, bounded [vocabulary] words in configured order."""
+    """Return unique, non-blank bounded [vocabulary] words in configured order."""
     words = load_section("vocabulary", path).get("words")
     if not isinstance(words, list):
         return []
 
     accepted: list[str] = []
+    seen: set[str] = set()
     input_length = 0
     for word in words:
-        if not isinstance(word, str):
+        if not isinstance(word, str) or not word.strip() or word in seen:
             continue
+        seen.add(word)
         if len(word) > _VOCABULARY_TERM_CHAR_LIMIT:
             break
         separator_length = 2 if accepted else 0
         if input_length + separator_length + len(word) > _VOCABULARY_INPUT_CHAR_LIMIT:
             break
         input_length += separator_length + len(word)
-        if word.strip():
-            accepted.append(word)
+        accepted.append(word)
     return accepted
 
 
