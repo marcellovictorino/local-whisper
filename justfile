@@ -43,6 +43,11 @@ run:
 logs:
     tail -f {{log_file}}
 
+# Validate the user config TOML
+[group('dev')]
+validate-config:
+    {{uv}} run python scripts/validate_config.py
+
 # Run tests
 [group('dev')]
 test:
@@ -51,8 +56,8 @@ test:
 # Run linter + formatter check
 [group('dev')]
 lint:
-    {{uv}} run ruff check src/ tests/
-    {{uv}} run ruff format --check src/ tests/
+    {{uv}} run ruff check src/ tests/ scripts/validate_config.py
+    {{uv}} run ruff format --check src/ tests/ scripts/validate_config.py
 
 # Benchmark transcription latency (model from config or default)
 [group('dev')]

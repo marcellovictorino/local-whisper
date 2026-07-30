@@ -137,6 +137,7 @@ class App:
         """Start the keyboard listener in a daemon thread. Non-blocking."""
         signal.signal(signal.SIGHUP, lambda _s, _f: self._reload_config())
         self._listener.start()
+        self._signal_if_config_malformed()
         logger.info(
             "local-whisper running. Hold Right ⌘ to dictate (or transform selection); "
             "hold Right ⌥ to dictate with app-adapted formatting. Ctrl+C to quit."
@@ -177,7 +178,13 @@ class App:
         config.invalidate()
         self._corrections = corrections.load()
         self._vocab_prompt = self._build_vocab_prompt()
+        self._signal_if_config_malformed()
         logger.info("Config reloaded.")
+
+    def _signal_if_config_malformed(self) -> None:
+        """Surface a startup or SIGHUP-reload overlay signal for a malformed config."""
+        if self._overlay and config.load_config().state is config.ConfigState.MALFORMED:
+            self._overlay.show_error()
 
     def _on_key_press(self, trigger: Trigger) -> None:
         """Detect mode from trigger and selection, then start recording in a background thread."""

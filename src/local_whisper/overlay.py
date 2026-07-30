@@ -311,7 +311,7 @@ class RecordingOverlay:
         self._queue.put(_Cmd.SHOW_ADAPT)
 
     def show_error(self) -> None:
-        """Flash overlay red for ~1s to signal command failure. Thread-safe."""
+        """Flash overlay red for ~1s to signal a transient error. Thread-safe."""
         self._queue.put(_Cmd.SHOW_ERROR)
 
     def set_processing(self) -> None:

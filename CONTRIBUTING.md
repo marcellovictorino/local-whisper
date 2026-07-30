@@ -26,6 +26,7 @@ src/local_whisper/
   __main__.py    # CLI entry point
 
 tests/           # pytest — run with: just test
+scripts/         # standalone dev-tooling CLIs (e.g. validate_config.py)
 setup.sh         # one-shot install (launchd service)
 justfile         # day-to-day ops
 ```
