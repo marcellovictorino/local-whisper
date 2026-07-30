@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from local_whisper.corrections import _PROMPT_CHAR_LIMIT, apply, build_prompt, load
+from local_whisper.corrections import _PROMPT_TOKEN_LIMIT, _prompt_token_count, apply, build_prompt, load
 
 
 def test_load_returns_empty_when_file_missing(tmp_path: Path) -> None:
@@ -84,28 +84,36 @@ def test_build_prompt_returns_none_when_corrections_and_vocabulary_are_empty() -
     assert build_prompt({}, []) is None
 
 
-def test_build_prompt_truncates_at_term_boundary() -> None:
-    # Build a map whose joined prompt exceeds _PROMPT_CHAR_LIMIT.
-    # Each value is "Term000" ... "Term999" (7 chars + ", " separator = 9 chars each).
-    many = {f"wrong{i}": f"Term{i:03d}" for i in range(200)}
-    result = build_prompt(many)
+def test_build_prompt_budgets_token_dense_ascii_terms_without_splitting() -> None:
+    terms = [f"x{i:03d}" for i in range(131)]
+    result = build_prompt({f"wrong{i}": term for i, term in enumerate(terms)})
+
     assert result is not None
-    assert len(result) <= _PROMPT_CHAR_LIMIT
-    # Must not end mid-word — last char is a digit (complete term), not a comma/space.
-    assert not result.endswith(",")
-    assert not result.endswith(", ")
+    assert _prompt_token_count(result) <= _PROMPT_TOKEN_LIMIT
+    assert result == ", ".join(terms[: len(result.split(", "))])
+    assert result != ", ".join(terms)
 
 
-def test_build_prompt_truncation_edge_case_single_long_term() -> None:
-    long_term = "A" * (_PROMPT_CHAR_LIMIT + 100)
-    result = build_prompt({"wrong": long_term})
-    assert result == "A" * _PROMPT_CHAR_LIMIT
-
-
-def test_build_prompt_keeps_last_complete_term_when_merged_terms_overflow() -> None:
-    terms = ["A" * 400, "B" * 400, "C"]
+def test_build_prompt_budgets_token_dense_unicode_terms_without_splitting() -> None:
+    terms = [f"漢字{i:03d}" for i in range(131)]
     result = build_prompt({}, terms)
-    assert result == ", ".join(terms[:1])
+
+    assert result is not None
+    assert _prompt_token_count(result) <= _PROMPT_TOKEN_LIMIT
+    assert result == ", ".join(terms[: len(result.split(", "))])
+    assert result != ", ".join(terms)
+
+
+def test_build_prompt_returns_none_when_all_terms_are_blank() -> None:
+    assert build_prompt({"wrong": ""}, [" ", "\t"]) is None
+
+
+def test_build_prompt_ignores_blank_terms_before_deduplicating() -> None:
+    assert build_prompt({"empty": "", "dbt": "dbt"}, [" ", "dbt"]) == "dbt"
+
+
+def test_build_prompt_returns_none_when_first_term_exceeds_token_budget() -> None:
+    assert build_prompt({"wrong": "漢" * 300}) is None
 
 
 def test_apply_does_not_partially_match_hyphenated_token() -> None:

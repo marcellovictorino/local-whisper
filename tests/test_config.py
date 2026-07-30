@@ -195,8 +195,8 @@ def test_get_corrections_raw_returns_dict(tmp_path: Path) -> None:
     assert cfg.get_corrections_raw(p) == {"teh": "the", "adn": "and"}
 
 
-def test_get_vocabulary_words_preserves_valid_terms_in_order(tmp_path: Path) -> None:
-    p = _write(tmp_path / "c.toml", '[vocabulary]\nwords = ["loopctl", 42, "dbt"]\n')
+def test_get_vocabulary_words_preserves_non_blank_terms_in_order(tmp_path: Path) -> None:
+    p = _write(tmp_path / "c.toml", '[vocabulary]\nwords = ["loopctl", "", " ", 42, "dbt"]\n')
     assert cfg.get_vocabulary_words(p) == ["loopctl", "dbt"]
 
 

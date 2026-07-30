@@ -10,43 +10,39 @@ from local_whisper import config
 
 logger = logging.getLogger("local_whisper")
 
-_PROMPT_CHAR_LIMIT = 800  # ~200 tokens; mlx-whisper hard limit is ~224 tokens
+_PROMPT_TOKEN_LIMIT = 223  # mlx-whisper retains the final n_ctx // 2 - 1 prompt tokens.
+
+
+def _prompt_token_count(prompt: str) -> int:
+    """Return the token count mlx-whisper uses for an initial prompt."""
+    from mlx_whisper.tokenizer import get_tokenizer
+
+    return len(get_tokenizer(False).encode(" " + prompt.strip()))
 
 
 def build_prompt(corrections_map: dict[str, str], vocabulary_words: list[str] | None = None) -> str | None:
     """Build an initial_prompt string from corrections and configured vocabulary.
 
     Correction values precede vocabulary words so established corrections retain
-    priority when the decoder prompt reaches its character limit.
+    priority when the decoder prompt reaches its token limit.
 
     Args:
         corrections_map: Loaded corrections dict (keys=wrong form, values=correct form).
         vocabulary_words: Additional configured terms in their declared order.
 
     Returns:
-        Comma-joined unique terms, clipped at the last complete term within the
-        ~224-token limit. An oversized first term is clipped to the limit. None
-        if neither source contributes a term.
+        Comma-joined unique terms within mlx-whisper's 223-token prompt limit.
+        Terms are included whole and in order. None if neither source contributes
+        a usable term.
     """
-    terms = list(dict.fromkeys([*corrections_map.values(), *(vocabulary_words or [])]))
-    if not terms:
-        return None
-
-    prompt = ", ".join(terms)
-    if len(prompt) <= _PROMPT_CHAR_LIMIT:
-        return prompt
-
+    terms = list(dict.fromkeys(term for term in [*corrections_map.values(), *(vocabulary_words or [])] if term.strip()))
     complete_terms: list[str] = []
-    length = 0
     for term in terms:
-        separator_length = 2 if complete_terms else 0
-        if length + separator_length + len(term) > _PROMPT_CHAR_LIMIT:
+        candidate = ", ".join([*complete_terms, term])
+        if _prompt_token_count(candidate) > _PROMPT_TOKEN_LIMIT:
             break
         complete_terms.append(term)
-        length += separator_length + len(term)
-    if complete_terms:
-        return ", ".join(complete_terms)
-    return terms[0][:_PROMPT_CHAR_LIMIT]
+    return ", ".join(complete_terms) or None
 
 
 def load(path: Path = config.CONFIG_PATH) -> dict[str, str]:

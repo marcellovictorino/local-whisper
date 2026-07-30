@@ -126,6 +126,7 @@ class App:
         self._backend = backend
         self._active_app: str = ""
         self._active: _Session | None = None
+        self._unsupported_vocab_notice_emitted = False
         self._corrections: dict[str, str] = corrections.load()
         vocabulary_words = config.get_vocabulary_words()
         self._vocab_prompt: str | None = self._build_vocab_prompt(vocabulary_words)
@@ -167,15 +168,12 @@ class App:
     def _build_vocab_prompt(self, vocabulary_words: list[str]) -> str | None:
         """Build the Whisper vocabulary-seeding prompt; unavailable on Parakeet."""
         if not transcribe.supports_vocab_prompt(self._backend):
-            if vocabulary_words:
+            if (vocabulary_words or self._corrections) and not self._unsupported_vocab_notice_emitted:
                 logger.info(
                     "Configured vocabulary unavailable on %s; corrections still apply post-transcription.",
                     self._backend,
                 )
-            elif self._corrections:
-                logger.info(
-                    "Vocabulary seeding unavailable on %s; corrections still apply post-transcription.", self._backend
-                )
+                self._unsupported_vocab_notice_emitted = True
             return None
         return corrections.build_prompt(self._corrections, vocabulary_words)
 

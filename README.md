@@ -143,9 +143,9 @@ Add domain terms that Whisper should recognise to a `[vocabulary]` section besid
 words = ["PyTorch", "Kubernetes", "SIGHUP"]
 ```
 
-The decoder prompt merges correction replacements first, then vocabulary words. Exact duplicate terms are removed while preserving their first occurrence and configured order. It is limited to 800 characters; when it would exceed that limit, only complete terms that fit are included. If the first term alone exceeds the limit, it is clipped to 800 characters.
+The decoder prompt merges correction replacements first, then vocabulary words. Empty terms and exact duplicates are removed while preserving the first occurrence and configured order. It is limited to mlx-whisper's 223 prompt tokens; only complete terms that fit are included.
 
-The prompt is built at startup and rebuilt when the process receives SIGHUP. Parakeet ignores vocabulary seeding and logs this explicitly; corrections still apply after transcription.
+The prompt is built at startup and rebuilt when the process receives SIGHUP. Parakeet ignores vocabulary seeding and logs this once at startup; corrections still apply after transcription.
 
 Configuration changes take effect after SIGHUP — no restart needed:
 

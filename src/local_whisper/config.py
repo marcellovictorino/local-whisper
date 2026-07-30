@@ -101,7 +101,7 @@ def get_vocabulary_words(path: Path = CONFIG_PATH) -> list[str]:
     words = load_section("vocabulary", path).get("words")
     if not isinstance(words, list):
         return []
-    return [word for word in words if isinstance(word, str)]
+    return [word for word in words if isinstance(word, str) and word.strip()]
 
 
 def get_snippets_raw(path: Path = CONFIG_PATH) -> dict:

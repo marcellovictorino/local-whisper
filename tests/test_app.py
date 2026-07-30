@@ -179,20 +179,16 @@ def test_dictation_session_uses_stored_prompt_without_reloading_or_rebuilding() 
     assert mock_transcribe.call_args.kwargs["initial_prompt"] == "dbt"
 
 
-def test_parakeet_logs_configured_vocabulary_once_at_startup(caplog: pytest.LogCaptureFixture) -> None:
-    """Parakeet reports unsupported configured vocabulary at startup, never per dictation."""
+def test_parakeet_logs_configured_vocabulary_once_across_reloads(caplog: pytest.LogCaptureFixture) -> None:
+    """Parakeet reports unavailable vocabulary once, including after SIGHUP reloads."""
     with (
         patch("local_whisper.app.corrections.load", return_value={}),
         patch("local_whisper.app.config.get_vocabulary_words", return_value=["dbt"]),
         caplog.at_level(logging.INFO, logger="local_whisper"),
     ):
         app = App(backend=Backend.PARAKEET)
-        with (
-            patch("local_whisper.app.audio.record_until_event", return_value=np.ones(4_800, dtype="float32")),
-            patch("local_whisper.app.transcribe.wait_warmed", return_value=True),
-            patch("local_whisper.app.transcribe.run", return_value=""),
-        ):
-            app._run_session(_Session(mode=_SessionMode.DICTATION))
+        app._reload_config()
+        app._reload_config()
 
     messages = [record.getMessage() for record in caplog.records]
     message = "Configured vocabulary unavailable on parakeet-mlx; corrections still apply post-transcription."
