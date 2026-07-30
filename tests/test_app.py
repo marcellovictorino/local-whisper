@@ -3,11 +3,46 @@
 from __future__ import annotations
 
 import logging
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from local_whisper.app import _log_session, _run_command_pipeline, _run_dictation_pipeline, _SessionMode
+
+
+@pytest.mark.parametrize(
+    ("config_state", "expect_error"),
+    [
+        ("MALFORMED", True),
+        ("MISSING", False),
+        ("LOADED", False),
+    ],
+)
+def test_startup_only_signals_a_malformed_initial_config(
+    config_state: str, expect_error: bool
+) -> None:
+    """Startup must surface a parse failure without alarming for empty or absent config."""
+    from local_whisper import config
+    from local_whisper.app import App
+
+    overlay = MagicMock()
+    load = config.ConfigLoad(getattr(config.ConfigState, config_state), {})
+    with (
+        patch("local_whisper.app.config.load_config", return_value=load),
+        patch("local_whisper.app.corrections.load", return_value={}),
+        patch("local_whisper.app.transcribe.supports_vocab_prompt", return_value=True),
+        patch("local_whisper.app.HotkeyListener") as listener,
+        patch("local_whisper.app.signal.signal"),
+        patch("local_whisper.app.llm.is_available", return_value=True),
+    ):
+        app = App(overlay=overlay)
+        app.start()
+
+    listener.return_value.start.assert_called_once_with()
+    if expect_error:
+        overlay.show_error.assert_called_once_with()
+    else:
+        overlay.show_error.assert_not_called()
 
 
 def test_dictation_pipeline_order() -> None:

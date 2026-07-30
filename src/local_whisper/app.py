@@ -126,6 +126,7 @@ class App:
         self._backend = backend
         self._active_app: str = ""
         self._active: _Session | None = None
+        self._config_load = config.load_config()
         self._corrections: dict[str, str] = corrections.load()
         self._vocab_prompt: str | None = self._build_vocab_prompt()
         self._listener = HotkeyListener(
@@ -137,6 +138,8 @@ class App:
         """Start the keyboard listener in a daemon thread. Non-blocking."""
         signal.signal(signal.SIGHUP, lambda _s, _f: self._reload_config())
         self._listener.start()
+        if self._config_load.state is config.ConfigState.MALFORMED and self._overlay:
+            self._overlay.show_error()
         logger.info(
             "local-whisper running. Hold Right ⌘ to dictate (or transform selection); "
             "hold Right ⌥ to dictate with app-adapted formatting. Ctrl+C to quit."
