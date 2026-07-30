@@ -5,14 +5,6 @@ on:
     branches: [master]
   pull_request:
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  # Cancel superseded PR runs, but never a push-to-master run — that could
-  # kill an in-flight `release` job mid-tag/push (the release job's own
-  # concurrency group only queues *separate* release runs; it can't stop
-  # the whole run being cancelled out from under it at this level).
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   ci:
     # Tests are fully mocked (no real mic/GPU/Metal/Accessibility/network
