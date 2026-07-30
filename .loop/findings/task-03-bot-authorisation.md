@@ -6,13 +6,13 @@
 
 An administrator should not rely on direct automated pushes while this rule remains. They need to choose one of two designs: make releases through a pull request, or explicitly approve, document, and narrowly limit an exception for the release bot. This report does not make either change.
 
-**Scope and capture time.** Read-only GitHub API queries were made on 2026-07-30 at 08:43 UTC. The checked repository is `marcellovictorino/local-whisper`, URL `https://github.com/marcellovictorino/local-whisper`, with default branch `master`. Its owner is the user account `marcellovictorino`, not an organisation.
+**Scope and capture time.** The repository-policy queries were repeated with read-only GitHub API requests on 2026-07-30 at 08:51 UTC. The checked repository is `marcellovictorino/local-whisper`, URL `https://github.com/marcellovictorino/local-whisper`, with default branch `master`. Its owner is the user account `marcellovictorino`, not an organisation.
 
 **Terms used below.** Python Semantic Release (PSR) is the action that creates the version change. A *workflow job* is one isolated set of automated steps. `GITHUB_TOKEN` is GitHub's temporary credential for that job. A *release commit* records the generated version and changelog; a *tag* is Git's named reference to that release commit. A *ruleset* is a repository rule that controls which changes GitHub accepts. A *bypass actor* is an account explicitly exempted from such a rule. A *pull request* is GitHub's reviewed-change route into the main branch.
 
 ## Commands and responses
 
-The following are the commands issued and their response bodies. For the two expected not-found responses, the HTTP status is retained; transport headers are omitted because they do not alter the policy result.
+The following are the commands issued and their response bodies. For expected not-found responses, the HTTP status is retained; transport headers are omitted because they do not alter the policy result.
 
 ### Repository identity
 
@@ -59,20 +59,25 @@ HTTP/2.0 404 Not Found
 
 The organisation endpoint is unavailable because the repository owner is a `User`, as the identity response shows; no organisation Actions policy can govern this user-owned repository. There is no unqueried parent-organisation policy limitation in this ownership model.
 
-The repository enables Actions and permits all actions. Its default `GITHUB_TOKEN` permission is `read`, but the release workflow records a job-level `contents: write` override and supplies that token to the release action. The following local Git command reproduces the exact workflow configuration assessed at the task's base commit.
+The repository enables Actions and permits all actions. Its default `GITHUB_TOKEN` permission is `read`. The following local Git command reproduces the exact workflow configuration assessed at the task's base commit.
 
 ```console
-$ git show 239e93ce5293800fe5bec9eda5fda315ee24344d:.github/workflows/ci.yml
-```
-
-```yaml
+$ git show 239e93ce5293800fe5bec9eda5fda315ee24344d:.github/workflows/ci.yml | sed -n '50,71p'
   release:
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    concurrency:
+      group: release-${{ github.workflow }}
+      cancel-in-progress: false
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: master
+
       - name: Release
         uses: python-semantic-release/python-semantic-release@39dd2052f2ce8282a5d932c31d58a2ca06d2550e # v10.6.1
         with:
@@ -81,7 +86,40 @@ $ git show 239e93ce5293800fe5bec9eda5fda315ee24344d:.github/workflows/ci.yml
           git_committer_email: "github-actions[bot]@users.noreply.github.com"
 ```
 
-The job-level declaration overrides the read default for this job, so token scope is not the blocker. `can_approve_pull_request_reviews: false` is unrelated because the job attempts a git push, not a pull-request approval.
+#### Permission-precedence evidence
+
+GitHub's primary workflow-syntax documentation defines the calculation order: the default first, then workflow-level configuration, then job-level configuration. It also limits its forked-pull-request write downgrade to pull-request events; this release job runs only for a `push` to `master`.
+
+```console
+$ gh api repos/github/docs/contents/content/actions/reference/workflows-and-actions/workflow-syntax.md --jq .content | base64 --decode | sed -n '280,289p'
+## How permissions are calculated for a workflow job
+
+The permissions for the `GITHUB_TOKEN` are initially set to the default setting for the enterprise, organization, or repository. If the default is set to the restricted permissions at any of these levels then this will apply to the relevant repositories. For example, if you choose the restricted default at the organization level then all repositories in that organization will use the restricted permissions as the default. The permissions are then adjusted based on any configuration within the workflow file, first at the workflow level and then at the job level. Finally, if the workflow was triggered by a pull request event other than `pull_request_target` from a forked repository, and the **Send write tokens to workflows from pull requests** setting is not selected, the permissions are adjusted to change any write permissions to read only.
+
+### Setting the `GITHUB_TOKEN` permissions for all jobs in a workflow
+
+You can specify `permissions` at the top level of a workflow, so that the setting applies to all jobs in the workflow.
+
+#### Example: Setting the `GITHUB_TOKEN` permissions for an entire workflow
+```
+
+GitHub's associated permissions source defines `contents` as a `read`, `write`, or `none` scope of `GITHUB_TOKEN`:
+
+````console
+$ gh api repos/github/docs/contents/data/reusables/actions/github-token-available-permissions.md --jq .content | base64 --decode | sed -n '1,10p'
+You can define the access that the `GITHUB_TOKEN` will permit by specifying `read`, `write`, or `none` as the value of the available permissions within the `permissions` key.
+
+```yaml
+permissions:
+  actions: read|write|none
+  artifact-metadata: read|write|none
+  attestations: read|write|none
+  checks: read|write|none
+  code-quality: read|write|none
+  contents: read|write|none
+````
+
+The repository default is `read`, but GitHub's documented calculation applies the release job's later `contents: write` setting. The job is a `push`, not a forked pull-request event, so the documented final write-to-read adjustment does not apply. Therefore the configured token has `contents: write` for this job; token scope is not the blocker. `can_approve_pull_request_reviews: false` is unrelated because the job attempts a git push, not a pull-request approval.
 
 The base commit is local to this assessment branch and unavailable from the public repository API. The recorded retrieval result is a limitation only; the local Git output above remains the workflow evidence.
 
