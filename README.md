@@ -97,7 +97,7 @@ Keys are matched **case-insensitively**. `BRB`, `brb`, and `Brb` all expand the 
 
 ### Invalid configuration
 
-A malformed `config.toml` shows a brief red startup overlay when local-whisper starts. The overlay appears once per startup; valid, empty, and missing config files do not show it.
+A malformed `config.toml` flashes a brief red overlay on startup and again on every `SIGHUP` reload while the file stays invalid; valid, empty, and missing config files do not show it.
 
 From the repository checkout, validate the file and use the reported path, line, and column to correct the TOML:
 
