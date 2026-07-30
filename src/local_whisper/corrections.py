@@ -25,7 +25,8 @@ def build_prompt(corrections_map: dict[str, str], vocabulary_words: list[str] | 
 
     Returns:
         Comma-joined unique terms, clipped at the last complete term within the
-        ~224-token limit. None if neither source contributes a term.
+        ~224-token limit. An oversized first term is clipped to the limit. None
+        if neither source contributes a term.
     """
     terms = list(dict.fromkeys([*corrections_map.values(), *(vocabulary_words or [])]))
     if not terms:

@@ -99,8 +99,7 @@ def test_build_prompt_truncates_at_term_boundary() -> None:
 def test_build_prompt_truncation_edge_case_single_long_term() -> None:
     long_term = "A" * (_PROMPT_CHAR_LIMIT + 100)
     result = build_prompt({"wrong": long_term})
-    assert result is not None
-    assert len(result) <= _PROMPT_CHAR_LIMIT
+    assert result == "A" * _PROMPT_CHAR_LIMIT
 
 
 def test_build_prompt_keeps_last_complete_term_when_merged_terms_overflow() -> None:
