@@ -4,7 +4,7 @@
 
 The evidence establishes one immediate cause: GitHub Actions' workflow-level concurrency queue cancelled the registered run. It does **not** identify the competing waiting request. The current API history has no second `master` push CI run in the relevant window, and the queried APIs do not expose a concurrency-queue member for this cancellation. Therefore the deeper cause of the collision is unresolved; a workflow defect cannot be asserted as its root cause.
 
-A workflow correction is **not required to fix registration**: the subscribed event registered. If the intended policy is that an unrelated queued request must never cancel a `master` workflow, the one bounded mitigation is to remove the top-level `concurrency` block. The `release` job retains its own non-cancelling `release-${{ github.workflow }}` queue, so release operations remain serialised; the trade-off is that CI jobs for separate master pushes may overlap. This mitigation is not claimed to explain or reproduce the unidentified collision.
+No workflow correction is **required for registration**: the subscribed event registered. No configuration defect is proven by this incident, so no workflow change should be represented as its correction. If the intended policy is that an unidentified queued request must never cancel a `master` workflow, the one bounded mitigation is to remove the top-level `concurrency` block. The `release` job retains its own non-cancelling `release-${{ github.workflow }}` queue, so release operations remain serialised; the trade-off is that CI jobs for separate master pushes may overlap. This mitigation is not claimed to explain, reproduce, or prove prevention of the unidentified collision.
 
 A separate release blocker is confirmed. The active `master` ruleset requires pull requests and has no bypass actor, so the release job's bot push was rejected with `GH013`.
 
@@ -12,7 +12,7 @@ A separate release blocker is confirmed. The active `master` ruleset requires pu
 
 ## Issue facts considered
 
-`td usage --new-session` was run in session `ses_bd6ee5`; `td show td-c8fd8a` reported:
+`td usage --new-session` and `td show td-c8fd8a` were re-run in retry session `ses_2599df` (the original evidence collection used `ses_bd6ee5`). They reported:
 
 - PR #24 was squash-merged at `2026-07-29T09:53:01Z` as `a7b253e`; at `09:58:25Z` it had no `CI` or `release` run. The latest prior master run was `37f693e` on 2026-07-25.
 - The release job had not executed; only `v0.12.0` existed and `gh release list` was empty.
@@ -64,7 +64,7 @@ GitHub documents that `cancel-in-progress` may be an expression and that a concu
 
 PR #25's squash merge updated `refs/heads/master` to `7a24607…`, so `[master]` matched and emitted a `push` event. On that event, `github.event_name == 'pull_request'` evaluates to `false`; the expression cannot itself cancel the master run. The group evaluates to `ci-CI-refs/heads/master`. `cancel-in-progress: false` only declines to cancel a running workflow; it does not remove the documented one-pending-run behaviour. This makes the annotation consistent with a same-group waiting request, but it does not reveal the request or establish why it was present.
 
-The proposed mitigation is exact: remove this workflow-level `concurrency` block, retaining the existing release-job block:
+The mitigation is deliberately not a correction: remove this workflow-level `concurrency` block, retaining the existing release-job block:
 
 ```yaml
 concurrency:
@@ -72,7 +72,7 @@ concurrency:
   cancel-in-progress: false
 ```
 
-That retains release serialisation and removes the workflow-level queue that cancelled the observed run. It permits overlapping CI jobs for separate master pushes. Verify it by merging one new no-op `chore:` PR through the ruleset, recording its resulting master SHA before any further master update, and requiring its automatic `push` CI workflow—not a rerun—to conclude `success`. This is a future verification of the mitigation, not evidence for the historical SHA.
+That retains release serialisation and removes the workflow-level queue implicated by the cancellation annotation. It permits overlapping CI jobs for separate master pushes, and cannot be claimed to prevent an unexposed scheduler collision. Verify the mitigation by merging one new no-op `chore:` PR through the ruleset, recording the resulting master SHA before any further master update, and requiring that SHA's automatic `push` CI workflow—not a rerun—to conclude `success`. This is a future verification of the mitigation, not evidence for the historical SHA.
 
 ## Settings evidence and limits
 
