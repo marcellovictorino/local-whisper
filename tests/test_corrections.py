@@ -139,6 +139,20 @@ def test_build_prompt_budgets_token_dense_unicode_terms_without_splitting() -> N
     assert build_prompt({}, terms) == ", ".join(_maximal_fitting_prefix(terms))
 
 
+def test_build_prompt_stays_within_both_whisper_tokenizer_limits() -> None:
+    """A multilingual-only overflow must not reach Whisper's initial prompt."""
+    from mlx_whisper.tokenizer import get_tokenizer
+
+    terms = [f"🙂{i:03d}" for i in range(100)]
+    prompt = build_prompt({}, terms)
+
+    assert prompt == ", ".join(terms[:37])
+    assert all(
+        len(get_tokenizer(multilingual).encode(" " + prompt.strip())) <= _PROMPT_TOKEN_LIMIT
+        for multilingual in (False, True)
+    )
+
+
 def test_build_prompt_returns_none_when_all_terms_are_blank() -> None:
     assert build_prompt({"wrong": ""}, [" ", "\t"]) is None
 

@@ -18,10 +18,11 @@ _PROMPT_INPUT_CHAR_LIMIT = 800
 
 
 def _prompt_token_count(prompt: str) -> int:
-    """Return the token count mlx-whisper uses for an initial prompt."""
+    """Return the larger initial-prompt count from Whisper's tokenizers."""
     from mlx_whisper.tokenizer import get_tokenizer
 
-    return len(get_tokenizer(False).encode(" " + prompt.strip()))
+    prompt = " " + prompt.strip()
+    return max(len(get_tokenizer(multilingual).encode(prompt)) for multilingual in (False, True))
 
 
 def build_prompt(corrections_map: dict[str, str], vocabulary_words: Iterable[str] | None = None) -> str | None:
@@ -35,7 +36,8 @@ def build_prompt(corrections_map: dict[str, str], vocabulary_words: Iterable[str
         vocabulary_words: Additional configured terms in their declared order.
 
     Returns:
-        Comma-joined unique terms within mlx-whisper's 223-token prompt limit.
+        Comma-joined unique terms within mlx-whisper's 223-token prompt limit
+        under both English and multilingual tokenizers.
         Blank and duplicate terms are discarded before accounting. Terms are
         included whole and in order; construction stops at the first term over
         the 800-character per-term, 800-character aggregate, or token limit.
