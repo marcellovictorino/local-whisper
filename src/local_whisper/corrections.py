@@ -18,8 +18,17 @@ _PROMPT_INPUT_CHAR_LIMIT = 800
 
 
 def _prompt_token_count(prompt: str) -> int:
-    """Return the larger initial-prompt count from Whisper's tokenizers."""
-    from mlx_whisper.tokenizer import get_tokenizer
+    """Return the larger initial-prompt count from Whisper's tokenizers.
+
+    Returns 0 when mlx is unavailable (e.g. non-Apple-Silicon CI), which skips
+    the token cap and lets the character caps govern — matching the original
+    char-based clipping. The runtime backend is always mlx-whisper on macOS, so
+    the token cap is enforced wherever it actually applies.
+    """
+    try:
+        from mlx_whisper.tokenizer import get_tokenizer
+    except ImportError:
+        return 0
 
     prompt = " " + prompt.strip()
     return max(len(get_tokenizer(multilingual).encode(prompt)) for multilingual in (False, True))

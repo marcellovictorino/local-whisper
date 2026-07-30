@@ -3,6 +3,8 @@
 from pathlib import Path
 from unittest.mock import Mock, call
 
+import pytest
+
 import local_whisper.corrections as corrections
 from local_whisper.corrections import (
     _PROMPT_INPUT_CHAR_LIMIT,
@@ -13,6 +15,12 @@ from local_whisper.corrections import (
     build_prompt,
     load,
 )
+
+# The token cap needs mlx's real tokenizer, which only loads on Apple Silicon.
+# Elsewhere (e.g. Linux CI) _prompt_token_count returns 0 and the character caps
+# govern; tests that assert token-specific behaviour are skipped there.
+_MLX_AVAILABLE = _prompt_token_count("probe") > 0
+requires_mlx = pytest.mark.skipif(not _MLX_AVAILABLE, reason="mlx tokenizer unavailable on this platform")
 
 
 def _maximal_fitting_prefix(terms: list[str]) -> list[str]:
@@ -139,6 +147,7 @@ def test_build_prompt_budgets_token_dense_unicode_terms_without_splitting() -> N
     assert build_prompt({}, terms) == ", ".join(_maximal_fitting_prefix(terms))
 
 
+@requires_mlx
 def test_build_prompt_stays_within_both_whisper_tokenizer_limits() -> None:
     """A multilingual-only overflow must not reach Whisper's initial prompt."""
     from mlx_whisper.tokenizer import get_tokenizer
@@ -165,6 +174,7 @@ def test_build_prompt_does_not_charge_blank_or_duplicate_terms_to_input_budget()
     assert build_prompt({}, [" " * 799, "dbt", "dbt"]) == "dbt"
 
 
+@requires_mlx
 def test_build_prompt_returns_none_when_first_term_exceeds_token_budget() -> None:
     assert build_prompt({"wrong": "漢" * 300}) is None
 
