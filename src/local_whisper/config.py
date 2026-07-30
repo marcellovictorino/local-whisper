@@ -12,6 +12,7 @@ CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
 
 logger = logging.getLogger("local_whisper")
 
+
 class ConfigState(Enum):
     """The outcome of reading a config file."""
 

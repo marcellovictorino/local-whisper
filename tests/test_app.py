@@ -18,9 +18,7 @@ from local_whisper.app import _log_session, _run_command_pipeline, _run_dictatio
         ("LOADED", False),
     ],
 )
-def test_startup_only_signals_a_malformed_initial_config(
-    config_state: str, expect_error: bool
-) -> None:
+def test_startup_only_signals_a_malformed_initial_config(config_state: str, expect_error: bool) -> None:
     """Startup must surface a parse failure without alarming for empty or absent config."""
     from local_whisper import config
     from local_whisper.app import App
