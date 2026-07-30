@@ -4,36 +4,59 @@ from __future__ import annotations
 
 import logging
 import tomllib
+from dataclasses import dataclass
+from enum import Enum, auto
 from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".config" / "local-whisper" / "config.toml"
 
 logger = logging.getLogger("local_whisper")
 
-# Single-slot cache: (key, data) tuple swapped atomically on invalidation.
-_toml_cache: tuple[tuple[Path, float], dict] | None = None
+class ConfigState(Enum):
+    """The outcome of reading a config file."""
+
+    MISSING = auto()
+    MALFORMED = auto()
+    LOADED = auto()
 
 
-def _load_toml(path: Path = CONFIG_PATH) -> dict:
+@dataclass(frozen=True)
+class ConfigLoad:
+    """A config read result, including states that otherwise look empty."""
+
+    state: ConfigState
+    data: dict
+
+
+# Single-slot cache: (key, result) tuple swapped atomically on invalidation.
+_toml_cache: tuple[tuple[Path, float], ConfigLoad] | None = None
+
+
+def load_config(path: Path = CONFIG_PATH) -> ConfigLoad:
+    """Read config.toml and retain whether it was missing, malformed, or loaded.
+
+    A malformed file is cached by path and mtime so its parse error is logged once
+    until the file changes or :func:`invalidate` is called.
+    """
     global _toml_cache
     try:
         mtime = path.stat().st_mtime
     except OSError:
-        return {}
+        return ConfigLoad(ConfigState.MISSING, {})
     key = (path, mtime)
     cached = _toml_cache  # local ref — single read is atomic in CPython
     if cached is not None and cached[0] == key:
         return cached[1]
     try:
         with path.open("rb") as f:
-            data = tomllib.load(f)
+            result = ConfigLoad(ConfigState.LOADED, tomllib.load(f))
     except tomllib.TOMLDecodeError as exc:
-        logger.warning("config.toml parse error: %s", exc)
-        return {}
+        logger.error("config.toml parse error for %s: %s", path, exc)
+        result = ConfigLoad(ConfigState.MALFORMED, {})
     except OSError:
-        return {}
-    _toml_cache = (key, data)  # atomic ref swap
-    return data
+        return ConfigLoad(ConfigState.MISSING, {})
+    _toml_cache = (key, result)  # atomic ref swap
+    return result
 
 
 def load_section(name: str, path: Path = CONFIG_PATH) -> dict:
@@ -46,7 +69,7 @@ def load_section(name: str, path: Path = CONFIG_PATH) -> dict:
     Returns:
         Section dict, or {} if section absent, file missing, or parse error.
     """
-    section = _load_toml(path).get(name, {})
+    section = load_config(path).data.get(name, {})
     return section if isinstance(section, dict) else {}
 
 

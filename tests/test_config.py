@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
@@ -34,6 +35,18 @@ def test_returns_empty_when_file_missing(tmp_path: Path) -> None:
 def test_returns_section_content(tmp_path: Path) -> None:
     p = _write(tmp_path / "c.toml", "[auto_cleanup]\nenabled = true\n")
     assert cfg.load_section("auto_cleanup", p) == {"enabled": True}
+
+
+def test_load_config_distinguishes_empty_missing_and_malformed_files(tmp_path: Path) -> None:
+    missing = cfg.load_config(tmp_path / "missing.toml")
+    empty = cfg.load_config(_write(tmp_path / "empty.toml", ""))
+    no_section = cfg.load_config(_write(tmp_path / "no-section.toml", "[other]\nvalue = 1\n"))
+    malformed = cfg.load_config(_write(tmp_path / "malformed.toml", "not valid toml ]["))
+
+    assert missing.state is cfg.ConfigState.MISSING
+    assert empty.state is cfg.ConfigState.LOADED and empty.data == {}
+    assert no_section.state is cfg.ConfigState.LOADED and "requested" not in no_section.data
+    assert malformed.state is cfg.ConfigState.MALFORMED
 
 
 @pytest.mark.parametrize(
@@ -80,6 +93,69 @@ def test_invalidate_clears_cache(tmp_path: Path) -> None:
     p.write_text("[s]\nv = 99\n")
     cfg.invalidate()
     assert cfg.load_section("s", p)["v"] == 99
+
+
+def test_malformed_file_is_parsed_and_logged_once_per_mtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog
+) -> None:
+    p = _write(tmp_path / "c.toml", "not valid toml ][")
+    parse = cfg.tomllib.load
+    attempts = 0
+
+    def count_parse(file):
+        nonlocal attempts
+        attempts += 1
+        return parse(file)
+
+    monkeypatch.setattr(cfg.tomllib, "load", count_parse)
+    with caplog.at_level(logging.ERROR, logger="local_whisper"):
+        assert cfg.load_config(p).state is cfg.ConfigState.MALFORMED
+        assert cfg.load_config(p).state is cfg.ConfigState.MALFORMED
+
+    assert attempts == 1
+    errors = [record for record in caplog.records if record.levelno == logging.ERROR]
+    assert len(errors) == 1
+    assert str(p) in errors[0].message
+    assert "line" in errors[0].message and "column" in errors[0].message
+
+
+def test_mtime_change_retries_malformed_file_and_clears_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    p = _write(tmp_path / "c.toml", "not valid toml ][")
+    parse = cfg.tomllib.load
+    attempts = 0
+
+    def count_parse(file):
+        nonlocal attempts
+        attempts += 1
+        return parse(file)
+
+    monkeypatch.setattr(cfg.tomllib, "load", count_parse)
+    assert cfg.load_config(p).state is cfg.ConfigState.MALFORMED
+    old_mtime = p.stat().st_mtime
+    p.write_text("[s]\nv = 1\n")
+    os.utime(p, (old_mtime + 1, old_mtime + 1))
+
+    result = cfg.load_config(p)
+    assert attempts == 2
+    assert result.state is cfg.ConfigState.LOADED
+    assert result.data == {"s": {"v": 1}}
+
+
+def test_invalidation_retries_malformed_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    p = _write(tmp_path / "c.toml", "not valid toml ][")
+    parse = cfg.tomllib.load
+    attempts = 0
+
+    def count_parse(file):
+        nonlocal attempts
+        attempts += 1
+        return parse(file)
+
+    monkeypatch.setattr(cfg.tomllib, "load", count_parse)
+    assert cfg.load_config(p).state is cfg.ConfigState.MALFORMED
+    cfg.invalidate()
+    assert cfg.load_config(p).state is cfg.ConfigState.MALFORMED
+    assert attempts == 2
 
 
 # --- typed accessors: default when absent ---
