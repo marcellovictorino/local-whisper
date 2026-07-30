@@ -138,7 +138,7 @@ Matching is case-insensitive and whole-word only — `"open"` won't match `"open
 
 ### Setup
 
-Add domain terms that Whisper should recognise to a `[vocabulary]` section:
+Add the domain terms you want Whisper to recognise to a `[vocabulary]` section:
 
 ```toml
 [vocabulary]
@@ -147,11 +147,11 @@ words = ["PyTorch", "Kubernetes", "SIGHUP"]
 
 ### Limits
 
-Vocabulary words and correction replacements form Whisper's hidden hint prompt. Blank terms and exact duplicates are skipped in configured order. Construction stops before the first complete term that would exceed the 800-character merged-prompt limit, 800-character per-term limit, or mlx-whisper's 223-token limit.
+Whisper uses vocabulary words and correction replacements as its hidden hint prompt. It skips blank terms and exact duplicates in configured order, then stops before the first complete term that would exceed the 800-character merged-prompt limit, 800-character per-term limit, or mlx-whisper's 223-token limit.
 
-`[vocabulary].words` defaults to an empty list, so an absent or non-list value contributes no vocabulary terms. Correction replacements precede vocabulary words in the hint prompt.
+`[vocabulary].words` is an empty list by default, so an absent or non-list value adds no vocabulary terms. Correction replacements come before vocabulary words in the hint prompt.
 
-The prompt is built at startup and rebuilt on SIGHUP. Parakeet ignores vocabulary seeding and logs this once at startup; all configured string corrections still apply after transcription.
+The app builds the prompt at startup and rebuilds it on SIGHUP. Parakeet ignores vocabulary seeding and logs that once at startup; configured string corrections still apply after transcription.
 
 Configuration changes take effect after SIGHUP — no restart needed:
 
