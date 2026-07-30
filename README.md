@@ -147,11 +147,11 @@ words = ["PyTorch", "Kubernetes", "SIGHUP"]
 
 ### Limits
 
-Vocabulary words and correction replacements form a hidden hint prompt for Whisper. Blank terms and exact duplicates are skipped. Terms are considered in configured order. Prompt construction stops before the first complete term that would exceed the 800-character merged-prompt limit, the 800-character per-term limit, or mlx-whisper's 223-token limit.
+Vocabulary words and correction replacements form Whisper's hidden hint prompt. Blank terms and exact duplicates are skipped in configured order. Construction stops before the first complete term that would exceed the 800-character merged-prompt limit, 800-character per-term limit, or mlx-whisper's 223-token limit.
 
-`[vocabulary].words` defaults to an empty list, so an absent or non-list value contributes no vocabulary terms. Correction replacements appear before vocabulary words in the hint prompt.
+`[vocabulary].words` defaults to an empty list, so an absent or non-list value contributes no vocabulary terms. Correction replacements precede vocabulary words in the hint prompt.
 
-The prompt is built at startup and rebuilt when the process receives SIGHUP. Parakeet ignores vocabulary seeding and logs this once at startup; all configured string corrections still apply after transcription.
+The prompt is built at startup and rebuilt on SIGHUP. Parakeet ignores vocabulary seeding and logs this once at startup; all configured string corrections still apply after transcription.
 
 Configuration changes take effect after SIGHUP — no restart needed:
 
@@ -321,7 +321,7 @@ just stop && just start
 | `mlx-community/whisper-large-v3-turbo` | ~1.5 GB | 99 languages | ⚡ slow | ★★★★★ | Multilingual or highest accuracy required |
 | `mlx-community/parakeet-tdt-0.6b-v2` | ~600 MB | English only | ⚡⚡⚡ fastest | unbenchmarked | Experimental; requires optional install (see below) |
 
-**Parakeet** is opt-in and unbenchmarked on this repo's test audio (no WER row below yet). It requires an optional dependency and `ffmpeg` (used internally to load audio):
+**Parakeet** is opt-in and unbenchmarked on this repo's test audio (no WER row below). It requires an optional dependency and `ffmpeg` to load audio:
 
 ```bash
 brew install ffmpeg
