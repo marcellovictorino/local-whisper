@@ -78,12 +78,7 @@ def load(path: Path = config.CONFIG_PATH) -> dict[str, str]:
     """
     try:
         section = config.get_corrections_raw(path)
-        corrections: dict[str, str] = {}
-        for wrong, right in section.items():
-            if not isinstance(right, str):
-                continue
-            corrections[wrong.lower()] = right
-        return corrections
+        return {wrong.lower(): right for wrong, right in section.items() if isinstance(right, str)}
     except Exception as exc:
         logger.error("Failed to load corrections: %s", exc)
         return {}
