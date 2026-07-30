@@ -1,8 +1,14 @@
 # PSR bot authorisation assessment — task-03
 
-**Conclusion: blocked.** `github-actions[bot]` receives `contents: write` in the release job, despite the repository default being read-only. It therefore has token permission to create the release commit and tag. It cannot update `master`: the active repository ruleset applies a pull-request rule to the default branch and has no bypass actors. The attempted release job already failed at its Release step. No setting was changed for this assessment.
+## Plain-language result
+
+**The automated release account cannot complete a release under the current rules.** It is allowed to write repository content, including attempting to create a release commit and tag, but it is not allowed to change `master`, the repository's main branch. The current rule requires changes to `master` to arrive through a pull request, and grants the automated account no exception. No setting was changed for this assessment.
+
+An administrator should not rely on direct automated pushes while this rule remains. They need to choose one of two designs: make releases through a pull request, or explicitly approve, document, and narrowly limit an exception for the release bot. This report does not make either change.
 
 **Scope and capture time.** Read-only GitHub API queries were made on 2026-07-30 at 08:31 UTC. The checked repository is `marcellovictorino/local-whisper`, URL `https://github.com/marcellovictorino/local-whisper`, with default branch `master`. Its owner is the user account `marcellovictorino`, not an organisation.
+
+**Terms used below.** A *token* is the temporary credential supplied to a workflow. A *ruleset* is a repository rule that controls which changes GitHub accepts. A *bypass actor* is an account explicitly exempted from such a rule. A *pull request* is GitHub's reviewed-change route into the main branch.
 
 ## Commands and responses
 
@@ -53,26 +59,34 @@ HTTP/2.0 404 Not Found
 
 The organisation endpoint is unavailable because the repository owner is a `User`, as the identity response shows; no organisation Actions policy can govern this user-owned repository. There is no unqueried parent-organisation policy limitation in this ownership model.
 
-The repository enables Actions and permits all actions. Its default `GITHUB_TOKEN` permission is `read`, but the checked workflow at commit `239e93ce5293800fe5bec9eda5fda315ee24344d` explicitly requests a job-level override:
+The repository enables Actions and permits all actions. Its default `GITHUB_TOKEN` permission is `read`, but the release workflow records a job-level `contents: write` override and supplies that token to the release action. The following local Git command reproduces the exact workflow configuration assessed at the task's base commit. The base commit is local to this assessment branch and is not available from the public repository API, so `gh api .../contents?ref=239e93ce…` returns `404`; this is a retrieval limitation, not an unrecorded policy assumption.
 
-```yaml
-release:
-  if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-  permissions:
-    contents: write
+```console
+$ git show 239e93ce5293800fe5bec9eda5fda315ee24344d:.github/workflows/ci.yml
 ```
 
-That job-level declaration reconciles the read default: the release job has the requested repository-contents write scope, so token scope is not the blocker. `can_approve_pull_request_reviews: false` is unrelated because the job attempts a git push, not a pull-request approval.
+```yaml
+  release:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Release
+        uses: python-semantic-release/python-semantic-release@39dd2052f2ce8282a5d932c31d58a2ca06d2550e # v10.6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          git_committer_name: "github-actions[bot]"
+          git_committer_email: "github-actions[bot]@users.noreply.github.com"
+```
+
+This establishes the workflow-to-account chain: GitHub supplies `secrets.GITHUB_TOKEN`; the workflow passes it as `github_token` to Python Semantic Release; and the release commit is configured with the `github-actions[bot]` name and email. The job-level declaration overrides the read default for this job, so token scope is not the blocker. `can_approve_pull_request_reviews: false` is unrelated because the job attempts a git push, not a pull-request approval.
 
 ## Authorisation decision
 
-`github-actions[bot]` **cannot push the release commit to `master` under the recorded configuration**. The job's `contents: write` authorises repository-content writes, but it does not bypass the active `pull_request` ruleset; `bypass_actors` is empty. The bot cannot complete the PSR release push, so it cannot complete the release commit-and-tag publication sequence. A tag is not itself a `master` branch update, but that does not make the release sequence viable when its required release-commit push is rejected.
+`github-actions[bot]` **cannot push the release commit to `master` under the recorded configuration**. The job's `contents: write` authorises repository-content writes, but it does not bypass the active pull-request ruleset; `bypass_actors` is empty. The bot therefore cannot complete the PSR release commit-and-tag sequence. A tag is not itself a `master` branch update, but that does not make the sequence viable when its required release-commit push is refused.
 
-This conclusion is consistent with the observed release job from workflow run `30523425017`: job `90809308080` completed with `conclusion: failure`, and its `Release` step failed. The API job query was:
+This conclusion comes from the recorded ruleset and token-policy evidence alone; no workflow failure is used to attribute a cause.
 
-```console
-$ gh api repos/marcellovictorino/local-whisper/actions/runs/30523425017/jobs --paginate --jq '.jobs[] | select(.name == "release") | {id, name, conclusion, started_at, completed_at, steps}'
-{"completed_at":"2026-07-30T07:38:56Z","conclusion":"failure","id":90809308080,"name":"release","started_at":"2026-07-30T07:38:09Z","steps":[{"completed_at":"2026-07-30T07:38:10Z","conclusion":"success","name":"Set up job","number":1,"started_at":"2026-07-30T07:38:09Z","status":"completed"},{"completed_at":"2026-07-30T07:38:50Z","conclusion":"success","name":"Build python-semantic-release/python-semantic-release@39dd2052f2ce8282a5d932c31d58a2ca06d2550e","number":2,"started_at":"2026-07-30T07:38:10Z","status":"completed"},{"completed_at":"2026-07-30T07:38:51Z","conclusion":"success","name":"Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262","number":3,"started_at":"2026-07-30T07:38:50Z","status":"completed"},{"completed_at":"2026-07-30T07:38:54Z","conclusion":"failure","name":"Release","number":4,"started_at":"2026-07-30T07:38:51Z","status":"completed"},{"completed_at":"2026-07-30T07:38:54Z","conclusion":"success","name":"Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262","number":8,"started_at":"2026-07-30T07:38:54Z","status":"completed"},{"completed_at":"2026-07-30T07:38:55Z","conclusion":"success","name":"Complete job","number":9,"started_at":"2026-07-30T07:38:55Z","status":"completed"}]}
-```
-
-No branch-protection, ruleset, bypass, Actions-permission, or repository-permission setting was changed. All evidence collection used `gh repo view` and `gh api` GET requests.
+No branch-protection, ruleset, bypass, Actions-permission, or repository-permission setting was changed. All GitHub evidence collection used `gh repo view` and `gh api` GET requests.
