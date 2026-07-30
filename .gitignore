@@ -20,3 +20,5 @@ __pycache__/
 tests/results.json
 
 .todos/
+.loop/
+NEEDS-INPUT.md
