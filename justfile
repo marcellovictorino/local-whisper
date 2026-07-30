@@ -43,6 +43,11 @@ run:
 logs:
     tail -f {{log_file}}
 
+# Validate the user config TOML
+[group('dev')]
+validate-config:
+    {{uv}} run python scripts/validate_config.py
+
 # Run tests
 [group('dev')]
 test:
