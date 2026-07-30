@@ -20,6 +20,7 @@ A separate release blocker is confirmed. The active `master` ruleset requires pu
 - The release job had not executed; only `v0.12.0` existed and `gh release list` was empty.
 - Registration lag had previously needed a follow-up commit, so a new master push was the first diagnostic step.
 - `td-cca411` is separate: PR #24's `chore:` title means no release bump is due. This diagnosis does not attribute its missing release to that title.
+- The tracker states that `master` had **no branch protection**, verified on `2026-07-25`. Current evidence instead shows an active `master` ruleset that requires pull requests and blocks the release bot. The environment changed between those dates. The available evidence does not show when the ruleset was added or why, so neither is inferred.
 - The issue's broader release acceptance criteria remain unresolved: observe a `fix:` or `feat:` release, version and changelog changes, tag and GitHub Release, validate the changelog insertion flag, and ensure the bot can push if protection is present.
 
 ## Live event evidence
@@ -33,7 +34,7 @@ Direct pushes to `master` are prohibited by the repository ruleset, so the trivi
 | `pull_request` CI registration | [run 30523425175](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425175), SHA `f270a2b56431fa38ddcc6e91beb5e3d4e7b875c1`, created `2026-07-30T07:35:06Z`, successful; registration delay 3m 39s from PR creation |
 | Squash push | [`refs/heads/master` at `7a24607bd5cf88f0f487a380ca5aaf7646232962`](https://github.com/marcellovictorino/local-whisper/commit/7a24607bd5cf88f0f487a380ca5aaf7646232962), merged `2026-07-30T07:35:02Z` |
 | Automatic master event | `push`; [run 30523425017, attempt 1](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/attempts/1), created `2026-07-30T07:35:05Z`; registration delay 3s (`07:35:05Z − 07:35:02Z`); conclusion `cancelled` at `07:35:07Z` |
-| Registration negative control | The [commit record](https://api.github.com/repos/marcellovictorino/local-whisper/commits/7a24607bd5cf88f0f487a380ca5aaf7646232962) timestamps the master update at `07:35:02Z`; the [master history query](https://api.github.com/repos/marcellovictorino/local-whisper/commits?sha=master&per_page=100) returns `7a24607…` as its newest commit. The [attempt-1 record](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs/30523425017/attempts/1) timestamps registration at `07:35:05Z`. No subsequent master push preceded registration; no follow-up commit nudged it. |
+| Evidence that no extra push was needed | The [commit record](https://api.github.com/repos/marcellovictorino/local-whisper/commits/7a24607bd5cf88f0f487a380ca5aaf7646232962) timestamps the master update at `07:35:02Z`; the [master history query](https://api.github.com/repos/marcellovictorino/local-whisper/commits?sha=master&per_page=100) returns `7a24607…` as its newest commit. The [attempt-1 record](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs/30523425017/attempts/1) timestamps registration at `07:35:05Z`. No subsequent master push preceded registration; no follow-up commit nudged it. |
 | Automatic-run conclusion | GitHub annotation: `Canceling since a higher priority waiting request for ci-CI-refs/heads/master exists`. Both attempt-1 jobs were cancelled with no steps: [CI job 90808800056](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/job/90808800056) and [release job 90808802742](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/job/90808802742). |
 | Manual rerun job | [CI job 90809202938, attempt 2](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/job/90809202938), SHA `7a24607bd5cf88f0f487a380ca5aaf7646232962`, `push`, successful `2026-07-30T07:37:31Z–07:38:06Z`. |
 
@@ -47,7 +48,7 @@ The rerun proves the CI job passes for the exact master SHA. It does not prove a
 
 The [attempt-1 run record](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs/30523425017/attempts/1) identifies a `push` run on `master`, SHA `7a24607…`, created at `07:35:05Z`, then cancelled at `07:35:07Z`.
 
-The following immutable capture was made at `2026-07-30T08:09:23Z`. It queried the [CI master-push endpoint](https://api.github.com/repos/marcellovictorino/local-whisper/actions/workflows/ci.yml/runs?event=push&branch=master&per_page=100) and the [all-workflows endpoint](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs?per_page=100), then selected records where `created_at >= "2026-07-30T07:30:00Z" and created_at < "2026-07-30T07:40:00Z"`. The endpoints are mutable; this excerpt, including its filter, preserves the evidence considered.
+The following immutable capture was made at `2026-07-30T08:09:23Z`. It queried GitHub's [CI master-push API record](https://api.github.com/repos/marcellovictorino/local-whisper/actions/workflows/ci.yml/runs?event=push&branch=master&per_page=100) and [all-workflows API record](https://api.github.com/repos/marcellovictorino/local-whisper/actions/runs?per_page=100), then selected records where `created_at >= "2026-07-30T07:30:00Z" and created_at < "2026-07-30T07:40:00Z"`. GitHub can change these results later; this excerpt preserves the records considered and the selection rule.
 
 ```text
 CI master-push records:
@@ -63,7 +64,7 @@ All workflow records:
 ]
 ```
 
-The run's final `failure` in this later listing reflects manual attempt 2; the separately linked attempt-1 record remains the evidence for automatic cancellation. Neither filtered response identifies a second master request.
+The run's final `failure` in this later listing reflects manual attempt 2; the separately linked attempt-1 record remains the evidence for automatic cancellation. Neither set of selected results identifies a second master request.
 
 These queries are a snapshot of visible run history, not evidence that no competing request ever existed. GitHub did not expose the higher-priority request's run ID, event, SHA, timestamp, or evaluated group in the cancellation annotation or queried response. The competing request is therefore **unidentified**, rather than attributed to a PR, a prior master push, or Actions scheduler behaviour.
 
@@ -100,7 +101,7 @@ That retains release serialisation and removes the workflow-level queue implicat
 
 The repository Actions-permissions response was captured as `{"enabled":true,"allowed_actions":"all"}` from [the API endpoint](https://api.github.com/repos/marcellovictorino/local-whisper/actions/permissions), and the CI-workflow response reports `{"id":267771375,"name":"CI","path":".github/workflows/ci.yml","state":"active"}` from [its endpoint](https://api.github.com/repos/marcellovictorino/local-whisper/actions/workflows/ci.yml). These are repository-level settings. The repository metadata identifies owner `marcellovictorino` as a user account, not an organisation; no organisation Actions setting applies or was inferred.
 
-The [ruleset response](https://api.github.com/repos/marcellovictorino/local-whisper/rulesets/15625854) reports active ruleset `master`, `bypass_actors: []`, and a `pull_request` rule allowing only `squash` merges for the default branch. The [legacy branch-protection endpoint](https://api.github.com/repos/marcellovictorino/local-whisper/branches/master/protection) returned HTTP 404, distinguishing it from legacy branch protection. The failing [release job](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/job/90809308080) directly records the bot's `GH013` rejection.
+The [ruleset response](https://api.github.com/repos/marcellovictorino/local-whisper/rulesets/15625854) reports active ruleset `master`, `bypass_actors: []`, and a `pull_request` rule allowing only `squash` merges for the default branch. GitHub's older [branch-protection API record](https://api.github.com/repos/marcellovictorino/local-whisper/branches/master/protection) returned HTTP 404, while the separate ruleset record is active. Together with the tracker's dated `2026-07-25` no-protection assertion, this shows the environment changed between the two observations; it does not establish when the ruleset was added or why. The failing [release job](https://github.com/marcellovictorino/local-whisper/actions/runs/30523425017/job/90809308080) directly records the bot's `GH013` rejection.
 
 ## Status
 
