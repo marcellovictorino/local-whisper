@@ -21,6 +21,10 @@ class ConfigState(Enum):
     LOADED = auto()
 
 
+_VOCABULARY_TERM_CHAR_LIMIT = 800
+_VOCABULARY_INPUT_CHAR_LIMIT = 800
+
+
 @dataclass(frozen=True)
 class ConfigLoad:
     """A config read result, including states that otherwise look empty."""
@@ -97,11 +101,25 @@ def get_corrections_raw(path: Path = CONFIG_PATH) -> dict:
 
 
 def get_vocabulary_words(path: Path = CONFIG_PATH) -> list[str]:
-    """Return valid [vocabulary] words in configured order."""
+    """Return valid, bounded [vocabulary] words in configured order."""
     words = load_section("vocabulary", path).get("words")
     if not isinstance(words, list):
         return []
-    return [word for word in words if isinstance(word, str) and word.strip()]
+
+    accepted: list[str] = []
+    input_length = 0
+    for word in words:
+        if not isinstance(word, str):
+            continue
+        if len(word) > _VOCABULARY_TERM_CHAR_LIMIT:
+            break
+        separator_length = 2 if accepted else 0
+        if input_length + separator_length + len(word) > _VOCABULARY_INPUT_CHAR_LIMIT:
+            break
+        input_length += separator_length + len(word)
+        if word.strip():
+            accepted.append(word)
+    return accepted
 
 
 def get_snippets_raw(path: Path = CONFIG_PATH) -> dict:

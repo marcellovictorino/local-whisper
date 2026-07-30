@@ -200,6 +200,15 @@ def test_get_vocabulary_words_preserves_non_blank_terms_in_order(tmp_path: Path)
     assert cfg.get_vocabulary_words(p) == ["loopctl", "dbt"]
 
 
+def test_get_vocabulary_words_stops_at_configured_input_limit(tmp_path: Path) -> None:
+    terms = ["x" * 100] * 100
+    p = _write(tmp_path / "c.toml", f"[vocabulary]\nwords = {terms!r}\n")
+
+    result = cfg.get_vocabulary_words(p)
+
+    assert result == terms[:7]
+
+
 @pytest.mark.parametrize(
     "toml",
     [

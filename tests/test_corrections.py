@@ -1,7 +1,9 @@
 """Tests for corrections.load() and corrections.apply()."""
 
 from pathlib import Path
+from unittest.mock import Mock
 
+import local_whisper.corrections as corrections
 from local_whisper.corrections import _PROMPT_TOKEN_LIMIT, _prompt_token_count, apply, build_prompt, load
 
 
@@ -21,6 +23,12 @@ def test_load_lowercases_keys(tmp_path: Path) -> None:
     config.write_text('[corrections]\n"GPT" = "GPT-4"\n')
     result = load(config)
     assert "gpt" in result
+
+
+def test_load_rejects_oversized_correction_value(tmp_path: Path) -> None:
+    config = tmp_path / "corrections.toml"
+    config.write_text(f'[corrections]\nwrong = "{"x" * (corrections._PROMPT_TERM_CHAR_LIMIT + 1)}"\n')
+    assert load(config) == {}
 
 
 def test_load_returns_empty_on_malformed_toml(tmp_path: Path) -> None:
@@ -114,6 +122,27 @@ def test_build_prompt_ignores_blank_terms_before_deduplicating() -> None:
 
 def test_build_prompt_returns_none_when_first_term_exceeds_token_budget() -> None:
     assert build_prompt({"wrong": "漢" * 300}) is None
+
+
+def test_build_prompt_rejects_oversized_first_term_before_tokenising(monkeypatch) -> None:
+    token_count = Mock(return_value=0)
+    monkeypatch.setattr(corrections, "_prompt_token_count", token_count)
+
+    result = build_prompt({"wrong": "x" * (corrections._PROMPT_TERM_CHAR_LIMIT + 1)})
+
+    assert result is None
+    token_count.assert_not_called()
+
+
+def test_build_prompt_stops_at_oversized_vocabulary_input(monkeypatch) -> None:
+    token_count = Mock(return_value=0)
+    monkeypatch.setattr(corrections, "_prompt_token_count", token_count)
+    vocabulary = ["term" * 25] * 100_000
+
+    result = build_prompt({}, vocabulary)
+
+    assert result == "term" * 25
+    token_count.assert_called_once_with("term" * 25)
 
 
 def test_apply_does_not_partially_match_hyphenated_token() -> None:

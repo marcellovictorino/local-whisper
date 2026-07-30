@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from itertools import chain
 from pathlib import Path
 
 from local_whisper import config
@@ -11,6 +12,8 @@ from local_whisper import config
 logger = logging.getLogger("local_whisper")
 
 _PROMPT_TOKEN_LIMIT = 223  # mlx-whisper retains the final n_ctx // 2 - 1 prompt tokens.
+_PROMPT_TERM_CHAR_LIMIT = 800
+_PROMPT_INPUT_CHAR_LIMIT = 800
 
 
 def _prompt_token_count(prompt: str) -> int:
@@ -35,9 +38,19 @@ def build_prompt(corrections_map: dict[str, str], vocabulary_words: list[str] | 
         Terms are included whole and in order. None if neither source contributes
         a usable term.
     """
-    terms = list(dict.fromkeys(term for term in [*corrections_map.values(), *(vocabulary_words or [])] if term.strip()))
     complete_terms: list[str] = []
-    for term in terms:
+    seen: set[str] = set()
+    input_length = 0
+    for term in chain(corrections_map.values(), vocabulary_words or []):
+        if not isinstance(term, str) or len(term) > _PROMPT_TERM_CHAR_LIMIT:
+            break
+        separator_length = 2 if complete_terms else 0
+        if input_length + separator_length + len(term) > _PROMPT_INPUT_CHAR_LIMIT:
+            break
+        input_length += separator_length + len(term)
+        if not term.strip() or term in seen:
+            continue
+        seen.add(term)
         candidate = ", ".join([*complete_terms, term])
         if _prompt_token_count(candidate) > _PROMPT_TOKEN_LIMIT:
             break
@@ -58,7 +71,19 @@ def load(path: Path = config.CONFIG_PATH) -> dict[str, str]:
     """
     try:
         section = config.get_corrections_raw(path)
-        return {k.lower(): v for k, v in section.items() if isinstance(v, str)}
+        corrections: dict[str, str] = {}
+        input_length = 0
+        for wrong, right in section.items():
+            if not isinstance(right, str):
+                continue
+            if len(right) > _PROMPT_TERM_CHAR_LIMIT:
+                break
+            separator_length = 2 if corrections else 0
+            if input_length + separator_length + len(right) > _PROMPT_INPUT_CHAR_LIMIT:
+                break
+            input_length += separator_length + len(right)
+            corrections[wrong.lower()] = right
+        return corrections
     except Exception as exc:
         logger.error("Failed to load corrections: %s", exc)
         return {}
