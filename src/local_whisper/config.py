@@ -96,6 +96,14 @@ def get_corrections_raw(path: Path = CONFIG_PATH) -> dict:
     return load_section("corrections", path)
 
 
+def get_vocabulary_words(path: Path = CONFIG_PATH) -> list[str]:
+    """Return valid [vocabulary] words in configured order."""
+    words = load_section("vocabulary", path).get("words")
+    if not isinstance(words, list):
+        return []
+    return [word for word in words if isinstance(word, str)]
+
+
 def get_snippets_raw(path: Path = CONFIG_PATH) -> dict:
     """Return raw [snippets] section dict."""
     return load_section("snippets", path)

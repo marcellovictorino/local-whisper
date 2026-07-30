@@ -72,6 +72,18 @@ def test_build_prompt_deduplicates_values() -> None:
     assert result == "Wispr"
 
 
+def test_build_prompt_merges_corrections_before_vocabulary_with_stable_deduplication() -> None:
+    result = build_prompt(
+        {"dee bee tee": "dbt", "open a i": "OpenAI"},
+        ["dbt", "loopctl", "OpenAI", "axi"],
+    )
+    assert result == "dbt, OpenAI, loopctl, axi"
+
+
+def test_build_prompt_returns_none_when_corrections_and_vocabulary_are_empty() -> None:
+    assert build_prompt({}, []) is None
+
+
 def test_build_prompt_truncates_at_term_boundary() -> None:
     # Build a map whose joined prompt exceeds _PROMPT_CHAR_LIMIT.
     # Each value is "Term000" ... "Term999" (7 chars + ", " separator = 9 chars each).
@@ -85,12 +97,16 @@ def test_build_prompt_truncates_at_term_boundary() -> None:
 
 
 def test_build_prompt_truncation_edge_case_single_long_term() -> None:
-    # If the first (and only) term exceeds the limit, rsplit finds no ", " and
-    # returns the raw slice — still bounded by _PROMPT_CHAR_LIMIT.
     long_term = "A" * (_PROMPT_CHAR_LIMIT + 100)
     result = build_prompt({"wrong": long_term})
     assert result is not None
     assert len(result) <= _PROMPT_CHAR_LIMIT
+
+
+def test_build_prompt_keeps_last_complete_term_when_merged_terms_overflow() -> None:
+    terms = ["A" * 400, "B" * 400, "C"]
+    result = build_prompt({}, terms)
+    assert result == ", ".join(terms[:1])
 
 
 def test_apply_does_not_partially_match_hyphenated_token() -> None:

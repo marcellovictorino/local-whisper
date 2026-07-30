@@ -13,26 +13,39 @@ logger = logging.getLogger("local_whisper")
 _PROMPT_CHAR_LIMIT = 800  # ~200 tokens; mlx-whisper hard limit is ~224 tokens
 
 
-def build_prompt(corrections_map: dict[str, str]) -> str | None:
-    """Build an initial_prompt string from corrections to bias Whisper's vocabulary.
+def build_prompt(corrections_map: dict[str, str], vocabulary_words: list[str] | None = None) -> str | None:
+    """Build an initial_prompt string from corrections and configured vocabulary.
 
-    Feeds the correct forms (values) into mlx-whisper's decoder prompt so known
-    terms are transcribed correctly on the first pass, not only post-corrected.
+    Correction values precede vocabulary words so established corrections retain
+    priority when the decoder prompt reaches its character limit.
 
     Args:
         corrections_map: Loaded corrections dict (keys=wrong form, values=correct form).
+        vocabulary_words: Additional configured terms in their declared order.
 
     Returns:
-        Comma-joined correct forms, clipped at last complete term within the
-        ~224-token limit. None if map is empty.
+        Comma-joined unique terms, clipped at the last complete term within the
+        ~224-token limit. None if neither source contributes a term.
     """
-    if not corrections_map:
+    terms = list(dict.fromkeys([*corrections_map.values(), *(vocabulary_words or [])]))
+    if not terms:
         return None
-    unique_terms = list(dict.fromkeys(corrections_map.values()))
-    prompt = ", ".join(unique_terms)
-    if len(prompt) > _PROMPT_CHAR_LIMIT:
-        prompt = prompt[:_PROMPT_CHAR_LIMIT].rsplit(", ", 1)[0]
-    return prompt or None
+
+    prompt = ", ".join(terms)
+    if len(prompt) <= _PROMPT_CHAR_LIMIT:
+        return prompt
+
+    complete_terms: list[str] = []
+    length = 0
+    for term in terms:
+        separator_length = 2 if complete_terms else 0
+        if length + separator_length + len(term) > _PROMPT_CHAR_LIMIT:
+            break
+        complete_terms.append(term)
+        length += separator_length + len(term)
+    if complete_terms:
+        return ", ".join(complete_terms)
+    return terms[0][:_PROMPT_CHAR_LIMIT]
 
 
 def load(path: Path = config.CONFIG_PATH) -> dict[str, str]:
