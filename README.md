@@ -133,6 +133,8 @@ Matching is case-insensitive and whole-word only — `"open"` won't match `"open
 
 </details>
 
+<a id="vocabulary-seeding"></a>
+
 <details>
 <summary><strong>Vocabulary seeding</strong> — help Whisper recognise domain terms</summary>
 
@@ -335,7 +337,7 @@ Then set the model in config and restart:
 model = "mlx-community/parakeet-tdt-0.6b-v2"
 ```
 
-See [Vocabulary seeding](#vocabulary-seeding--help-whisper-recognise-domain-terms) for feature compatibility.
+See [Vocabulary seeding](#vocabulary-seeding) for feature compatibility.
 
 To switch to multilingual/higher accuracy:
 
