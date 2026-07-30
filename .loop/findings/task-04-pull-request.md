@@ -18,4 +18,4 @@ The CI registration and bot-policy statements above are live GitHub evidence. Th
 
 ## Submission
 
-The pull request URL is recorded in the final commit after GitHub creates it.
+Pull request: [#28](https://github.com/marcellovictorino/local-whisper/pull/28) (`https://github.com/marcellovictorino/local-whisper/pull/28`). It was created against `master` from `loop/verify-release-ci` and remains open.
