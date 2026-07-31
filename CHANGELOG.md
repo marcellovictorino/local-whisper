@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v0.13.1 (2026-07-31)
+
+### Documentation
+
+- **readme**: Correct roadmap version for single-pass decode (v0.13.1)
+  ([#36](https://github.com/marcellovictorino/local-whisper/pull/36),
+  [`ae10b0d`](https://github.com/marcellovictorino/local-whisper/commit/ae10b0dde96f54e3ab329107003cb59211d49f04))
+
+### Performance Improvements
+
+- **transcribe**: Pin mlx-whisper to single greedy pass (temperature=0.0)
+  ([#34](https://github.com/marcellovictorino/local-whisper/pull/34),
+  [`690a6c0`](https://github.com/marcellovictorino/local-whisper/commit/690a6c0446fe9059931c9491b45b9575af4263a8))
+
+
 ## v0.13.0 (2026-07-30)
 
 ### Bug Fixes
