@@ -359,6 +359,7 @@ Benchmarked 2026-05-13 on 30s real-speech audio (49 words, English, technical vo
 | 11 | Parakeet backend — optional faster English-only inference | ✅ v0.6 |
 | 12 | Model pre-load at startup — first keypress instant after warm-up | ✅ v0.6 |
 | 13 | Explicit adapt hotkey (Right ⌥) + per-stage session timing | ✅ v0.12 |
+| 14 | Single-pass decode (temperature=0.0) — perf | ✅ v0.14 |
 
 ## Contributing
 
