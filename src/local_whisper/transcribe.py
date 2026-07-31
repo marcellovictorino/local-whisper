@@ -150,6 +150,13 @@ def _run_mlx_whisper(audio: np.ndarray, model: str, initial_prompt: str | None =
             path_or_hf_repo=model,
             verbose=False,
             initial_prompt=initial_prompt,
+            # Single greedy pass. mlx-whisper's default temperature is a 6-value
+            # fallback tuple (0.0..1.0) that re-decodes each 30s window at every
+            # higher temperature whenever the compression-ratio / logprob
+            # thresholds trip — up to 6x decode work on exactly the hard audio
+            # where latency hurts most. Pinning 0.0 trades that fallback for
+            # consistent low latency; validated to not regress WER (td-255e47).
+            temperature=0.0,
         )
     return result["text"].strip()
 
