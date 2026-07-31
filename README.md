@@ -131,7 +131,31 @@ whisper = "Whisper"
 
 Matching is case-insensitive and whole-word only — `"open"` won't match `"openly"`.
 
-Changes take effect immediately — no restart needed. To reload without waiting, send SIGHUP to the process:
+</details>
+
+<a id="vocabulary-seeding"></a>
+
+<details>
+<summary><strong>Vocabulary seeding</strong> — help Whisper recognise domain terms</summary>
+
+### Setup
+
+Add the domain terms you want Whisper to recognise to a `[vocabulary]` section:
+
+```toml
+[vocabulary]
+words = ["PyTorch", "Kubernetes", "SIGHUP"]
+```
+
+### Limits
+
+Whisper uses vocabulary words and correction replacements as its hidden hint prompt. It skips blank terms and exact duplicates in configured order, then stops before the first complete term that would exceed the 800-character merged-prompt limit, 800-character per-term limit, or mlx-whisper's 223-token limit.
+
+`[vocabulary].words` is an empty list by default, so an absent or non-list value adds no vocabulary terms. Correction replacements come before vocabulary words in the hint prompt.
+
+The app builds the prompt at startup and rebuilds it on SIGHUP. Parakeet ignores vocabulary seeding and logs that once at startup; configured string corrections still apply after transcription.
+
+Configuration changes take effect after SIGHUP — no restart needed:
 
 ```bash
 kill -HUP $(pgrep -f local_whisper)
@@ -299,7 +323,7 @@ just stop && just start
 | `mlx-community/whisper-large-v3-turbo` | ~1.5 GB | 99 languages | ⚡ slow | ★★★★★ | Multilingual or highest accuracy required |
 | `mlx-community/parakeet-tdt-0.6b-v2` | ~600 MB | English only | ⚡⚡⚡ fastest | unbenchmarked | Experimental; requires optional install (see below) |
 
-**Parakeet** is opt-in and unbenchmarked on this repo's test audio (no WER row below yet). It requires an optional dependency and `ffmpeg` (used internally to load audio):
+**Parakeet** is opt-in and unbenchmarked on this repo's test audio (no WER row below). It requires an optional dependency and `ffmpeg` to load audio:
 
 ```bash
 brew install ffmpeg
@@ -313,7 +337,7 @@ Then set the model in config and restart:
 model = "mlx-community/parakeet-tdt-0.6b-v2"
 ```
 
-Note: vocabulary seeding from `[corrections]` (biasing the decoder toward your terms) only works on whisper models — parakeet still applies corrections as post-processing.
+See [Vocabulary seeding](#vocabulary-seeding) for feature compatibility.
 
 To switch to multilingual/higher accuracy:
 

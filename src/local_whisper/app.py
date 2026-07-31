@@ -126,8 +126,10 @@ class App:
         self._backend = backend
         self._active_app: str = ""
         self._active: _Session | None = None
+        self._unsupported_vocab_notice_emitted = False
         self._corrections: dict[str, str] = corrections.load()
-        self._vocab_prompt: str | None = self._build_vocab_prompt()
+        vocabulary_words = config.get_vocabulary_words()
+        self._vocab_prompt: str | None = self._build_vocab_prompt(vocabulary_words)
         self._listener = HotkeyListener(
             on_activate=self._on_key_press,
             on_deactivate=self._on_key_release,
@@ -163,21 +165,24 @@ class App:
             self.stop()
             logger.info("Stopped.")
 
-    def _build_vocab_prompt(self) -> str | None:
+    def _build_vocab_prompt(self, vocabulary_words: list[str]) -> str | None:
         """Build the Whisper vocabulary-seeding prompt; unavailable on Parakeet."""
         if not transcribe.supports_vocab_prompt(self._backend):
-            if self._corrections:
+            if (vocabulary_words or self._corrections) and not self._unsupported_vocab_notice_emitted:
                 logger.info(
-                    "Vocabulary seeding unavailable on %s; corrections still apply post-transcription.", self._backend
+                    "Configured vocabulary unavailable on %s; corrections still apply post-transcription.",
+                    self._backend,
                 )
+                self._unsupported_vocab_notice_emitted = True
             return None
-        return corrections.build_prompt(self._corrections)
+        return corrections.build_prompt(self._corrections, vocabulary_words)
 
     def _reload_config(self) -> None:
         """Reload all config caches without restarting."""
         config.invalidate()
         self._corrections = corrections.load()
-        self._vocab_prompt = self._build_vocab_prompt()
+        vocabulary_words = config.get_vocabulary_words()
+        self._vocab_prompt = self._build_vocab_prompt(vocabulary_words)
         self._signal_if_config_malformed()
         logger.info("Config reloaded.")
 

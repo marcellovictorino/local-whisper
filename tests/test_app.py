@@ -5,10 +5,12 @@ from __future__ import annotations
 import logging
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 from local_whisper import config
-from local_whisper.app import App, _log_session, _run_command_pipeline, _run_dictation_pipeline, _SessionMode
+from local_whisper.app import App, _log_session, _run_command_pipeline, _run_dictation_pipeline, _Session, _SessionMode
+from local_whisper.transcribe import Backend
 
 
 @pytest.mark.parametrize(
@@ -112,6 +114,90 @@ def test_command_pipeline_llm_failure_raises() -> None:
     with patch("local_whisper.app.llm.apply_voice_command", side_effect=LLMUnavailable("no key")):
         with pytest.raises(LLMUnavailable):
             _run_command_pipeline("original", "translate to French")
+
+
+def test_app_builds_one_merged_vocab_prompt_at_startup() -> None:
+    """Startup reads vocabulary once and merges it with loaded corrections for Whisper."""
+    with (
+        patch("local_whisper.app.corrections.load", return_value={"wispy": "Wispr"}) as mock_load,
+        patch("local_whisper.app.config.get_vocabulary_words", return_value=["dbt", "tmux"]) as mock_vocabulary,
+        patch("local_whisper.app.corrections.build_prompt", return_value="Wispr, dbt, tmux") as mock_build,
+    ):
+        app = App(backend=Backend.MLX_WHISPER)
+
+    mock_load.assert_called_once_with()
+    mock_vocabulary.assert_called_once_with()
+    mock_build.assert_called_once_with({"wispy": "Wispr"}, ["dbt", "tmux"])
+    assert app._vocab_prompt == "Wispr, dbt, tmux"
+
+
+def test_reload_refreshes_corrections_and_vocabulary_before_rebuilding_prompt() -> None:
+    """SIGHUP replaces both prompt sources then constructs one fresh stored prompt."""
+    with (
+        patch("local_whisper.app.corrections.load", side_effect=[{"old": "Old"}, {"new": "New"}]) as mock_load,
+        patch(
+            "local_whisper.app.config.get_vocabulary_words", side_effect=[["old-term"], ["new-term"]]
+        ) as mock_vocabulary,
+        patch(
+            "local_whisper.app.corrections.build_prompt", side_effect=["Old, old-term", "New, new-term"]
+        ) as mock_build,
+        patch("local_whisper.app.config.invalidate") as mock_invalidate,
+    ):
+        app = App(backend=Backend.MLX_WHISPER)
+        mock_load.reset_mock()
+        mock_vocabulary.reset_mock()
+        mock_build.reset_mock()
+        app._reload_config()
+
+    mock_invalidate.assert_called_once_with()
+    mock_load.assert_called_once_with()
+    mock_vocabulary.assert_called_once_with()
+    mock_build.assert_called_once_with({"new": "New"}, ["new-term"])
+    assert app._vocab_prompt == "New, new-term"
+
+
+def test_dictation_session_uses_stored_prompt_without_reloading_or_rebuilding() -> None:
+    """The dictation hot path must use the startup prompt, not read configuration."""
+    with (
+        patch("local_whisper.app.corrections.load", return_value={}),
+        patch("local_whisper.app.config.get_vocabulary_words", return_value=["dbt"]),
+        patch("local_whisper.app.corrections.build_prompt", return_value="dbt"),
+    ):
+        app = App(backend=Backend.MLX_WHISPER)
+
+    with (
+        patch("local_whisper.app.audio.record_until_event", return_value=np.ones(4_800, dtype="float32")),
+        patch("local_whisper.app.transcribe.wait_warmed", return_value=True),
+        patch("local_whisper.app.transcribe.run", return_value="hello") as mock_transcribe,
+        patch("local_whisper.app.corrections.load", side_effect=AssertionError("session read corrections")),
+        patch("local_whisper.app.config.get_vocabulary_words", side_effect=AssertionError("session read vocabulary")),
+        patch("local_whisper.app.corrections.build_prompt", side_effect=AssertionError("session rebuilt prompt")),
+        patch("local_whisper.app.clipboard.write_and_paste"),
+    ):
+        app._run_session(_Session(mode=_SessionMode.DICTATION))
+
+    assert mock_transcribe.call_args.kwargs["initial_prompt"] == "dbt"
+
+
+def test_parakeet_logs_configured_vocabulary_once_across_reloads(caplog: pytest.LogCaptureFixture) -> None:
+    """Parakeet reports unavailable vocabulary at startup, not on dictation or reload."""
+    with (
+        patch("local_whisper.app.corrections.load", return_value={}),
+        patch("local_whisper.app.config.get_vocabulary_words", return_value=["dbt"]),
+        patch("local_whisper.app.audio.record_until_event", return_value=np.ones(4_800, dtype="float32")),
+        patch("local_whisper.app.transcribe.wait_warmed", return_value=True),
+        patch("local_whisper.app.transcribe.run", return_value="hello"),
+        patch("local_whisper.app.clipboard.write_and_paste"),
+        caplog.at_level(logging.INFO, logger="local_whisper"),
+    ):
+        app = App(backend=Backend.PARAKEET)
+        app._run_session(_Session(mode=_SessionMode.DICTATION))
+        app._reload_config()
+        app._reload_config()
+
+    messages = [record.getMessage() for record in caplog.records]
+    message = "Configured vocabulary unavailable on parakeet-mlx; corrections still apply post-transcription."
+    assert messages.count(message) == 1
 
 
 def test_log_session_emits_line_on_failure_outcome(caplog: pytest.LogCaptureFixture) -> None:

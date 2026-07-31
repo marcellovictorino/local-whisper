@@ -96,6 +96,18 @@ def get_corrections_raw(path: Path = CONFIG_PATH) -> dict:
     return load_section("corrections", path)
 
 
+def get_vocabulary_words(path: Path = CONFIG_PATH) -> list[str]:
+    """Return non-blank [vocabulary] words in configured order.
+
+    Dedup and budget clipping happen once, at the merge point in
+    :func:`corrections.build_prompt`, not here.
+    """
+    words = load_section("vocabulary", path).get("words")
+    if not isinstance(words, list):
+        return []
+    return [word for word in words if isinstance(word, str) and word.strip()]
+
+
 def get_snippets_raw(path: Path = CONFIG_PATH) -> dict:
     """Return raw [snippets] section dict."""
     return load_section("snippets", path)
