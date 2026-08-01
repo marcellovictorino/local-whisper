@@ -14,19 +14,58 @@ import pytest
 overlay = pytest.importorskip("local_whisper.overlay")
 
 
+theme = pytest.importorskip("local_whisper.theme")
+
+
 class _FakeBar:
-    """Captures the last frame set on it, so render output is inspectable."""
+    """Captures the last frame and glow set on it, so render output is inspectable."""
 
     def __init__(self) -> None:
         self.height = 0.0
+        self.color: object = None
+        self.glow: object = None
+        self.glow_opacity = 0.0
 
     def setFrame_(self, frame: tuple[tuple[float, float], tuple[float, float]]) -> None:
         self.height = frame[1][1]
 
+    def setBackgroundColor_(self, color: object) -> None:
+        self.color = color
 
-def _controller_with_bars() -> tuple[object, list[_FakeBar]]:
+    def setShadowColor_(self, color: object) -> None:
+        self.glow = color
+
+    def setShadowOpacity_(self, value: float) -> None:
+        self.glow_opacity = value
+
+
+class _FakePanel:
+    """Stands in for the NSPanel, recording the alpha the animator was driven to."""
+
+    def __init__(self) -> None:
+        self.alpha = 0.0
+        self.ordered_out = False
+        self.ordered_front = False
+
+    def animator(self) -> _FakePanel:
+        return self
+
+    def setAlphaValue_(self, value: float) -> None:
+        self.alpha = value
+
+    def orderFrontRegardless(self) -> None:
+        self.ordered_front = True
+
+    def orderOut_(self, _sender: object) -> None:
+        self.ordered_out = True
+
+
+def _controller_with_bars(
+    on_mode_change: object = None,
+) -> tuple[object, list[_FakeBar]]:
     controller = overlay._OverlayController.alloc().init()
     controller.setup(queue.Queue())
+    controller.set_listener(on_mode_change)
     bars = [_FakeBar() for _ in range(overlay._N_BARS)]
     controller._bars = bars
     return controller, bars
@@ -56,6 +95,73 @@ def test_speaking_envelope_peaks_at_the_tallest_weighted_bar() -> None:
     assert [sorted(peaks).index(p) for p in peaks] == [
         sorted(overlay._BAR_WEIGHTS).index(w) for w in overlay._BAR_WEIGHTS
     ]
+
+
+def test_bars_bloom_in_their_own_mode_hue() -> None:
+    """The glow must carry the mode colour — a white bloom would flatten the signal."""
+    controller, bars = _controller_with_bars()
+    controller._panel = _FakePanel()
+    controller._mode = theme.Mode.ADAPT
+
+    controller._fade_in()
+
+    assert all(bar.glow is not None for bar in bars)
+    assert all(bar.glow == bar.color for bar in bars)
+    assert all(bar.glow_opacity == theme.GLOW_ALPHA for bar in bars)
+
+
+def test_white_bars_do_not_bloom() -> None:
+    """A white bloom smears into the frosted pill instead of reading as a signal."""
+    controller, bars = _controller_with_bars()
+    controller._panel = _FakePanel()
+    controller._mode = theme.Mode.DICTATION
+
+    controller._fade_in()
+
+    assert all(bar.glow_opacity == 0.0 for bar in bars)
+
+
+def test_showing_eases_the_panel_to_hud_opacity() -> None:
+    """Shown alpha is the design system's 0.95, reached through the animator."""
+    controller, _bars = _controller_with_bars()
+    panel = controller._panel = _FakePanel()
+    controller._mode = theme.Mode.DICTATION
+
+    controller._fade_in()
+
+    assert panel.ordered_front
+    assert panel.alpha == theme.HUD_OPACITY
+
+
+def test_hiding_stops_bar_rendering_before_the_fade_lands() -> None:
+    """Committing CALayer frames on a fading-out panel can make it reappear."""
+    controller, bars = _controller_with_bars()
+    controller._panel = _FakePanel()
+    controller._mode = theme.Mode.DICTATION
+    controller._fade_in()
+    controller._active = True
+    controller._amplitude = 1.0
+
+    controller._fade_out()
+    heights_before = [bar.height for bar in bars]
+    controller._update_bars()
+
+    assert [bar.height for bar in bars] == heights_before
+    assert controller._active is False
+
+
+def test_every_mode_transition_reaches_the_listener() -> None:
+    """The menu-bar item mirrors the pill through this one callback — including the
+    processing transition, which changes mode without re-showing the pill."""
+    seen: list[object] = []
+    controller, _bars = _controller_with_bars(on_mode_change=seen.append)
+    controller._panel = _FakePanel()
+    for cmd in (overlay._Cmd.SHOW_COMMAND, overlay._Cmd.PROCESSING, overlay._Cmd.HIDE):
+        controller._queue.put(cmd)
+
+    controller.pollQueue_(None)
+
+    assert seen == [theme.Mode.COMMAND, theme.Mode.PROCESSING, None]
 
 
 def test_idle_pose_is_flat_at_minimum_height() -> None:

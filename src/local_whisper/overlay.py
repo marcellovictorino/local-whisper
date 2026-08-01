@@ -9,6 +9,7 @@ from enum import StrEnum
 
 import objc
 from AppKit import (
+    NSAnimationContext,
     NSApplication,
     NSColor,
     NSMakeRect,
@@ -21,6 +22,9 @@ from AppKit import (
     NSWindowCollectionBehaviorStationary,
     NSWindowStyleMaskBorderless,
 )
+
+from local_whisper import theme
+from local_whisper._macos import ns_color
 
 # NSFloatingWindowLevel = 5
 _FLOATING_LEVEL = 5
@@ -74,12 +78,17 @@ class _Cmd(StrEnum):
     AMP = "amp"
 
 
-class _BarMode(StrEnum):
-    DICTATION = "dictation"
-    COMMAND = "command"
-    ADAPT = "adapt"
-    ERROR = "error"
-    PROCESSING = "processing"
+# Which mode each show command paints. One table instead of a branch per mode, so
+# adding a mode is a row here and a colour in theme.py.
+_SHOW_MODES = {
+    _Cmd.SHOW: theme.Mode.DICTATION,
+    _Cmd.SHOW_COMMAND: theme.Mode.COMMAND,
+    _Cmd.SHOW_ADAPT: theme.Mode.ADAPT,
+    _Cmd.SHOW_ERROR: theme.Mode.ERROR,
+}
+
+# Immutable, so built once rather than per fade.
+_EASE_STANDARD = objc.lookUpClass("CAMediaTimingFunction").alloc().initWithControlPoints____(*theme.EASE_STANDARD)
 
 
 _QueueItem = str | tuple[str, float]
@@ -91,42 +100,52 @@ class _OverlayController(NSObject):
     @objc.python_method
     def setup(self, cmd_queue: queue.Queue[_QueueItem]) -> None:
         self._queue: queue.Queue[_QueueItem] = cmd_queue
+        self._on_mode_change: Callable[[theme.Mode | None], None] | None = None
         self._panel: NSPanel | None = None
+        self._visible: bool = False
         self._bars: list = []
         self._amplitude: float = 0.0
         self._active: bool = False
-        self._mode: _BarMode = _BarMode.DICTATION
+        self._mode: theme.Mode = theme.Mode.DICTATION
         self._was_idle: bool = True
         self._last_active_t: float = 0.0  # monotonic time of last above-threshold frame
         self._last_normalized: float = 0.0  # normalized amplitude at last active frame
         self._error_until: float = 0.0  # suppress HIDE until this monotonic timestamp
         self._CATransaction = objc.lookUpClass("CATransaction")
 
+    @objc.python_method
+    def set_listener(self, listener: Callable[[theme.Mode | None], None] | None) -> None:
+        self._on_mode_change = listener
+
+    @objc.python_method
+    def _set_mode(self, mode: theme.Mode | None) -> None:
+        """Record the mode and tell any mirroring surface about it.
+
+        Every write to ``_mode`` goes through here: the notification used to hang
+        off ``_fade_in``, which meant the processing transition — which changes
+        mode without re-showing — never reached the menu-bar item.
+        """
+        if mode is not None:
+            self._mode = mode
+        if self._on_mode_change is not None:
+            self._on_mode_change(mode)
+
     def pollQueue_(self, _timer: object) -> None:
         try:
             while True:
                 cmd = self._queue.get_nowait()
                 match cmd:
-                    case _Cmd.SHOW:
+                    case _Cmd.SHOW | _Cmd.SHOW_COMMAND | _Cmd.SHOW_ADAPT | _Cmd.SHOW_ERROR:
                         self._active = True
-                        self._mode = _BarMode.DICTATION
-                        self._fade_in()
-                    case _Cmd.SHOW_COMMAND:
-                        self._active = True
-                        self._mode = _BarMode.COMMAND
-                        self._fade_in()
-                    case _Cmd.SHOW_ADAPT:
-                        self._active = True
-                        self._mode = _BarMode.ADAPT
-                        self._fade_in()
-                    case _Cmd.SHOW_ERROR:
-                        self._active = True
-                        self._mode = _BarMode.ERROR
-                        self._error_until = time.monotonic() + 1.0
+                        self._set_mode(_SHOW_MODES[cmd])
+                        if self._mode is theme.Mode.ERROR:
+                            self._error_until = time.monotonic() + theme.ERROR_FLASH_SECS
                         self._fade_in()
                     case _Cmd.PROCESSING:
                         # Recording stopped — switch to processing animation without hiding.
-                        self._mode = _BarMode.PROCESSING
+                        # The bars keep the session's mode colour: the hue is the mode
+                        # signal, and the cadence change alone reads as "working".
+                        self._set_mode(theme.Mode.PROCESSING)
                         self._amplitude = 0.0
                         self._was_idle = True
                     case _Cmd.HIDE:
@@ -188,6 +207,12 @@ class _OverlayController(NSObject):
             bar = CALayer.alloc().init()
             bar.setBackgroundColor_(NSColor.whiteColor().CGColor())
             bar.setCornerRadius_(_BAR_W / 2)
+            # Bloom geometry: centred, no offset. On frosted dark glass a 3px bar
+            # reads thin and dim, and amber and cyan lose most of their identity at
+            # that width — the glow is what keeps the mode colour legible without
+            # widening the mark. Opacity is per-mode and set in _fade_in.
+            bar.setShadowOffset_((0.0, 0.0))
+            bar.setShadowRadius_(theme.GLOW_RADIUS)
             initial_h = _MIN_BAR_H
             by = (_PILL_H - initial_h) / 2
             bar.setFrame_(((bx, by), (_BAR_W, initial_h)))
@@ -202,40 +227,79 @@ class _OverlayController(NSObject):
             self._build_panel()
         if self._panel is None:
             return
-        match self._mode:
-            case _BarMode.COMMAND:
-                color = NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.34, 1.0)  # amber
-            case _BarMode.ADAPT:
-                color = NSColor.colorWithRed_green_blue_alpha_(0.0, 0.85, 1.0, 1.0)  # electric cyan
-            case _BarMode.ERROR:
-                color = NSColor.colorWithRed_green_blue_alpha_(1.0, 0.27, 0.27, 1.0)  # red
-            case _:
-                color = NSColor.whiteColor()
-        cgcolor = color.CGColor()
+        cgcolor = ns_color(theme.MODE_RGB[self._mode]).CGColor()
+        # White bars get no bloom: on frosted glass it smears into the pill instead
+        # of reading as a signal — and dictation, the common case, then costs the
+        # render loop no offscreen blur at all.
+        glow_opacity = 0.0 if self._mode in theme.WHITE_MODES else theme.GLOW_ALPHA
         for bar in self._bars:
             bar.setBackgroundColor_(cgcolor)
+            bar.setShadowColor_(cgcolor)  # same hue as the bar — the bloom is the bar, blurred
+            bar.setShadowOpacity_(glow_opacity)
         self._last_active_t = time.monotonic()
+        self._visible = True
         self._panel.orderFrontRegardless()
-        self._panel.setAlphaValue_(0.95)
+        self._animate_alpha(theme.HUD_OPACITY)
+
+    @objc.python_method
+    def _animate_alpha(self, target: float, on_done: Callable[[], None] | None = None) -> None:
+        """Ease the panel's opacity to ``target`` over FADE_SECS.
+
+        Opacity only — no scale, no bounce. Straight ``setAlphaValue_`` made the
+        pill pop in hard enough to read as a glitch at the edge of vision.
+        """
+        if self._panel is None:
+            return
+        NSAnimationContext.beginGrouping()
+        context = NSAnimationContext.currentContext()
+        context.setDuration_(theme.FADE_SECS)
+        context.setTimingFunction_(_EASE_STANDARD)
+        if on_done is not None:
+            context.setCompletionHandler_(on_done)
+        self._panel.animator().setAlphaValue_(target)
+        NSAnimationContext.endGrouping()
 
     @objc.python_method
     def _fade_out(self) -> None:
         self._active = False  # defensive — ensure bars stop even if called directly
+        self._visible = False  # stops bar rendering immediately, before the fade lands
         self._was_idle = True  # reset so next show starts with static bars
         self._last_active_t = 0.0
         self._last_normalized = 0.0
+        self._set_mode(None)
         if self._panel is None:
             return
-        self._panel.setAlphaValue_(0.0)
-        self._panel.orderOut_(None)
+        panel = self._panel
+
+        def _order_out() -> None:
+            # Only pull the window if nothing showed it again during the fade.
+            if not self._visible:
+                panel.orderOut_(None)
+
+        self._animate_alpha(0.0, on_done=_order_out)
+
+    @objc.python_method
+    def _draw_bars(self, heights: list[float]) -> None:
+        """Centre each bar vertically at the given height."""
+        for i, (bar, bar_h) in enumerate(zip(self._bars, heights, strict=True)):
+            bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - bar_h) / 2), (_BAR_W, bar_h)))
 
     @objc.python_method
     def _render_processing(self, t: float) -> None:
-        for i, bar in enumerate(self._bars):
-            phase = _BAR_PHASES[i]
-            scale = 0.18 + 0.22 * abs(math.sin(t * 4.5 - phase))
-            bar_h = max(_MIN_BAR_H, scale * _MAX_BAR_H * _BAR_WEIGHTS[i])
-            bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - bar_h) / 2), (_BAR_W, bar_h)))
+        self._draw_bars(
+            [
+                max(_MIN_BAR_H, (0.18 + 0.22 * abs(math.sin(t * 4.5 - phase))) * _MAX_BAR_H * weight)
+                for phase, weight in zip(_BAR_PHASES, _BAR_WEIGHTS, strict=True)
+            ]
+        )
+
+    @objc.python_method
+    def _speaking_heights(self, normalized: float, t: float) -> list[float]:
+        """The rolling W envelope at this amplitude — shared by speech and decay."""
+        return [
+            max(_MIN_BAR_H, normalized * (0.65 + 0.35 * math.sin(t * 6.0 - phase)) * _MAX_BAR_H * weight)
+            for phase, weight in zip(_BAR_PHASES, _BAR_WEIGHTS, strict=True)
+        ]
 
     @objc.python_method
     def _render_waveform(self, t: float) -> None:
@@ -243,36 +307,27 @@ class _OverlayController(NSObject):
         if amp >= _IDLE_THRESHOLD:
             self._last_active_t = t
             self._was_idle = False
-            normalized = min(1.0, math.sqrt(amp * 20.0))
-            self._last_normalized = normalized
-            for i, bar in enumerate(self._bars):
-                phase = _BAR_PHASES[i]
-                osc = 0.65 + 0.35 * math.sin(t * 6.0 - phase)
-                bar_h = max(_MIN_BAR_H, normalized * osc * _MAX_BAR_H * _BAR_WEIGHTS[i])
-                bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - bar_h) / 2), (_BAR_W, bar_h)))
+            self._last_normalized = min(1.0, math.sqrt(amp * 20.0))
+            self._draw_bars(self._speaking_heights(self._last_normalized, t))
             return
 
         hold_elapsed = t - self._last_active_t
         if hold_elapsed < _HOLD_SECS:
             decay = 1.0 - hold_elapsed / _HOLD_SECS
-            normalized = self._last_normalized * decay
-            for i, bar in enumerate(self._bars):
-                phase = _BAR_PHASES[i]
-                osc = 0.65 + 0.35 * math.sin(t * 6.0 - phase)
-                bar_h = max(_MIN_BAR_H, normalized * osc * _MAX_BAR_H * _BAR_WEIGHTS[i])
-                bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - bar_h) / 2), (_BAR_W, bar_h)))
+            self._draw_bars(self._speaking_heights(self._last_normalized * decay, t))
         elif not self._was_idle:
-            for i, bar in enumerate(self._bars):
-                bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - _MIN_BAR_H) / 2), (_BAR_W, _MIN_BAR_H)))
+            self._draw_bars([_MIN_BAR_H] * len(self._bars))
             self._was_idle = True
 
     @objc.python_method
     def _update_bars(self) -> None:
         if not self._bars or not self._active:
             return
-        # Hard guard: if panel is hidden (alpha=0), skip CALayer work entirely.
+        # Hard guard: if the panel is hidden, skip CALayer work entirely.
         # CATransaction frame commits on an ordered-out window can cause it to reappear.
-        if self._panel is None or self._panel.alphaValue() < 0.1:
+        # Tracked as a flag, not read off alphaValue(): during the fade-in alpha is
+        # legitimately near zero, and probing it there would stall the animation.
+        if self._panel is None or not self._visible:
             self._active = False
             return
         if self._error_until > 0 and time.monotonic() >= self._error_until:
@@ -285,7 +340,7 @@ class _OverlayController(NSObject):
         CT.begin()
         CT.setDisableActions_(True)
         try:
-            if self._mode == _BarMode.PROCESSING:
+            if self._mode is theme.Mode.PROCESSING:
                 self._render_processing(t)
             else:
                 self._render_waveform(t)
@@ -303,6 +358,20 @@ class RecordingOverlay:
     def __init__(self) -> None:
         self._queue: queue.Queue[_QueueItem] = queue.Queue()
         self._controller: _OverlayController | None = None
+        self._on_mode_change: Callable[[theme.Mode | None], None] | None = None
+
+    def set_mode_listener(self, listener: Callable[[theme.Mode | None], None] | None) -> None:
+        """Mirror every mode change to a second surface (the menu-bar item).
+
+        Fires with the mode on show, ``theme.Mode.PROCESSING`` when recording
+        stops, and ``None`` on hide. The overlay is the single funnel all mode
+        transitions pass through, so the daemon does not notify each surface
+        itself. Main thread only — unlike show()/hide(), this does not go through
+        the command queue, and the listener is invoked on the render timer.
+        """
+        self._on_mode_change = listener
+        if self._controller is not None:
+            self._controller.set_listener(listener)
 
     def show(self) -> None:
         """Fade in the overlay (dictation mode). Thread-safe."""
@@ -349,6 +418,7 @@ class RecordingOverlay:
 
         controller = _OverlayController.alloc().init()
         controller.setup(self._queue)
+        controller.set_listener(self._on_mode_change)
         self._controller = controller
 
         NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
