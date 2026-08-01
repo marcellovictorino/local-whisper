@@ -233,8 +233,18 @@ def main() -> None:
             # hook so it attaches to the same accessory NSApplication.
             _menu_bar: list[object] = []
 
+            def _session_info() -> dict[str, str]:
+                return {"Model": model, "Backend": backend}
+
             def _install_menu_bar() -> None:
-                _menu_bar.append(menubar.install(reload_config=app._reload_config, quit_app=_quit))
+                _menu_bar.append(
+                    menubar.install(
+                        overlay,
+                        reload_config=app._reload_config,
+                        quit_app=_quit,
+                        session_info=_session_info,
+                    )
+                )
 
             try:
                 # AppKit event loop on main thread — blocks until quit()
