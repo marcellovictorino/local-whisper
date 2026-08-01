@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v0.15.0 (2026-08-01)
+
+### Chores
+
+- **deps**: Sync uv.lock to the released 0.14.0 version
+  ([#39](https://github.com/marcellovictorino/local-whisper/pull/39),
+  [`2df2296`](https://github.com/marcellovictorino/local-whisper/commit/2df2296f9b47e65e9d3795d95a209e467faeec14))
+
+- **dev**: Add just demo-ui to drive every overlay state without a mic
+  ([#39](https://github.com/marcellovictorino/local-whisper/pull/39),
+  [`2df2296`](https://github.com/marcellovictorino/local-whisper/commit/2df2296f9b47e65e9d3795d95a209e467faeec14))
+
+### Features
+
+- **menubar**: Mirror the mode signal and report session state
+  ([#39](https://github.com/marcellovictorino/local-whisper/pull/39),
+  [`2df2296`](https://github.com/marcellovictorino/local-whisper/commit/2df2296f9b47e65e9d3795d95a209e467faeec14))
+
+- **overlay**: Bloom pill bars, ease fade, and add mode-aware menu-bar status
+  ([#39](https://github.com/marcellovictorino/local-whisper/pull/39),
+  [`2df2296`](https://github.com/marcellovictorino/local-whisper/commit/2df2296f9b47e65e9d3795d95a209e467faeec14))
+
+- **overlay**: Bloom the pill bars and ease the show/hide fade
+  ([#39](https://github.com/marcellovictorino/local-whisper/pull/39),
+  [`2df2296`](https://github.com/marcellovictorino/local-whisper/commit/2df2296f9b47e65e9d3795d95a209e467faeec14))
+
+
 ## v0.14.0 (2026-08-01)
 
 ### Features
