@@ -39,7 +39,7 @@ _PILL_W = 56.0
 _PILL_H = 28.0
 _BAR_W = 3.0
 _BAR_GAP = 3.0
-_N_BARS = 5
+_N_BARS = 4
 _MAX_BAR_H = 18.0
 _MIN_BAR_H = 3.0
 # Amplitude below this → static bars (no animation)
@@ -49,13 +49,18 @@ _HOLD_SECS = 0.5
 # EMA weight for incoming amplitude (higher = snappier response)
 _AMP_EMA_ALPHA = 0.85
 
-# Bar x positions (centered in pill)
-_BAR_SPAN = _N_BARS * _BAR_W + (_N_BARS - 1) * _BAR_GAP  # 27px
+# Bar x positions (centered in pill). 4 bars → 21px span, comfortably inside _PILL_W.
+_BAR_SPAN = _N_BARS * _BAR_W + (_N_BARS - 1) * _BAR_GAP  # 21px
 _BAR_X_START = (_PILL_W - _BAR_SPAN) / 2
 _BAR_X_POSITIONS = [_BAR_X_START + i * (_BAR_W + _BAR_GAP) for i in range(_N_BARS)]
 
 # Per-bar phase offsets: 0.5 rad spread → smooth rolling gradient left-to-right
 _BAR_PHASES = [i * 0.5 for i in range(_N_BARS)]
+
+# "Whisper Cut" height envelope (tall, short, TALLEST, short) — the brand mark's
+# W silhouette. Normalised to the tallest bar; shapes the SPEAKING peaks only,
+# so the pill still reads as the icon when active while staying flat at rest.
+_BAR_WEIGHTS = [0.87, 0.65, 1.0, 0.565]
 
 
 class _Cmd(StrEnum):
@@ -229,7 +234,7 @@ class _OverlayController(NSObject):
         for i, bar in enumerate(self._bars):
             phase = _BAR_PHASES[i]
             scale = 0.18 + 0.22 * abs(math.sin(t * 4.5 - phase))
-            bar_h = max(_MIN_BAR_H, scale * _MAX_BAR_H)
+            bar_h = max(_MIN_BAR_H, scale * _MAX_BAR_H * _BAR_WEIGHTS[i])
             bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - bar_h) / 2), (_BAR_W, bar_h)))
 
     @objc.python_method
@@ -243,7 +248,7 @@ class _OverlayController(NSObject):
             for i, bar in enumerate(self._bars):
                 phase = _BAR_PHASES[i]
                 osc = 0.65 + 0.35 * math.sin(t * 6.0 - phase)
-                bar_h = max(_MIN_BAR_H, normalized * osc * _MAX_BAR_H)
+                bar_h = max(_MIN_BAR_H, normalized * osc * _MAX_BAR_H * _BAR_WEIGHTS[i])
                 bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - bar_h) / 2), (_BAR_W, bar_h)))
             return
 
@@ -254,7 +259,7 @@ class _OverlayController(NSObject):
             for i, bar in enumerate(self._bars):
                 phase = _BAR_PHASES[i]
                 osc = 0.65 + 0.35 * math.sin(t * 6.0 - phase)
-                bar_h = max(_MIN_BAR_H, normalized * osc * _MAX_BAR_H)
+                bar_h = max(_MIN_BAR_H, normalized * osc * _MAX_BAR_H * _BAR_WEIGHTS[i])
                 bar.setFrame_(((_BAR_X_POSITIONS[i], (_PILL_H - bar_h) / 2), (_BAR_W, bar_h)))
         elif not self._was_idle:
             for i, bar in enumerate(self._bars):

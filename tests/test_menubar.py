@@ -10,8 +10,10 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from local_whisper import menubar
-from local_whisper.menubar import DOCS_URL, MenuActions, config_open_target
+from local_whisper.menubar import DOCS_URL, MenuActions, config_open_target, icon_bar_rects
 
 
 def test_config_open_target_returns_file_when_it_exists(tmp_path: Path) -> None:
@@ -70,3 +72,22 @@ def test_install_is_a_no_op_without_appkit() -> None:
     """On headless CI (no status bar) install must return None, not raise."""
     with patch.object(menubar, "HAS_APPKIT", False):
         assert menubar.install(reload_config=MagicMock(), quit_app=MagicMock()) is None
+
+
+def test_whisper_cut_bars_follow_the_tall_short_tallest_short_envelope() -> None:
+    """The mark's identity is its height envelope — bar 2 tallest, 1 & 3 shortest."""
+    heights = [h for _x, _y, _w, h in icon_bar_rects()]
+    assert len(heights) == 4
+    tallest = max(heights)
+    assert heights.index(tallest) == 2
+    ratios = [round(h / tallest, 3) for h in heights]
+    assert ratios == [0.87, 0.652, 1.0, 0.565]
+
+
+def test_status_image_is_a_macos_template() -> None:
+    """A template image lets macOS auto-tint the mark to the menu bar's theme."""
+    image = menubar.build_status_image()
+    if not menubar.HAS_APPKIT:
+        assert image is None
+        pytest.skip("AppKit unavailable — no image to inspect")
+    assert image.isTemplate()

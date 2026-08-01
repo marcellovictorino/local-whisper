@@ -23,6 +23,45 @@ APP_NAME = "local-whisper"
 LOG_PATH = Path.home() / "Library" / "Logs" / "local-whisper.log"
 DOCS_URL = "https://github.com/marcellovictorino/local-whisper#usage"
 
+# "Whisper Cut" brand mark: four rounded bars forming a stylised W / voice
+# signature, drawn into an 18pt template image. Heights are the identity —
+# tall, short, TALLEST, short — bottom-aligned so taller bars extend upward.
+_ICON_BOX = 18.0
+_ICON_BAR_W = 2.4
+_ICON_BAR_R = 1.2
+_ICON_PAD = 1.5
+_ICON_BAR_X = (2.5, 6.4, 10.2, 14.1)
+_ICON_BAR_H = (10.0, 7.5, 11.5, 6.5)
+
+
+def icon_bar_rects() -> list[tuple[float, float, float, float]]:
+    """Return each Whisper Cut bar as ``(x, y, w, h)``, bottom-aligned in the box.
+
+    Pure geometry (no AppKit) so the mark's proportions are testable: the
+    tall/short/TALLEST/short height envelope is what makes it the brand mark.
+    """
+    return [(x, _ICON_PAD, _ICON_BAR_W, h) for x, h in zip(_ICON_BAR_X, _ICON_BAR_H, strict=True)]
+
+
+def build_status_image() -> object | None:
+    """Draw the Whisper Cut mark as a macOS template image, or None without AppKit.
+
+    ``setTemplate_(True)`` lets macOS auto-tint the mark white-on-dark /
+    black-on-light to match the menu bar. Static — no state animation this pass.
+    """
+    if not HAS_APPKIT:
+        return None
+    from AppKit import NSBezierPath, NSColor, NSImage
+
+    image = NSImage.alloc().initWithSize_((_ICON_BOX, _ICON_BOX))
+    image.lockFocus()
+    NSColor.blackColor().set()
+    for x, y, w, h in icon_bar_rects():
+        NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(((x, y), (w, h)), _ICON_BAR_R, _ICON_BAR_R).fill()
+    image.unlockFocus()
+    image.setTemplate_(True)
+    return image
+
 
 def config_open_target(config_path: Path = CONFIG_PATH) -> Path:
     """Return the path the "Edit config" action should open.
@@ -115,7 +154,9 @@ if HAS_APPKIT:
         def setup(self, actions: MenuActions) -> None:
             self._actions = actions
             status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
-            status_item.button().setTitle_("🎙")
+            button = status_item.button()
+            button.setTitle_("")  # drop the placeholder emoji — use the template image
+            button.setImage_(build_status_image())
             status_item.setMenu_(self._build_menu())
             self._status_item = status_item  # strong ref keeps the item on the bar
 
