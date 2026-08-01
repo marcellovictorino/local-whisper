@@ -23,6 +23,8 @@ src/local_whisper/
   clipboard.py   # write + paste via osascript
   app.py         # orchestrates the full flow
   overlay.py     # NSPanel recording pill (PyObjC)
+  menubar.py     # NSStatusItem menu-bar item (PyObjC)
+  theme.py       # design tokens (colours, motion) shared by both surfaces
   __main__.py    # CLI entry point
 
 tests/           # pytest — run with: just test
