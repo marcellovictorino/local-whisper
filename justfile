@@ -59,6 +59,11 @@ lint:
     {{uv}} run ruff check src/ tests/ scripts/validate_config.py
     {{uv}} run ruff format --check src/ tests/ scripts/validate_config.py
 
+# Health check: permissions, model cache, service, LLM env (exits non-zero on critical failure)
+[group('dev')]
+doctor:
+    {{uv}} run python -m local_whisper --doctor
+
 # Benchmark transcription latency (model from config or default)
 [group('dev')]
 benchmark:

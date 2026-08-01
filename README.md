@@ -19,8 +19,13 @@ Runs natively on Apple Silicon via MLX. Default model: whisper-small.en (English
 ## Install
 
 ```bash
-git clone https://github.com/marcellovictorino/local-whisper && cd local-whisper && bash setup.sh
+curl -fsSL https://raw.githubusercontent.com/marcellovictorino/local-whisper/master/install.sh | bash
 ```
+
+The installer clones the repo to a stable directory (`~/.local/share/local-whisper`
+by default — override with `LOCAL_WHISPER_DIR`) and runs `setup.sh`. The clone
+lives at a stable path because `setup.sh` hard-codes that directory into the
+launchd plist; re-run the installer to update in place.
 
 `setup.sh` does everything in one shot:
 1. Installs Python dependencies via `uv sync`
@@ -28,6 +33,14 @@ git clone https://github.com/marcellovictorino/local-whisper && cd local-whisper
 3. Installs a launchd service that starts local-whisper automatically on login
 
 After install, grant Accessibility permission when prompted — see [Accessibility permission](#accessibility-permission) below.
+
+### Alternative: clone manually
+
+Prefer to control where the repo lives? Clone it yourself and run `setup.sh`:
+
+```bash
+git clone https://github.com/marcellovictorino/local-whisper && cd local-whisper && bash setup.sh
+```
 
 ## Usage
 
@@ -45,6 +58,8 @@ Once installed, local-whisper runs in the background automatically.
 **Command mode** activates automatically when you have text selected — no separate key to remember. Select a paragraph, hold Right ⌘, say "fix the grammar", release — done.
 
 **Adapt mode** is explicit: hold Right ⌥ instead of Right ⌘ when you want LLM reshaping (e.g. format as email). Plain dictation never calls an LLM and stays fast and fully local. Selection is ignored in adapt mode.
+
+**Menu bar:** a 🎙 status item gives quick access to edit config, open logs, reload config, and the docs.
 
 ## How-To
 
@@ -392,6 +407,22 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Task tracking uses the [`td`](https://gi
 Releasable [Conventional Commits](https://www.conventionalcommits.org/) merged to `master` generate a release pull request with the version bump and [CHANGELOG.md](CHANGELOG.md) update. Review and merge that pull request; CI then creates the matching tag and [GitHub Release](https://github.com/marcellovictorino/local-whisper/releases).
 
 ## Troubleshooting
+
+### Health check
+
+Not sure what's wrong? Run the doctor for a one-shot status report:
+
+```bash
+just doctor                       # or: python -m local_whisper --doctor
+```
+
+It reports Accessibility permission, model cache, launchd service, and LLM env
+vars — marking each ✓ (ok), ✗ (critical failure), or ⚠ (warning). It exits
+non-zero when a critical check fails (missing Accessibility grant or uncached
+model), so it's usable in scripts. A missing service or absent LLM env vars are
+warnings only — plain dictation is fully local and works without them.
+
+---
 
 ### uv not installed
 
