@@ -1,4 +1,4 @@
-"""macOS menu-bar status item: quick access to config, logs, reload, and docs.
+"""macOS menu-bar status item: status row, Session section, config, logs, reload, and docs.
 
 The status item attaches to the *existing* accessory ``NSApplication`` created by
 :class:`~local_whisper.overlay.RecordingOverlay` (no second app, no dock icon).
