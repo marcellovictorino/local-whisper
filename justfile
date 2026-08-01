@@ -38,6 +38,11 @@ status:
 run:
     {{uv}} run python -m local_whisper --run 2> >(grep -v "MallocStackLogging" >&2)
 
+# Cycle the overlay + menu-bar item through every visual state (no mic needed)
+[group('dev')]
+demo-ui mode="":
+    {{uv}} run python scripts/demo_ui.py {{mode}} 2> >(grep -v "MallocStackLogging" >&2)
+
 # Stream service logs
 [group('dev')]
 logs:
