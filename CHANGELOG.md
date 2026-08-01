@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v0.14.0 (2026-08-01)
+
+### Features
+
+- Add curl one-liner installer
+  ([`a25493a`](https://github.com/marcellovictorino/local-whisper/commit/a25493a29fddc6dc939a0fb14aed1fa435cd7701))
+
+- Add doctor health check
+  ([`a25493a`](https://github.com/marcellovictorino/local-whisper/commit/a25493a29fddc6dc939a0fb14aed1fa435cd7701))
+
+- Add macOS menu-bar status item
+  ([`a25493a`](https://github.com/marcellovictorino/local-whisper/commit/a25493a29fddc6dc939a0fb14aed1fa435cd7701))
+
+- Adopt Whisper Cut mark for menu-bar icon and pill overlay
+  ([`a25493a`](https://github.com/marcellovictorino/local-whisper/commit/a25493a29fddc6dc939a0fb14aed1fa435cd7701))
+
+- Install ergonomics — one-liner installer, doctor check, menu-bar item
+  ([`a25493a`](https://github.com/marcellovictorino/local-whisper/commit/a25493a29fddc6dc939a0fb14aed1fa435cd7701))
+
+
 ## v0.13.1 (2026-07-31)
 
 ### Documentation
