@@ -4,6 +4,7 @@ import math
 import queue
 import signal
 import time
+from collections.abc import Callable
 from enum import StrEnum
 
 import objc
@@ -330,8 +331,14 @@ class RecordingOverlay:
         """Exit the AppKit event loop. Thread-safe."""
         self._queue.put(_Cmd.QUIT)
 
-    def run(self) -> None:
-        """Start AppKit event loop on main thread. Blocks until quit() is called."""
+    def run(self, on_ready: Callable[[], None] | None = None) -> None:
+        """Start AppKit event loop on main thread. Blocks until quit() is called.
+
+        ``on_ready`` runs once, on the main thread, after the shared
+        NSApplication and accessory policy are set up but before the event loop
+        starts — the correct context for attaching extra AppKit UI (e.g. the
+        menu-bar status item) to this same app instance.
+        """
         app = NSApplication.sharedApplication()
         app.setActivationPolicy_(_POLICY_ACCESSORY)
 
@@ -344,5 +351,8 @@ class RecordingOverlay:
         )
 
         signal.signal(signal.SIGINT, lambda _s, _f: app.terminate_(None))
+
+        if on_ready is not None:
+            on_ready()
 
         app.run()

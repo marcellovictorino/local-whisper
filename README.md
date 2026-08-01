@@ -59,6 +59,8 @@ Once installed, local-whisper runs in the background automatically.
 
 **Adapt mode** is explicit: hold Right ⌥ instead of Right ⌘ when you want LLM reshaping (e.g. format as email). Plain dictation never calls an LLM and stays fast and fully local. Selection is ignored in adapt mode.
 
+**Menu bar:** a 🎙 status item gives quick access to edit config, open logs, reload config, and the docs.
+
 ## How-To
 
 <details>

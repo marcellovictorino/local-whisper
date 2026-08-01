@@ -209,6 +209,7 @@ def main() -> None:
         case (True, _, _, _):
             _ensure_accessibility()
 
+            from local_whisper import menubar
             from local_whisper.app import App
             from local_whisper.overlay import RecordingOverlay
 
@@ -223,8 +224,21 @@ def main() -> None:
             transcribe.start_keepalive(model, backend)
             transcribe.start_wake_watcher(model, backend)
 
+            def _quit() -> None:
+                app.stop()  # run daemon cleanup synchronously before the app terminates
+                overlay.quit()
+
+            # Retain the controller for the app's lifetime; the status item drops
+            # off the bar if its owner is released. Built via overlay's on_ready
+            # hook so it attaches to the same accessory NSApplication.
+            _menu_bar: list[object] = []
+
+            def _install_menu_bar() -> None:
+                _menu_bar.append(menubar.install(reload_config=app._reload_config, quit_app=_quit))
+
             try:
-                overlay.run()  # AppKit event loop on main thread — blocks until quit()
+                # AppKit event loop on main thread — blocks until quit()
+                overlay.run(on_ready=_install_menu_bar)
             except KeyboardInterrupt:
                 pass
             finally:
