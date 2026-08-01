@@ -19,8 +19,13 @@ Runs natively on Apple Silicon via MLX. Default model: whisper-small.en (English
 ## Install
 
 ```bash
-git clone https://github.com/marcellovictorino/local-whisper && cd local-whisper && bash setup.sh
+curl -fsSL https://raw.githubusercontent.com/marcellovictorino/local-whisper/master/install.sh | bash
 ```
+
+The installer clones the repo to a stable directory (`~/.local/share/local-whisper`
+by default — override with `LOCAL_WHISPER_DIR`) and runs `setup.sh`. The clone
+lives at a stable path because `setup.sh` hard-codes that directory into the
+launchd plist; re-run the installer to update in place.
 
 `setup.sh` does everything in one shot:
 1. Installs Python dependencies via `uv sync`
@@ -28,6 +33,14 @@ git clone https://github.com/marcellovictorino/local-whisper && cd local-whisper
 3. Installs a launchd service that starts local-whisper automatically on login
 
 After install, grant Accessibility permission when prompted — see [Accessibility permission](#accessibility-permission) below.
+
+### Alternative: clone manually
+
+Prefer to control where the repo lives? Clone it yourself and run `setup.sh`:
+
+```bash
+git clone https://github.com/marcellovictorino/local-whisper && cd local-whisper && bash setup.sh
+```
 
 ## Usage
 
