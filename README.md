@@ -393,6 +393,22 @@ Releasable [Conventional Commits](https://www.conventionalcommits.org/) merged t
 
 ## Troubleshooting
 
+### Health check
+
+Not sure what's wrong? Run the doctor for a one-shot status report:
+
+```bash
+just doctor                       # or: python -m local_whisper --doctor
+```
+
+It reports Accessibility permission, model cache, launchd service, and LLM env
+vars — marking each ✓ (ok), ✗ (critical failure), or ⚠ (warning). It exits
+non-zero when a critical check fails (missing Accessibility grant or uncached
+model), so it's usable in scripts. A missing service or absent LLM env vars are
+warnings only — plain dictation is fully local and works without them.
+
+---
+
 ### uv not installed
 
 ```
