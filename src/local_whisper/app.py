@@ -20,6 +20,7 @@ from local_whisper import (
     corrections,
     llm,
     snippets,
+    spelling,
     transcribe,
 )
 from local_whisper.audio import SAMPLE_RATE_HZ
@@ -51,15 +52,22 @@ class _Session:
         return Trigger.ADAPT if self.mode is _SessionMode.ADAPT else Trigger.DICTATE
 
 
-def _run_dictation_pipeline(text: str, corrections_map: dict[str, str], adapt_app: str | None = None) -> str:
+def _run_dictation_pipeline(
+    text: str,
+    corrections_map: dict[str, str],
+    spelling_variant: str | None = None,
+    adapt_app: str | None = None,
+) -> str:
     """Apply dictation post-processing pipeline; returns the text to paste.
 
     When adapt_app is given, the text is additionally reshaped by the LLM
-    for that app (adapt mode) before corrections and snippets.
+    for that app. Spelling normalisation follows cleanup or adaptation, so
+    configured corrections can override its replacements.
     """
     text = auto_cleanup.apply(text)
     if adapt_app is not None:
         text = auto_adapt.apply(text, adapt_app)
+    text = spelling.apply(text, spelling_variant)
     text = corrections.apply(text, corrections_map)
     text = snippets.expand(text)
     return text.rstrip() + " "
@@ -128,6 +136,7 @@ class App:
         self._active: _Session | None = None
         self._unsupported_vocab_notice_emitted = False
         self._corrections: dict[str, str] = corrections.load()
+        self._spelling_variant = config.get_whisper_spelling()
         vocabulary_words = config.get_vocabulary_words()
         self._vocab_prompt: str | None = self._build_vocab_prompt(vocabulary_words)
         self._listener = HotkeyListener(
@@ -181,6 +190,7 @@ class App:
         """Reload all config caches without restarting."""
         config.invalidate()
         self._corrections = corrections.load()
+        self._spelling_variant = config.get_whisper_spelling()
         vocabulary_words = config.get_vocabulary_words()
         self._vocab_prompt = self._build_vocab_prompt(vocabulary_words)
         self._signal_if_config_malformed()
@@ -257,9 +267,11 @@ class App:
 
             match session.mode:
                 case _SessionMode.DICTATION:
-                    result = _run_dictation_pipeline(text, self._corrections)
+                    result = _run_dictation_pipeline(text, self._corrections, self._spelling_variant)
                 case _SessionMode.ADAPT:
-                    result = _run_dictation_pipeline(text, self._corrections, adapt_app=self._active_app)
+                    result = _run_dictation_pipeline(
+                        text, self._corrections, self._spelling_variant, adapt_app=self._active_app
+                    )
                 case _SessionMode.COMMAND:
                     try:
                         result = _run_command_pipeline(session.selection, text)
