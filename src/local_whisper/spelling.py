@@ -22,6 +22,7 @@ AMERICAN_TO_BRITISH = {
     "dialog": "dialogue",
     "catalog": "catalogue",
     "gray": "grey",
+    "license": "licence",
 }
 
 _WORD_PATTERN = re.compile(
@@ -32,7 +33,7 @@ _WORD_PATTERN = re.compile(
 
 def apply(text: str, variant: str | None) -> str:
     """Normalise curated American spellings when the requested variant is British."""
-    if variant != "en-GB":
+    if variant is None or variant.lower() != "en-gb":
         return text
 
     def replace(match: re.Match[str]) -> str:

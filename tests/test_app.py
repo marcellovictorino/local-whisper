@@ -92,6 +92,34 @@ def test_adapt_pipeline_normalises_before_corrections() -> None:
     assert result == "ColorSync "
 
 
+def test_adapt_pipeline_order() -> None:
+    """Adapt pipeline: cleanup → adapt → spelling → corrections → snippets → trailing space."""
+    with (
+        patch("local_whisper.app.auto_cleanup.apply", return_value="cleaned") as mock_cleanup,
+        patch("local_whisper.app.auto_adapt.apply", return_value="adapted") as mock_adapt,
+        patch("local_whisper.app.spelling.apply", return_value="normalised") as mock_spelling,
+        patch("local_whisper.app.corrections.apply", return_value="corrected") as mock_corrections,
+        patch("local_whisper.app.snippets.expand", return_value="expanded") as mock_snippets,
+    ):
+        result = _run_dictation_pipeline("hello", {"teh": "the"}, adapt_app="Slack")
+
+    mock_cleanup.assert_called_once_with("hello")
+    mock_adapt.assert_called_once_with("cleaned", "Slack")
+    mock_spelling.assert_called_once_with("adapted", None)
+    mock_corrections.assert_called_once_with("normalised", {"teh": "the"})
+    mock_snippets.assert_called_once_with("corrected")
+    assert result == "expanded "
+
+
+def test_command_pipeline() -> None:
+    """apply_voice_command is called with correct args and its result returned."""
+    with patch("local_whisper.app.llm.apply_voice_command", return_value="fixed") as mock_llm:
+        result = _run_command_pipeline("original", "fix grammar")
+
+    mock_llm.assert_called_once_with("original", "fix grammar")
+    assert result == "fixed"
+
+
 def test_command_pipeline_does_not_normalise_spelling() -> None:
     """Commands transform selected text without dictation normalisation."""
     with (
@@ -127,6 +155,31 @@ def test_app_builds_one_merged_vocab_prompt_at_startup() -> None:
     mock_vocabulary.assert_called_once_with()
     mock_build.assert_called_once_with({"wispy": "Wispr"}, ["dbt", "tmux"])
     assert app._vocab_prompt == "Wispr, dbt, tmux"
+
+
+def test_reload_refreshes_corrections_and_vocabulary_before_rebuilding_prompt() -> None:
+    """SIGHUP replaces both prompt sources then constructs one fresh stored prompt."""
+    with (
+        patch("local_whisper.app.corrections.load", side_effect=[{"old": "Old"}, {"new": "New"}]) as mock_load,
+        patch(
+            "local_whisper.app.config.get_vocabulary_words", side_effect=[["old-term"], ["new-term"]]
+        ) as mock_vocabulary,
+        patch(
+            "local_whisper.app.corrections.build_prompt", side_effect=["Old, old-term", "New, new-term"]
+        ) as mock_build,
+        patch("local_whisper.app.config.invalidate") as mock_invalidate,
+    ):
+        app = App(backend=Backend.MLX_WHISPER)
+        mock_load.reset_mock()
+        mock_vocabulary.reset_mock()
+        mock_build.reset_mock()
+        app._reload_config()
+
+    mock_invalidate.assert_called_once_with()
+    mock_load.assert_called_once_with()
+    mock_vocabulary.assert_called_once_with()
+    mock_build.assert_called_once_with({"new": "New"}, ["new-term"])
+    assert app._vocab_prompt == "New, new-term"
 
 
 def test_reloaded_spelling_preference_changes_next_dictation_output() -> None:

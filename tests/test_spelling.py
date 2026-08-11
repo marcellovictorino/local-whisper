@@ -22,6 +22,7 @@ def test_map_contains_the_curated_american_to_british_pairs() -> None:
         "dialog": "dialogue",
         "catalog": "catalogue",
         "gray": "grey",
+        "license": "licence",
     }
 
 
@@ -33,7 +34,7 @@ def test_apply_normalises_complete_words_for_british_english() -> None:
     )
 
     assert apply(text, "en-GB") == (
-        "I realise the colour at the centre is my favourite; analyse its defence and license it. "
+        "I realise the colour at the centre is my favourite; analyse its defence and licence it. "
         "His behaviour brings honour to the labour next door; the neighbour's humour made travelling "
         "after a cancelled dialogue about the grey catalogue pleasant."
     )
@@ -61,3 +62,8 @@ def test_apply_leaves_other_variants_unchanged() -> None:
     assert apply(text, "en-US") == text
     assert apply(text, None) == text
     assert apply(text, "en-AU") == text
+
+
+def test_apply_matches_variant_case_insensitively() -> None:
+    assert apply("Realize the color.", "EN-GB") == "Realise the colour."
+    assert apply("Realize the color.", "en-gb") == "Realise the colour."
