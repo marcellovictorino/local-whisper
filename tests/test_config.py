@@ -165,6 +165,7 @@ def test_invalidation_retries_malformed_file(tmp_path: Path, monkeypatch: pytest
     "accessor,expected",
     [
         (cfg.get_whisper_model, None),
+        (cfg.get_whisper_spelling, None),
         (cfg.is_auto_cleanup_enabled, True),
         (cfg.get_corrections_raw, {}),
         (cfg.get_vocabulary_words, []),
@@ -182,6 +183,11 @@ def test_accessor_returns_default_when_file_missing(tmp_path: Path, accessor, ex
 def test_get_whisper_model_returns_value(tmp_path: Path) -> None:
     p = _write(tmp_path / "c.toml", '[whisper]\nmodel = "my-model"\n')
     assert cfg.get_whisper_model(p) == "my-model"
+
+
+def test_get_whisper_spelling_returns_value(tmp_path: Path) -> None:
+    p = _write(tmp_path / "c.toml", '[whisper]\nspelling = "en-GB"\n')
+    assert cfg.get_whisper_spelling(p) == "en-GB"
 
 
 @pytest.mark.parametrize("enabled,expected", [(True, True), (False, False)])
