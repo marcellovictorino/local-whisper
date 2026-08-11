@@ -2,6 +2,73 @@
 
 <!-- version list -->
 
+## v0.16.0 (2026-08-11)
+
+### Bug Fixes
+
+- Address code-review findings on British spelling feature
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+- **t-r001**: Expand British spelling map
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+### Chores
+
+- Sync uv.lock to released 0.15.0
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+- **finishing/clarity-dedup**: Link spelling reload guidance
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+- **finishing/docs-drift**: Clarify spelling no-op modes
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+- **finishing/review**: Preserve British license verb form
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+- **finishing/simplify**: Inline spelling casing rule
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+- **finishing/stop-slop**: Tighten spelling preference guidance
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+- **finishing/test-intent**: Test spelling output across app flows
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+### Documentation
+
+- **document-spelling-preference**: Document spelling preference
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+### Features
+
+- Add British spelling preference config
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+- **british-spelling-normaliser**: Add British spelling normaliser
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+- **config-spelling-preference**: Expose Whisper spelling preference accessor
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+- **dictation-spelling-pipeline**: Normalise dictation spelling
+  ([#42](https://github.com/marcellovictorino/local-whisper/pull/42),
+  [`93f35c8`](https://github.com/marcellovictorino/local-whisper/commit/93f35c87bfa71dbb9a91f60b4fd9283633129612))
+
+
 ## v0.15.0 (2026-08-01)
 
 ### Chores
