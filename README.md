@@ -338,7 +338,7 @@ To normalise completed dictation to British spelling, add `spelling = "en-GB"` t
 spelling = "en-GB"
 ```
 
-`en-US`, or no `spelling` setting, preserves American spelling. The built-in American-to-British map is curated rather than comprehensive; add project- or person-specific replacements under `[corrections]` (see [Personal corrections](#personal-corrections)).
+`en-US`, or no `spelling` setting, disables spelling normalisation and preserves the transcription's existing spelling. The built-in American-to-British map is curated rather than comprehensive; add project- or person-specific replacements under `[corrections]` (see [Personal corrections](#personal-corrections)).
 
 Reload the configuration from the menu bar with ⌘R, or send `SIGHUP`, to apply the change.
 
