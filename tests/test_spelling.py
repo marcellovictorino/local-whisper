@@ -12,7 +12,6 @@ def test_map_contains_the_curated_american_to_british_pairs() -> None:
         "favorite": "favourite",
         "analyze": "analyse",
         "defense": "defence",
-        "license": "licence",
         "behavior": "behaviour",
         "honor": "honour",
         "labor": "labour",
@@ -34,7 +33,7 @@ def test_apply_normalises_complete_words_for_british_english() -> None:
     )
 
     assert apply(text, "en-GB") == (
-        "I realise the colour at the centre is my favourite; analyse its defence and licence it. "
+        "I realise the colour at the centre is my favourite; analyse its defence and license it. "
         "His behaviour brings honour to the labour next door; the neighbour's humour made travelling "
         "after a cancelled dialogue about the grey catalogue pleasant."
     )

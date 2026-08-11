@@ -12,7 +12,6 @@ AMERICAN_TO_BRITISH = {
     "favorite": "favourite",
     "analyze": "analyse",
     "defense": "defence",
-    "license": "licence",
     "behavior": "behaviour",
     "honor": "honour",
     "labor": "labour",
