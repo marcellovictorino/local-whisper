@@ -29,8 +29,8 @@ class HotkeyListener:
     Debounced per key — repeated press events while held do not re-trigger.
 
     Requires macOS Accessibility permission for the running
-    terminal app (System Settings → Privacy & Security →
-    Accessibility).
+    Python interpreter — the venv binary launchd runs (System
+    Settings → Privacy & Security → Accessibility).
     """
 
     def __init__(
@@ -61,8 +61,10 @@ class HotkeyListener:
         except Exception as exc:  # noqa: BLE001
             logger.error(
                 "Failed to start hotkey listener: %s\n"
-                "  → Grant Accessibility permission: System Settings → "
-                "Privacy & Security → Accessibility → add your terminal app.",
+                "  → Grant Accessibility permission: System Settings → Privacy "
+                "& Security → Accessibility → enable the 'Python' entry "
+                "(the venv interpreter launchd runs). The service restarts "
+                "itself and begins working within ~30s of granting.",
                 exc,
             )
             raise
