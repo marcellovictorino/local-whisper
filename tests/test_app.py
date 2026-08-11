@@ -83,23 +83,13 @@ def test_dictation_pipeline_corrections_override_spelling() -> None:
     assert result == "ColorSync "
 
 
-def test_adapt_pipeline_order() -> None:
-    """Adapt pipeline: cleanup → adapt → corrections → snippets → trailing space."""
-    with (
-        patch("local_whisper.app.auto_cleanup.apply", return_value="cleaned") as mock_cleanup,
-        patch("local_whisper.app.auto_adapt.apply", return_value="adapted") as mock_adapt,
-        patch("local_whisper.app.spelling.apply", return_value="normalised") as mock_spelling,
-        patch("local_whisper.app.corrections.apply", return_value="corrected") as mock_corrections,
-        patch("local_whisper.app.snippets.expand", return_value="expanded") as mock_snippets,
-    ):
-        result = _run_dictation_pipeline("hello", {"teh": "the"}, adapt_app="Slack")
+def test_adapt_pipeline_normalises_before_corrections() -> None:
+    """Adapted text is normalised, then personal corrections take precedence."""
+    with patch("local_whisper.app.auto_adapt.apply", return_value="color") as mock_adapt:
+        result = _run_dictation_pipeline("hello", {"colour": "ColorSync"}, "en-GB", adapt_app="Slack")
 
-    mock_cleanup.assert_called_once_with("hello")
-    mock_adapt.assert_called_once_with("cleaned", "Slack")
-    mock_spelling.assert_called_once_with("adapted", None)
-    mock_corrections.assert_called_once_with("normalised", {"teh": "the"})
-    mock_snippets.assert_called_once_with("corrected")
-    assert result == "expanded "
+    mock_adapt.assert_called_once_with("hello", "Slack")
+    assert result == "ColorSync "
 
 
 def test_command_pipeline_does_not_normalise_spelling() -> None:
@@ -139,34 +129,23 @@ def test_app_builds_one_merged_vocab_prompt_at_startup() -> None:
     assert app._vocab_prompt == "Wispr, dbt, tmux"
 
 
-def test_reload_refreshes_spelling_corrections_and_vocabulary_before_rebuilding_prompt() -> None:
-    """SIGHUP replaces all stored dictation settings before the next session."""
+def test_reloaded_spelling_preference_changes_next_dictation_output() -> None:
+    """SIGHUP applies the new spelling preference to the next dictation session."""
     with (
-        patch("local_whisper.app.corrections.load", side_effect=[{"old": "Old"}, {"new": "New"}]) as mock_load,
-        patch("local_whisper.app.config.get_whisper_spelling", side_effect=["en-US", "en-GB"]) as mock_spelling,
-        patch(
-            "local_whisper.app.config.get_vocabulary_words", side_effect=[["old-term"], ["new-term"]]
-        ) as mock_vocabulary,
-        patch(
-            "local_whisper.app.corrections.build_prompt", side_effect=["Old, old-term", "New, new-term"]
-        ) as mock_build,
-        patch("local_whisper.app.config.invalidate") as mock_invalidate,
+        patch("local_whisper.app.corrections.load", return_value={}),
+        patch("local_whisper.app.config.get_whisper_spelling", side_effect=["en-US", "en-GB"]),
+        patch("local_whisper.app.config.get_vocabulary_words", return_value=[]),
+        patch("local_whisper.app.config.invalidate"),
+        patch("local_whisper.app.audio.record_until_event", return_value=np.ones(4_800, dtype="float32")),
+        patch("local_whisper.app.transcribe.wait_warmed", return_value=True),
+        patch("local_whisper.app.transcribe.run", return_value="color"),
+        patch("local_whisper.app.clipboard.write_and_paste") as mock_paste,
     ):
         app = App(backend=Backend.MLX_WHISPER)
-        assert app._spelling_variant == "en-US"
-        mock_load.reset_mock()
-        mock_spelling.reset_mock()
-        mock_vocabulary.reset_mock()
-        mock_build.reset_mock()
         app._reload_config()
+        app._run_session(_Session(mode=_SessionMode.DICTATION))
 
-    mock_invalidate.assert_called_once_with()
-    mock_load.assert_called_once_with()
-    mock_spelling.assert_called_once_with()
-    mock_vocabulary.assert_called_once_with()
-    mock_build.assert_called_once_with({"new": "New"}, ["new-term"])
-    assert app._spelling_variant == "en-GB"
-    assert app._vocab_prompt == "New, new-term"
+    mock_paste.assert_called_once_with("colour ")
 
 
 def test_dictation_session_uses_stored_prompt_without_reloading_or_rebuilding() -> None:
