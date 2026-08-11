@@ -13,6 +13,16 @@ AMERICAN_TO_BRITISH = {
     "analyze": "analyse",
     "defense": "defence",
     "license": "licence",
+    "behavior": "behaviour",
+    "honor": "honour",
+    "labor": "labour",
+    "neighbor": "neighbour",
+    "humor": "humour",
+    "traveling": "travelling",
+    "canceled": "cancelled",
+    "dialog": "dialogue",
+    "catalog": "catalogue",
+    "gray": "grey",
 }
 
 _WORD_PATTERN = re.compile(
