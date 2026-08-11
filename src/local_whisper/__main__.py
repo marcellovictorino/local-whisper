@@ -59,7 +59,7 @@ def _ensure_accessibility() -> None:
         return
     _prompt_accessibility()
     logger.warning(
-        "Accessibility permission required. Enable \"Python\" under System "
+        'Accessibility permission required. Enable "Python" under System '
         "Settings → Privacy & Security → Accessibility. The service restarts "
         "itself and begins working within ~30s of granting."
     )
