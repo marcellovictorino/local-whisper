@@ -86,6 +86,11 @@ def get_whisper_model(path: Path = CONFIG_PATH) -> str | None:
     return load_section("whisper", path).get("model")
 
 
+def get_whisper_spelling(path: Path = CONFIG_PATH) -> str | None:
+    """Return [whisper] spelling value, or None if absent."""
+    return load_section("whisper", path).get("spelling")
+
+
 def is_auto_cleanup_enabled(path: Path = CONFIG_PATH) -> bool:
     """Return [auto_cleanup] enabled flag. Defaults to True (opt-out)."""
     return bool(load_section("auto_cleanup", path).get("enabled", True))

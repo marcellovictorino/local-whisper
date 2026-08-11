@@ -329,6 +329,19 @@ Restart the service to apply:
 just stop && just start
 ```
 
+### Spelling preference
+
+Add `spelling = "en-GB"` to `[whisper]` to normalise dictation to British spelling:
+
+```toml
+[whisper]
+spelling = "en-GB"
+```
+
+`en-US` or no `spelling` setting preserves the transcription's existing spelling. The built-in American-to-British map is curated; add project- or person-specific replacements under `[corrections]` (see [Personal corrections](#personal-corrections)).
+
+This setting takes effect after a configuration reload; see [Vocabulary seeding](#vocabulary-seeding).
+
 ### Supported models
 
 | Model | Size | Languages | Speed | Accuracy | Best for |

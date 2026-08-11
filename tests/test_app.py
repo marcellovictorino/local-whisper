@@ -47,13 +47,15 @@ def test_dictation_pipeline_order() -> None:
     """Each pipeline step is called in the correct order with correct args."""
     with (
         patch("local_whisper.app.auto_cleanup.apply", return_value="cleaned") as mock_cleanup,
+        patch("local_whisper.app.spelling.apply", return_value="normalised") as mock_spelling,
         patch("local_whisper.app.corrections.apply", return_value="corrected") as mock_corrections,
         patch("local_whisper.app.snippets.expand", return_value="expanded") as mock_snippets,
     ):
         result = _run_dictation_pipeline("hello", {"teh": "the"})
 
     mock_cleanup.assert_called_once_with("hello")
-    mock_corrections.assert_called_once_with("cleaned", {"teh": "the"})
+    mock_spelling.assert_called_once_with("cleaned", None)
+    mock_corrections.assert_called_once_with("normalised", {"teh": "the"})
     mock_snippets.assert_called_once_with("corrected")
     assert result == "expanded "
 
@@ -70,22 +72,32 @@ def test_dictation_pipeline_never_calls_adapt() -> None:
     mock_adapt.assert_not_called()
 
 
-def test_dictation_pipeline_applies_corrections() -> None:
-    """Corrections substitution is applied without mocking (integration-style)."""
+def test_dictation_pipeline_corrections_override_spelling() -> None:
+    """Personal corrections take precedence over built-in spelling replacements."""
     with (
         patch("local_whisper.app.auto_cleanup.apply", side_effect=lambda t: t),
         patch("local_whisper.app.snippets.expand", side_effect=lambda t: t),
     ):
-        result = _run_dictation_pipeline("teh world", {"teh": "the"})
+        result = _run_dictation_pipeline("color", {"colour": "ColorSync"}, "en-GB")
 
-    assert result == "the world "
+    assert result == "ColorSync "
+
+
+def test_adapt_pipeline_normalises_before_corrections() -> None:
+    """Adapted text is normalised, then personal corrections take precedence."""
+    with patch("local_whisper.app.auto_adapt.apply", return_value="color") as mock_adapt:
+        result = _run_dictation_pipeline("hello", {"colour": "ColorSync"}, "en-GB", adapt_app="Slack")
+
+    mock_adapt.assert_called_once_with("hello", "Slack")
+    assert result == "ColorSync "
 
 
 def test_adapt_pipeline_order() -> None:
-    """Adapt pipeline: cleanup → adapt → corrections → snippets → trailing space."""
+    """Adapt pipeline: cleanup → adapt → spelling → corrections → snippets → trailing space."""
     with (
         patch("local_whisper.app.auto_cleanup.apply", return_value="cleaned") as mock_cleanup,
         patch("local_whisper.app.auto_adapt.apply", return_value="adapted") as mock_adapt,
+        patch("local_whisper.app.spelling.apply", return_value="normalised") as mock_spelling,
         patch("local_whisper.app.corrections.apply", return_value="corrected") as mock_corrections,
         patch("local_whisper.app.snippets.expand", return_value="expanded") as mock_snippets,
     ):
@@ -93,7 +105,8 @@ def test_adapt_pipeline_order() -> None:
 
     mock_cleanup.assert_called_once_with("hello")
     mock_adapt.assert_called_once_with("cleaned", "Slack")
-    mock_corrections.assert_called_once_with("adapted", {"teh": "the"})
+    mock_spelling.assert_called_once_with("adapted", None)
+    mock_corrections.assert_called_once_with("normalised", {"teh": "the"})
     mock_snippets.assert_called_once_with("corrected")
     assert result == "expanded "
 
@@ -104,6 +117,19 @@ def test_command_pipeline() -> None:
         result = _run_command_pipeline("original", "fix grammar")
 
     mock_llm.assert_called_once_with("original", "fix grammar")
+    assert result == "fixed"
+
+
+def test_command_pipeline_does_not_normalise_spelling() -> None:
+    """Commands transform selected text without dictation normalisation."""
+    with (
+        patch("local_whisper.app.llm.apply_voice_command", return_value="fixed") as mock_llm,
+        patch("local_whisper.app.spelling.apply") as mock_spelling,
+    ):
+        result = _run_command_pipeline("original", "fix grammar")
+
+    mock_llm.assert_called_once_with("original", "fix grammar")
+    mock_spelling.assert_not_called()
     assert result == "fixed"
 
 
@@ -154,6 +180,25 @@ def test_reload_refreshes_corrections_and_vocabulary_before_rebuilding_prompt() 
     mock_vocabulary.assert_called_once_with()
     mock_build.assert_called_once_with({"new": "New"}, ["new-term"])
     assert app._vocab_prompt == "New, new-term"
+
+
+def test_reloaded_spelling_preference_changes_next_dictation_output() -> None:
+    """SIGHUP applies the new spelling preference to the next dictation session."""
+    with (
+        patch("local_whisper.app.corrections.load", return_value={}),
+        patch("local_whisper.app.config.get_whisper_spelling", side_effect=["en-US", "en-GB"]),
+        patch("local_whisper.app.config.get_vocabulary_words", return_value=[]),
+        patch("local_whisper.app.config.invalidate"),
+        patch("local_whisper.app.audio.record_until_event", return_value=np.ones(4_800, dtype="float32")),
+        patch("local_whisper.app.transcribe.wait_warmed", return_value=True),
+        patch("local_whisper.app.transcribe.run", return_value="color"),
+        patch("local_whisper.app.clipboard.write_and_paste") as mock_paste,
+    ):
+        app = App(backend=Backend.MLX_WHISPER)
+        app._reload_config()
+        app._run_session(_Session(mode=_SessionMode.DICTATION))
+
+    mock_paste.assert_called_once_with("colour ")
 
 
 def test_dictation_session_uses_stored_prompt_without_reloading_or_rebuilding() -> None:
