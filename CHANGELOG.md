@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v0.16.1 (2026-08-14)
+
+### Bug Fixes
+
+- Point accessibility permission instructions at Python interpreter
+  ([#41](https://github.com/marcellovictorino/local-whisper/pull/41),
+  [`3d3b438`](https://github.com/marcellovictorino/local-whisper/commit/3d3b438bf0b05094ef05dcbf274dc594f4934d05))
+
+### Chores
+
+- Sync uv.lock to released 0.15.0
+  ([#41](https://github.com/marcellovictorino/local-whisper/pull/41),
+  [`3d3b438`](https://github.com/marcellovictorino/local-whisper/commit/3d3b438bf0b05094ef05dcbf274dc594f4934d05))
+
+### Code Style
+
+- Fix ruff-format quote style in accessibility permission message
+  ([#41](https://github.com/marcellovictorino/local-whisper/pull/41),
+  [`3d3b438`](https://github.com/marcellovictorino/local-whisper/commit/3d3b438bf0b05094ef05dcbf274dc594f4934d05))
+
+### Documentation
+
+- Clarify squash-merge discards per-commit conventional types
+  ([#41](https://github.com/marcellovictorino/local-whisper/pull/41),
+  [`3d3b438`](https://github.com/marcellovictorino/local-whisper/commit/3d3b438bf0b05094ef05dcbf274dc594f4934d05))
+
+
 ## v0.16.0 (2026-08-11)
 
 ### Bug Fixes
