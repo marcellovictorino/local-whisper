@@ -83,14 +83,14 @@ This runs to completion, commits, and exits. Open a PR in the morning.
 
 PRs are squash-merged, so **the PR title becomes the commit message on `master`**. [python-semantic-release](https://python-semantic-release.readthedocs.io/) reads that history after every push to `master`. When it finds a releasable commit, CI opens or updates a `release/next` pull request containing the version bump (`pyproject.toml` + `src/local_whisper/__init__.py`) and [CHANGELOG.md](CHANGELOG.md). This requires the repository Actions setting that permits GitHub Actions to create pull requests. Review and merge that release pull request like any other PR. Its merge causes CI to create the matching git tag and GitHub Release; the bot never writes directly to `master`.
 
-This makes the original PR title load-bearing, not cosmetic. Use a [Conventional Commits](https://www.conventionalcommits.org/) type:
+The PR title is therefore the **only** input to release computation. Squash-merge collapses the branch into a single commit, so the Conventional Commit types on the individual commits inside the PR are discarded and never reach `master`. Use a [Conventional Commits](https://www.conventionalcommits.org/) type:
 
 | Prefix | Effect |
 |--------|--------|
 | `feat:` | minor version bump |
 | `fix:`, `perf:` | patch version bump |
 | `feat!:`, or `BREAKING CHANGE:` in the body | major version bump (or minor, while pre-1.0 — see `major_on_zero` in `pyproject.toml`) |
-| `chore:`, `ci:`, `docs:`, `refactor:`, `style:`, `test:`, `build:` | no version bump, no changelog entry |
+| `chore:`, `ci:`, `docs:`, `refactor:`, `style:`, `test:`, `build:` | no version bump, no changelog entry — **even if the PR contains `fix:` or `feat:` commits**; those types are lost on squash-merge. Title the PR for the highest-impact change it ships |
 
 A PR title lint (`.github/workflows/pr-title-lint.yml`) enforces this format — an unparseable title fails loudly at PR time instead of silently producing no release later. Do not change the generated release pull request title: `chore(release): <version>` is how CI recognises its approved merge and publishes that version.
 
