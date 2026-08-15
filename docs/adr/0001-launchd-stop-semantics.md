@@ -8,8 +8,9 @@ Accepted
 
 The launchd plist sets `KeepAlive` true and `ThrottleInterval` 30s (`setup.sh`).
 Empirically, `launchctl stop <label>` kills the running process and launchd,
-seeing `KeepAlive` true, respawns it (after `ThrottleInterval`, ~30s) — so
-`stop` does not actually stop the service. This is surprising for anyone reading `setup.sh`/`justfile`
+seeing `KeepAlive` true, respawns it immediately (measured ~1s for a daemon
+that has been up longer than `ThrottleInterval`) — so `stop` does not actually
+stop the service. This is surprising for anyone reading `setup.sh`/`justfile`
 expecting `stop` to leave the service down.
 
 ## Decision
@@ -17,9 +18,14 @@ expecting `stop` to leave the service down.
 `stop` uses `launchctl bootout` and `start` uses `launchctl bootstrap` instead
 of `launchctl stop`/`start`; `restart` uses
 `launchctl kickstart -k gui/$(id -u)/com.local-whisper`, which kills and
-respawns the job in place without unloading it — the common case, and the
-only one that cycles the job without unloading it (`bootstrap` also leaves
-the job loaded, but only after an unload).
+respawns the job in place. Restart is preferred over `stop && start` because it
+is a single operation against an already-registered job: it never reads the
+plist file and never deregisters the job, so it cannot leave the service down
+if it fails, and it is unaffected by the plist having been moved or edited
+since install. `bootout` followed by `bootstrap` is two steps with a window in
+between where the service is stopped, and the `bootstrap` half re-reads the
+plist from disk and fails if that path is now wrong — recovery, not routine
+cycling.
 
 Rejected option: keep `launchctl stop` and just rename/redocument it (e.g. call
 it "kick" or document that it always respawns). This was rejected because it
@@ -31,9 +37,11 @@ free the microphone) would be wrong, and no amount of renaming removes the
 matching how `setup.sh`'s own reinstall path already behaves (the
 bootout/bootstrap pair at the end of `setup.sh`).
 
-No command may use `launchctl stop` — with `KeepAlive` true it triggers a
-throttled respawn (~30s), not a stop. Use `bootout` for a real stop, `bootstrap` to bring an
-unloaded job back, `kickstart -k` to cycle a loaded one.
+No command may use `launchctl stop` — with `KeepAlive` true it is a respawn,
+not a stop (immediate for a long-running job; `ThrottleInterval` only spaces
+respawns when the process exits within 30s of starting, as in the Accessibility
+self-heal). Use `bootout` for a real stop, `bootstrap` to bring an unloaded job
+back, `kickstart -k` to cycle a loaded one.
 
 ## Consequences
 

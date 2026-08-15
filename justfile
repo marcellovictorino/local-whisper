@@ -10,7 +10,7 @@ domain      := "gui/" + `id -u`
 # Install local-whisper as a background service (starts on login)
 [group('setup')]
 install:
-    bash {{justfile_directory()}}/setup.sh
+    bash "{{justfile_directory()}}/setup.sh"
 
 # Remove the background service
 [group('setup')]
@@ -70,11 +70,11 @@ update:
     echo "Updating $before..$after:"
     git log --oneline --no-decorate "$before..$after"
     changed="$(git diff --name-only "$before" "$after")"
-    if grep -qx 'setup.sh' <<< "$changed"; then
+    if grep -qE '^setup\.sh$' <<< "$changed"; then
         echo "setup.sh changed (plist contents / env-var capture) — run 'just install' instead of restarting."
         exit 0
     fi
-    {{uv}} sync
+    "{{uv}}" sync
     just restart
 
 # Show service status
@@ -95,7 +95,7 @@ demo-ui mode="":
 # Stream service logs
 [group('dev')]
 logs:
-    tail -f {{log_file}}
+    tail -f "{{log_file}}"
 
 # Validate the user config TOML
 [group('dev')]
