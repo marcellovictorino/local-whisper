@@ -12,4 +12,4 @@
 
 ## Release
 
-The PR title is the only release-computation input: squash merging discards the Conventional Commit types of internal commits. Use a Conventional Commit title; see [Releases](../CONTRIBUTING.md#releases) for the release rule and version-bump effects.
+The PR title is the only release-computation input: squash merging discards the Conventional Commit types of internal commits. Use a Conventional Commit title; see [Releases](https://github.com/marcellovictorino/local-whisper/blob/master/CONTRIBUTING.md#releases) for the release rule and version-bump effects.
