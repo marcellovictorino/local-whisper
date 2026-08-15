@@ -5,7 +5,7 @@ labels: needs-triage
 assignees: ''
 ---
 
-## What
+## Problem or improvement
 
 <!-- Describe the user-facing problem or improvement. -->
 
