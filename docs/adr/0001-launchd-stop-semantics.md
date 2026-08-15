@@ -8,9 +8,13 @@ Accepted
 
 The launchd plist sets `KeepAlive` true and `ThrottleInterval` 30s (`setup.sh`).
 Empirically, `launchctl stop <label>` kills the running process and launchd,
-seeing `KeepAlive` true, respawns it immediately (measured ~1s for a daemon
-that has been up longer than `ThrottleInterval`) — so `stop` does not actually
-stop the service. This is surprising for anyone reading `setup.sh`/`justfile`
+seeing `KeepAlive` true, respawns it immediately — so `stop` does not actually
+stop the service. Two observations on the live daemon, both with the process
+up for longer than `ThrottleInterval`: PID 2892 -> 4167 (recorded in the
+originating issue), and PID 85215 -> 59320 with one second elapsed.
+`ThrottleInterval` bounds the interval between spawns, so it only delays a
+respawn when the process exits within 30s of starting — the Accessibility
+self-heal case below, not this one. This is surprising for anyone reading `setup.sh`/`justfile`
 expecting `stop` to leave the service down.
 
 ## Decision
@@ -18,14 +22,19 @@ expecting `stop` to leave the service down.
 `stop` uses `launchctl bootout` and `start` uses `launchctl bootstrap` instead
 of `launchctl stop`/`start`; `restart` uses
 `launchctl kickstart -k gui/$(id -u)/com.local-whisper`, which kills and
-respawns the job in place. Restart is preferred over `stop && start` because it
-is a single operation against an already-registered job: it never reads the
-plist file and never deregisters the job, so it cannot leave the service down
-if it fails, and it is unaffected by the plist having been moved or edited
-since install. `bootout` followed by `bootstrap` is two steps with a window in
-between where the service is stopped, and the `bootstrap` half re-reads the
-plist from disk and fails if that path is now wrong — recovery, not routine
-cycling.
+respawns the job in place. Restart is preferred over `stop && start` because
+on the normal path — a job that is already registered — it is a single
+operation that neither reads the plist from disk nor deregisters the job, so
+there is no window in which the service is stopped and nothing to go wrong if
+the plist has been moved or edited since install. `bootout` followed by
+`bootstrap` is two steps with the service down in between, and the `bootstrap`
+half re-reads the plist, so a wrong path leaves the service off rather than
+merely failing to cycle it.
+
+`restart` does fall back to `bootstrap` when `kickstart` reports the job is not
+loaded, which reintroduces the plist read for that one case. That is deliberate:
+if the job is already absent there is no running service to lose, so the
+downside the fallback carries does not apply.
 
 Rejected option: keep `launchctl stop` and just rename/redocument it (e.g. call
 it "kick" or document that it always respawns). This was rejected because it

@@ -96,7 +96,7 @@ A PR title lint (`.github/workflows/pr-title-lint.yml`) enforces this format —
 
 ## Pulling in Changes
 
-After pulling, run `just update` from the canonical clone — see [README > Updating](README.md#updating) for the full procedure (including the linked-worktree refusal and the `setup.sh` reinstall path).
+To pick up upstream changes, run `just update` from the canonical clone. It does the pull itself, then syncs dependencies and restarts the service — do not pull first, or it will find nothing to do and exit without syncing or restarting. See [README > Updating](README.md#updating) for the full procedure (including the linked-worktree refusal and the `setup.sh` reinstall path).
 
 ## Service Commands
 

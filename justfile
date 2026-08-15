@@ -10,7 +10,7 @@ domain      := "gui/" + `id -u`
 # Install local-whisper as a background service (starts on login)
 [group('setup')]
 install:
-    bash "{{justfile_directory()}}/setup.sh"
+    bash "{{project_dir}}/setup.sh"
 
 # Remove the background service
 [group('setup')]
@@ -47,7 +47,13 @@ restart:
         fi
     fi
     sleep 1
-    launchctl print "{{domain}}/{{plist_name}}" >/dev/null || { echo "Not loaded" >&2; exit 1; }
+    status_line="$(launchctl list | grep "{{plist_name}}")" || { echo "Not loaded" >&2; exit 1; }
+    pid="$(awk '{print $1}' <<< "$status_line")"
+    if [[ "$pid" == "-" ]]; then
+        echo "Loaded but not running (last exit $(awk '{print $2}' <<< "$status_line")) — check 'just logs'." >&2
+        exit 1
+    fi
+    echo "Running — PID $pid"
 
 # Pull latest, sync deps, and restart — refuses to run from a linked worktree
 [group('service')]
@@ -75,7 +81,7 @@ update:
         exit 0
     fi
     "{{uv}}" sync
-    just restart
+    {{just_executable()}} restart
 
 # Show service status
 [group('service')]
