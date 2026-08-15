@@ -326,7 +326,7 @@ model = "mlx-community/whisper-large-v3-turbo"
 Restart the service to apply:
 
 ```bash
-just stop && just start
+just restart
 ```
 
 ### Spelling preference
@@ -467,9 +467,13 @@ it is the `Python` entry — not Terminal, not `uv` — that needs the grant:
 System Settings → Privacy & Security → Accessibility → enable "Python"
 ```
 
-No manual restart needed — after you grant it, the service exits and launchd
-respawns a fresh process that picks up the permission, within ~30s. If the
-dialog didn't appear:
+After granting it, restart the service so the new process picks up the permission:
+
+```bash
+just restart
+```
+
+If the dialog didn't appear:
 
 ```bash
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
@@ -506,10 +510,18 @@ bash setup.sh
 
 ## Updating
 
-After merging changes, re-run setup **from the canonical clone** — never from a git worktree:
+Normal path — pull, sync deps, and restart in one step, **from the canonical clone** — never from a git worktree:
 
 ```bash
-cd ~/path/to/local-whisper && git pull && bash setup.sh
+cd ~/path/to/local-whisper && just update
 ```
 
-The launchd plist hard-codes the directory `setup.sh` is run from. If that directory is an ephemeral worktree that later gets deleted, the daemon silently dies. `setup.sh` warns and asks for confirmation when run from a linked worktree.
+`just update` hard-refuses to run from a linked worktree: the launchd plist hard-codes the directory it was installed from, so running the update from an ephemeral worktree that later gets deleted would leave the daemon pointing at a dead path.
+
+If the pull touches `setup.sh`, `pyproject.toml`, or `uv.lock`, `just update` skips the restart and tells you to run a full reinstall instead, since those files can change the plist or venv layout:
+
+```bash
+bash setup.sh
+```
+
+`setup.sh` is idempotent — safe to run multiple times.
