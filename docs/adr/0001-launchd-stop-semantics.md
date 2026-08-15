@@ -30,6 +30,10 @@ free the microphone) would be wrong, and no amount of renaming removes the
 matching how `setup.sh`'s own reinstall path already behaves (the
 bootout/bootstrap pair at the end of `setup.sh`).
 
+No command may use `launchctl stop` — with `KeepAlive` true it is an instant
+respawn, not a stop. Use `bootout` for a real stop, `bootstrap` to bring an
+unloaded job back, `kickstart -k` to cycle a loaded one.
+
 ## Consequences
 
 - `KeepAlive` and `ThrottleInterval` are left unchanged. They are load-bearing
@@ -41,6 +45,3 @@ bootout/bootstrap pair at the end of `setup.sh`).
   hot while the user goes to flip the Accessibility toggle. Switching
   `KeepAlive` to `{SuccessfulExit: false}` would break this self-heal, since a
   clean `exit 0` would then stop being respawned at all.
-- No command may use `launchctl stop` — with `KeepAlive` true it is an
-  instant respawn, not a stop. Use `bootout` for a real stop, `bootstrap` to
-  bring an unloaded job back, `kickstart -k` to cycle a loaded one.

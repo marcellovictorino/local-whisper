@@ -513,20 +513,23 @@ bash setup.sh
 
 ## Updating
 
-Normal path — pull, sync deps, and restart in one step, **from the canonical clone** — never from a git worktree:
+Normal path — pull, sync deps, and restart in one step, **from the canonical clone** — never from a linked worktree:
 
 ```bash
 cd ~/path/to/local-whisper && just update
 ```
 
-`just update` hard-refuses to run from a linked worktree: the launchd plist hard-codes the directory it was installed from, so running the update from an ephemeral worktree that later gets deleted would leave the daemon pointing at a dead path.
+`just update` hard-refuses to run from a linked worktree: the launchd plist hard-codes the directory it was installed from, so running the update from a linked worktree that later gets deleted would leave the daemon pointing at a dead path.
 
-If the pull brings no new commits, `just update` exits early — no sync, no restart. And if the service isn't loaded (e.g. after `just stop`), the restart step falls back to bootstrapping it automatically. For a first-time setup, use `just install` instead.
+Edge cases:
+- **No new commits** — `just update` exits early: no sync, no restart.
+- **Service not loaded** (e.g. after `just stop`) — the restart step bootstraps it automatically.
+- **Never installed** — use `just install` instead.
 
-If the pull touches `setup.sh`, `just update` skips the dependency sync and restart and tells you to run a full reinstall instead, since it can change the plist contents or env-var capture (`setup.sh` runs `uv sync` itself):
+If the pull touches `setup.sh`, `just update` stops and tells you to reinstall instead of syncing and restarting — `setup.sh` can change the plist contents or the captured env vars, so a restart alone isn't enough. Run it from the canonical clone — it warns and asks for confirmation if run from a linked worktree, and it's idempotent, so re-running is safe:
 
 ```bash
 bash setup.sh
 ```
 
-`setup.sh` is idempotent — safe to run multiple times.
+`setup.sh` runs `uv sync` itself, so this single command covers both the dependency sync and the reinstall.

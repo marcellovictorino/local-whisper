@@ -96,12 +96,11 @@ A PR title lint (`.github/workflows/pr-title-lint.yml`) enforces this format —
 
 ## Pulling in Changes
 
-After pulling new commits, make them live:
+After pulling, run `just update` from the canonical clone — see [README > Updating](README.md#updating) for the full procedure (including the linked-worktree refusal and the `setup.sh` reinstall path).
 
-- Normal path (source or dependency changes): `just update` — pulls, syncs deps, and restarts the service. Hard-refuses to run from a linked worktree (see README "Updating"); run it from the canonical clone.
-- If the pull touched `setup.sh`: run `bash setup.sh` (`just install`) instead — it can change the plist contents or env-var capture, and `just update` will tell you to do this itself.
+## Service Commands
 
-`just restart` kickstarts a fresh process without reinstalling; if the job isn't loaded (e.g. after `just stop`), it falls back to `launchctl bootstrap` automatically. For a first-time setup, use `just install` instead. `just stop` does a real `launchctl bootout` (fully unloads the service), not a soft stop — see [docs/adr/0001-launchd-stop-semantics.md](docs/adr/0001-launchd-stop-semantics.md) for why.
+`just stop` runs a real `launchctl bootout` (fully unloads the service), not a soft stop — see [docs/adr/0001-launchd-stop-semantics.md](docs/adr/0001-launchd-stop-semantics.md) for why.
 
 ## Constraints
 
