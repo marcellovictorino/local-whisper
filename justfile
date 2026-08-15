@@ -34,6 +34,28 @@ restart:
     launchctl kickstart -k "gui/$(id -u)/{{plist_name}}"
     @sleep 1; launchctl list | grep {{plist_name}} || echo "Not loaded"
 
+# Pull latest, sync deps, and restart — refuses to run from a linked worktree
+[group('service')]
+update:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd {{project_dir}}
+    if [[ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]]; then
+        echo "Refusing to update: $(pwd) is a linked git worktree." >&2
+        echo "The launchd plist hard-codes the canonical clone directory it was installed from (see README > Updating). Run 'just update' from that clone instead." >&2
+        exit 1
+    fi
+    before="$(git rev-parse HEAD)"
+    git pull
+    after="$(git rev-parse HEAD)"
+    changed="$(git diff --name-only "$before" "$after")"
+    {{uv}} sync
+    if grep -qE '^(setup\.sh|pyproject\.toml|uv\.lock)$' <<< "$changed"; then
+        echo "setup.sh, pyproject.toml, or uv.lock changed (touches the plist and/or venv layout) — run 'just install' instead of restarting."
+        exit 0
+    fi
+    just restart
+
 # Show service status
 [group('service')]
 status:
