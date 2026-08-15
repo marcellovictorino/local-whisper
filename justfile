@@ -39,7 +39,10 @@ restart:
     if [[ $kickstart_status -ne 0 ]]; then
         if [[ "$kickstart_err" == *"Could not find service"* ]]; then
             echo "Job not loaded — bootstrapping instead."
-            launchctl bootstrap "{{ domain }}" "{{ plist_dest }}"
+            launchctl bootstrap "{{ domain }}" "{{ plist_dest }}" || {
+                echo "bootstrap failed (exit $?) — is the service installed? Try 'just install'." >&2
+                exit 1
+            }
         else
             echo "$kickstart_err" >&2
             echo "kickstart failed (exit $kickstart_status)." >&2
