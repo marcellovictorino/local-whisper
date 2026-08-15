@@ -15,6 +15,9 @@ jobs:
     #  - pynput's xorg backend (used on any non-darwin/win32 platform)
     #    connects to a real X display while importing pynput._util.xorg.
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -22,14 +25,17 @@ jobs:
         with:
           enable-caching: true
 
+      - name: Install Python
+        run: uv python install ${{ matrix.python-version }}
+
       - name: Install dependencies
-        run: uv sync --all-groups
+        run: uv sync --all-groups --python ${{ matrix.python-version }}
 
       - name: Lint
-        run: uv run ruff check src/ tests/ scripts/validate_config.py
+        run: uv run --python ${{ matrix.python-version }} ruff check src/ tests/ scripts/validate_config.py
 
       - name: Format check
-        run: uv run ruff format --check src/ tests/ scripts/validate_config.py
+        run: uv run --python ${{ matrix.python-version }} ruff format --check src/ tests/ scripts/validate_config.py
 
       # Only Test needs these (see comment above); installing after Lint/Format
       # check means a run that fails there doesn't pay this cost for nothing.
@@ -37,7 +43,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2 xvfb
 
       - name: Test
-        run: xvfb-run -a uv run pytest tests/ -v
+        run: xvfb-run -a uv run --python ${{ matrix.python-version }} pytest tests/ -v
 
   release:
     needs: ci
