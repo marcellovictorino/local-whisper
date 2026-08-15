@@ -28,6 +28,12 @@ start:
 stop:
     launchctl stop {{plist_name}}
 
+# Restart the service (kickstart forces a fresh process, no reinstall)
+[group('service')]
+restart:
+    launchctl kickstart -k "gui/$(id -u)/{{plist_name}}"
+    @sleep 1; launchctl list | grep {{plist_name}} || echo "Not loaded"
+
 # Show service status
 [group('service')]
 status:
