@@ -5,6 +5,7 @@ uv          := `which uv`
 plist_name  := "com.local-whisper"
 plist_dest  := env_var("HOME") / "Library/LaunchAgents" / plist_name + ".plist"
 log_file    := env_var("HOME") / "Library/Logs/local-whisper.log"
+domain      := "gui/" + `id -u`
 
 # Install local-whisper as a background service (starts on login)
 [group('setup')]
@@ -14,31 +15,31 @@ install:
 # Remove the background service
 [group('setup')]
 uninstall:
-    launchctl bootout "gui/$(id -u)" "{{plist_dest}}" 2>/dev/null || true
+    launchctl bootout "{{domain}}" "{{plist_dest}}" 2>/dev/null || true
     rm -f "{{plist_dest}}"
     @echo "local-whisper uninstalled."
 
 # Start the service (bootstrap; use after stop, or if not loaded)
 [group('service')]
 start:
-    launchctl bootstrap "gui/$(id -u)" "{{plist_dest}}"
+    launchctl bootstrap "{{domain}}" "{{plist_dest}}"
 
 # Stop the service (bootout — actually stops it, unlike `launchctl stop`)
 [group('service')]
 stop:
-    launchctl bootout "gui/$(id -u)" "{{plist_dest}}"
+    launchctl bootout "{{domain}}" "{{plist_dest}}"
 
 # Restart the service (kickstart forces a fresh process; falls back to bootstrap if not loaded)
 [group('service')]
 restart:
     #!/usr/bin/env bash
     set -uo pipefail
-    kickstart_err="$(launchctl kickstart -k "gui/$(id -u)/{{plist_name}}" 2>&1)"
+    kickstart_err="$(launchctl kickstart -k "{{domain}}/{{plist_name}}" 2>&1)"
     kickstart_status=$?
     if [[ $kickstart_status -ne 0 ]]; then
         if [[ "$kickstart_err" == *"Could not find service"* ]]; then
             echo "Job not loaded — bootstrapping instead."
-            launchctl bootstrap "gui/$(id -u)" "{{plist_dest}}"
+            launchctl bootstrap "{{domain}}" "{{plist_dest}}"
         else
             echo "$kickstart_err" >&2
             echo "kickstart failed (exit $kickstart_status)." >&2
@@ -46,7 +47,7 @@ restart:
         fi
     fi
     sleep 1
-    launchctl print "gui/$(id -u)/{{plist_name}}" >/dev/null || { echo "Not loaded" >&2; exit 1; }
+    launchctl print "{{domain}}/{{plist_name}}" >/dev/null || { echo "Not loaded" >&2; exit 1; }
 
 # Pull latest, sync deps, and restart — refuses to run from a linked worktree
 [group('service')]
@@ -69,7 +70,7 @@ update:
     echo "Updating $before..$after:"
     git log --oneline --no-decorate "$before..$after"
     changed="$(git diff --name-only "$before" "$after")"
-    if grep -qE '^setup\.sh$' <<< "$changed"; then
+    if grep -qx 'setup.sh' <<< "$changed"; then
         echo "setup.sh changed (plist contents / env-var capture) — run 'just install' instead of restarting."
         exit 0
     fi
