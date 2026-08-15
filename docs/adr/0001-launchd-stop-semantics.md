@@ -18,7 +18,7 @@ expecting `stop` to leave the service down.
 of `launchctl stop`/`start`; `restart` uses
 `launchctl kickstart -k gui/$(id -u)/com.local-whisper`, which kills and
 respawns the job in place without unloading it — the common case, and the
-only one that leaves the job loaded (see `setup.sh:145-146`).
+only one that leaves the job loaded.
 
 Rejected option: keep `launchctl stop` and just rename/redocument it (e.g. call
 it "kick" or document that it always respawns). This was rejected because it
@@ -27,7 +27,8 @@ expecting the service to actually be down (e.g. before an uninstall, or to
 free the microphone) would be wrong, and no amount of renaming removes the
 `KeepAlive` interaction; it only relabels it. `bootout` gives an actual
 "service is gone" state, and `bootstrap` gives a clean, fully-respawned start,
-matching how `setup.sh`'s own reinstall path already behaves.
+matching how `setup.sh`'s own reinstall path already behaves (the
+bootout/bootstrap pair at the end of `setup.sh`).
 
 ## Consequences
 
