@@ -18,15 +18,15 @@ uninstall:
     rm -f {{plist_dest}}
     @echo "local-whisper uninstalled."
 
-# Start the service (without reinstalling)
+# Start the service (bootstrap; use after stop, or if not loaded)
 [group('service')]
 start:
-    launchctl start {{plist_name}}
+    launchctl bootstrap "gui/$(id -u)" {{plist_dest}}
 
-# Stop the service (without uninstalling)
+# Stop the service (bootout — actually stops it, unlike `launchctl stop`)
 [group('service')]
 stop:
-    launchctl stop {{plist_name}}
+    launchctl bootout "gui/$(id -u)" {{plist_dest}}
 
 # Restart the service (kickstart forces a fresh process, no reinstall)
 [group('service')]
