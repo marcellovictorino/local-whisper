@@ -8,8 +8,8 @@ Accepted
 
 The launchd plist sets `KeepAlive` true and `ThrottleInterval` 30s (`setup.sh`).
 Empirically, `launchctl stop <label>` kills the running process and launchd,
-seeing `KeepAlive` true, immediately respawns it — so `stop` does not actually
-stop the service. This is surprising for anyone reading `setup.sh`/`justfile`
+seeing `KeepAlive` true, respawns it (after `ThrottleInterval`, ~30s) — so
+`stop` does not actually stop the service. This is surprising for anyone reading `setup.sh`/`justfile`
 expecting `stop` to leave the service down.
 
 ## Decision
@@ -18,7 +18,8 @@ expecting `stop` to leave the service down.
 of `launchctl stop`/`start`; `restart` uses
 `launchctl kickstart -k gui/$(id -u)/com.local-whisper`, which kills and
 respawns the job in place without unloading it — the common case, and the
-only one that leaves the job loaded.
+only one that cycles the job without unloading it (`bootstrap` also leaves
+the job loaded, but only after an unload).
 
 Rejected option: keep `launchctl stop` and just rename/redocument it (e.g. call
 it "kick" or document that it always respawns). This was rejected because it
@@ -30,8 +31,8 @@ free the microphone) would be wrong, and no amount of renaming removes the
 matching how `setup.sh`'s own reinstall path already behaves (the
 bootout/bootstrap pair at the end of `setup.sh`).
 
-No command may use `launchctl stop` — with `KeepAlive` true it is an instant
-respawn, not a stop. Use `bootout` for a real stop, `bootstrap` to bring an
+No command may use `launchctl stop` — with `KeepAlive` true it triggers a
+throttled respawn (~30s), not a stop. Use `bootout` for a real stop, `bootstrap` to bring an
 unloaded job back, `kickstart -k` to cycle a loaded one.
 
 ## Consequences
