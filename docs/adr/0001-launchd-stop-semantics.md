@@ -14,9 +14,11 @@ expecting `stop` to leave the service down.
 
 ## Decision
 
-Restart/stop tooling uses `launchctl bootout` to tear the service down and
-`launchctl bootstrap` to bring it back up (see `setup.sh:145-146`), instead of
-`launchctl stop`/`start`.
+`stop` uses `launchctl bootout` and `start` uses `launchctl bootstrap` instead
+of `launchctl stop`/`start`; `restart` uses
+`launchctl kickstart -k gui/$(id -u)/com.local-whisper`, which kills and
+respawns the job in place without unloading it — the common case, and the
+only one that leaves the job loaded (see `setup.sh:145-146`).
 
 Rejected option: keep `launchctl stop` and just rename/redocument it (e.g. call
 it "kick" or document that it always respawns). This was rejected because it
@@ -38,5 +40,6 @@ matching how `setup.sh`'s own reinstall path already behaves.
   hot while the user goes to flip the Accessibility toggle. Switching
   `KeepAlive` to `{SuccessfulExit: false}` would break this self-heal, since a
   clean `exit 0` would then stop being respawned at all.
-- Any stop/restart command must route through `bootout` + `bootstrap`, never
-  `launchctl stop`, to get a real stop instead of an instant respawn.
+- No command may use `launchctl stop` — with `KeepAlive` true it is an
+  instant respawn, not a stop. Use `bootout` for a real stop, `bootstrap` to
+  bring an unloaded job back, `kickstart -k` to cycle a loaded one.
