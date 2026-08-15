@@ -1,0 +1,42 @@
+# 0001: launchd stop uses bootout/bootstrap, not `launchctl stop`
+
+## Status
+
+Accepted
+
+## Context
+
+The launchd plist sets `KeepAlive` true and `ThrottleInterval` 30s (`setup.sh`).
+Empirically, `launchctl stop <label>` kills the running process and launchd,
+seeing `KeepAlive` true, immediately respawns it — so `stop` does not actually
+stop the service. This is surprising for anyone reading `setup.sh`/`justfile`
+expecting `stop` to leave the service down.
+
+## Decision
+
+Restart/stop tooling uses `launchctl bootout` to tear the service down and
+`launchctl bootstrap` to bring it back up (see `setup.sh:145-146`), instead of
+`launchctl stop`/`start`.
+
+Rejected option: keep `launchctl stop` and just rename/redocument it (e.g. call
+it "kick" or document that it always respawns). This was rejected because it
+keeps a footgun in the command surface — anyone scripting against `stop`
+expecting the service to actually be down (e.g. before an uninstall, or to
+free the microphone) would be wrong, and no amount of renaming removes the
+`KeepAlive` interaction; it only relabels it. `bootout` gives an actual
+"service is gone" state, and `bootstrap` gives a clean, fully-respawned start,
+matching how `setup.sh`'s own reinstall path already behaves.
+
+## Consequences
+
+- `KeepAlive` and `ThrottleInterval` are left unchanged. They are load-bearing
+  for the Accessibility self-heal: macOS only re-reads the Accessibility grant
+  on a fresh process, so `_ensure_accessibility()` in
+  `src/local_whisper/__main__.py` intentionally exits 0 when permission is
+  missing, relying on `KeepAlive` to respawn a fresh process that re-reads the
+  grant, and `ThrottleInterval` (30s) to keep that respawn loop from spinning
+  hot while the user goes to flip the Accessibility toggle. Switching
+  `KeepAlive` to `{SuccessfulExit: false}` would break this self-heal, since a
+  clean `exit 0` would then stop being respawned at all.
+- Any stop/restart command must route through `bootout` + `bootstrap`, never
+  `launchctl stop`, to get a real stop instead of an instant respawn.
