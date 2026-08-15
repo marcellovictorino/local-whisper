@@ -467,7 +467,10 @@ it is the `Python` entry — not Terminal, not `uv` — that needs the grant:
 System Settings → Privacy & Security → Accessibility → enable "Python"
 ```
 
-After granting it, restart the service so the new process picks up the permission:
+No manual restart needed — after you grant it, the service exits and launchd
+respawns a fresh process that picks up the permission, within ~30s (see
+[docs/adr/0001-launchd-stop-semantics.md](docs/adr/0001-launchd-stop-semantics.md)).
+If you don't want to wait:
 
 ```bash
 just restart
@@ -518,7 +521,7 @@ cd ~/path/to/local-whisper && just update
 
 `just update` hard-refuses to run from a linked worktree: the launchd plist hard-codes the directory it was installed from, so running the update from an ephemeral worktree that later gets deleted would leave the daemon pointing at a dead path.
 
-If the pull touches `setup.sh`, `pyproject.toml`, or `uv.lock`, `just update` skips the restart and tells you to run a full reinstall instead, since those files can change the plist or venv layout:
+If the pull touches `setup.sh`, `just update` skips the restart and tells you to run a full reinstall instead, since it can change the plist contents or env-var capture:
 
 ```bash
 bash setup.sh

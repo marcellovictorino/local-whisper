@@ -49,11 +49,11 @@ update:
     git pull
     after="$(git rev-parse HEAD)"
     changed="$(git diff --name-only "$before" "$after")"
-    {{uv}} sync
-    if grep -qE '^(setup\.sh|pyproject\.toml|uv\.lock)$' <<< "$changed"; then
-        echo "setup.sh, pyproject.toml, or uv.lock changed (touches the plist and/or venv layout) — run 'just install' instead of restarting."
+    if grep -qE '^setup\.sh$' <<< "$changed"; then
+        echo "setup.sh changed (plist contents / env-var capture) — run 'just install' instead of restarting."
         exit 0
     fi
+    {{uv}} sync
     just restart
 
 # Show service status
