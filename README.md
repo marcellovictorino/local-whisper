@@ -521,6 +521,8 @@ cd ~/path/to/local-whisper && just update
 
 `just update` hard-refuses to run from a linked worktree: the launchd plist hard-codes the directory it was installed from, so running the update from an ephemeral worktree that later gets deleted would leave the daemon pointing at a dead path.
 
+If the pull brings no new commits, `just update` exits early — no sync, no restart. And if the service isn't loaded (e.g. after `just stop`, or before a first `just install`), the restart step falls back to bootstrapping it automatically.
+
 If the pull touches `setup.sh`, `just update` skips the restart and tells you to run a full reinstall instead, since it can change the plist contents or env-var capture:
 
 ```bash

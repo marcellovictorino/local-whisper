@@ -28,11 +28,17 @@ start:
 stop:
     launchctl bootout "gui/$(id -u)" {{plist_dest}}
 
-# Restart the service (kickstart forces a fresh process, no reinstall)
+# Restart the service (kickstart forces a fresh process; falls back to bootstrap if not loaded)
 [group('service')]
 restart:
-    launchctl kickstart -k "gui/$(id -u)/{{plist_name}}"
-    @sleep 1; launchctl list | grep {{plist_name}} || echo "Not loaded"
+    #!/usr/bin/env bash
+    set -uo pipefail
+    if ! launchctl kickstart -k "gui/$(id -u)/{{plist_name}}"; then
+        echo "Job not loaded — bootstrapping instead."
+        launchctl bootstrap "gui/$(id -u)" {{plist_dest}}
+    fi
+    sleep 1
+    launchctl list | grep {{plist_name}} || echo "Not loaded"
 
 # Pull latest, sync deps, and restart — refuses to run from a linked worktree
 [group('service')]
@@ -48,6 +54,10 @@ update:
     before="$(git rev-parse HEAD)"
     git pull
     after="$(git rev-parse HEAD)"
+    if [[ "$before" == "$after" ]]; then
+        echo "Already up to date — nothing to do."
+        exit 0
+    fi
     changed="$(git diff --name-only "$before" "$after")"
     if grep -qE '^setup\.sh$' <<< "$changed"; then
         echo "setup.sh changed (plist contents / env-var capture) — run 'just install' instead of restarting."

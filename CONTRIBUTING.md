@@ -101,7 +101,7 @@ After pulling new commits, make them live:
 - Normal path (source or dependency changes): `just update` — pulls, syncs deps, and restarts the service. Hard-refuses to run from a linked worktree (see README "Updating"); run it from the canonical clone.
 - If the pull touched `setup.sh`: run `bash setup.sh` (`just install`) instead — it can change the plist contents or env-var capture, and `just update` will tell you to do this itself.
 
-`just restart` kickstarts a fresh process without reinstalling. `just stop` does a real `launchctl bootout` (fully unloads the service), not a soft stop — see [docs/adr/0001-launchd-stop-semantics.md](docs/adr/0001-launchd-stop-semantics.md) for why.
+`just restart` kickstarts a fresh process without reinstalling; if the job isn't loaded (e.g. after `just stop`, or before a first `just install`), it falls back to `launchctl bootstrap` automatically. `just stop` does a real `launchctl bootout` (fully unloads the service), not a soft stop — see [docs/adr/0001-launchd-stop-semantics.md](docs/adr/0001-launchd-stop-semantics.md) for why.
 
 ## Constraints
 
