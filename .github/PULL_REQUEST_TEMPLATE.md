@@ -9,4 +9,4 @@
 - [ ] No new dependencies added without discussion
 - [ ] No changes to `overlay.py` or `hotkey.py` unless the issue explicitly requires it
 - [ ] PR title follows [Conventional Commits](https://www.conventionalcommits.org/)
-  The PR title is the only release-computation input: squash merging discards the Conventional Commit types of internal commits. See [Releases](https://github.com/marcellovictorino/local-whisper/blob/master/CONTRIBUTING.md#releases) for the release rule and version-bump effects.
+  After squash merging, the PR title determines the Conventional Commit type used for release computation; Conventional Commit types from internal commits do not reach `master`. See [Releases](https://github.com/marcellovictorino/local-whisper/blob/master/CONTRIBUTING.md#releases) for the release rule and version-bump effects.
