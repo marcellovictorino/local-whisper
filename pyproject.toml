@@ -33,7 +33,7 @@ omit = ["*/local_whisper/benchmark.py"]
 fail_under = 70
 
 [tool.pytest.ini_options]
-addopts = "--cov=local_whisper --cov-report=term-missing"
+addopts = "--cov --cov-report=term-missing"
 
 [tool.ruff]
 src = ["src"]
