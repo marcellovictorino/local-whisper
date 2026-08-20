@@ -2,6 +2,155 @@
 
 <!-- version list -->
 
+## v0.17.0 (2026-08-20)
+
+### Bug Fixes
+
+- Correct ADR respawn claim and quote justfile path interpolations
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- Correct the setup-uv cache input name
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- Fail loudly when restart's bootstrap fallback fails
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- Harden CI matrix and Dependabot titles after review
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- Report PID from restart and reconcile update docs with behaviour
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **t-r001**: Correct pull request release link
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- **t-r001**: Restore release checklist reference
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- **t-r001**: Restore self-heal wording, narrow reinstall trigger to setup.sh
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **t3**: Make just start/stop use bootstrap/bootout per ADR 0001
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+### Chores
+
+- **finishing/claims-sourced**: Fix ADR respawn timing and kickstart uniqueness claims
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **finishing/claims-sourced**: Narrow release input claim
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- **finishing/clarity-dedup**: Clarify contribution templates
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- **finishing/clarity-dedup**: Dedup update docs, fix dangling referents, move ADR constraint
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **finishing/docs-drift**: Fix restart fallback claim, update skip scope, ADR citation
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **finishing/review**: Self-heal restart, skip no-op update, doc fallback
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **finishing/security-review**: Quote interpolations, ff-only pull, narrow restart fallback
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **finishing/simplify**: Dedup gui domain string, simplify setup.sh grep
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **finishing/stop-slop**: Tighten release checklist guidance
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- **t-r001**: Remediate eval findings (harness commit)
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **task-01-python-ci-matrix**: Add Python compatibility CI matrix
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- **task-02-python-badge**: Correct the README Python badge (harness commit)
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- **task-03-dependabot**: Configure weekly Dependabot updates
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- **task-05-issue-template**: Add general issue template
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+### Continuous Integration
+
+- Add Python CI matrix, Dependabot, and contribution templates
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+### Documentation
+
+- **t-r001**: Amend ADR 0001 to cover kickstart, narrow consequences
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **t1**: Record launchd stop semantics ADR
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **t5**: Fix restart guidance and document just update path
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **t6**: Document contributor update path in CONTRIBUTING.md
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **task-02-python-badge**: Correct README Python badge
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+- **task-04-pr-template**: Add pull request template
+  ([#45](https://github.com/marcellovictorino/local-whisper/pull/45),
+  [`333cd34`](https://github.com/marcellovictorino/local-whisper/commit/333cd347028333479a26b410051b607893ffeb34))
+
+### Features
+
+- Add update and restart recipes, fix stop/start to use bootout/bootstrap
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- Bump minimum Python to 3.12, test 3.12-3.14
+  ([#57](https://github.com/marcellovictorino/local-whisper/pull/57),
+  [`63fe636`](https://github.com/marcellovictorino/local-whisper/commit/63fe63645746e312e6b9ab32d6592a6416c833c8))
+
+- **t2**: Add restart recipe for launchd service
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+- **t4**: Add just update recipe (pull, sync, restart, worktree guard)
+  ([#46](https://github.com/marcellovictorino/local-whisper/pull/46),
+  [`12aa9a1`](https://github.com/marcellovictorino/local-whisper/commit/12aa9a191b56ca89a69f2ec649d44afd7543d6ec))
+
+
 ## v0.16.1 (2026-08-14)
 
 ### Bug Fixes
