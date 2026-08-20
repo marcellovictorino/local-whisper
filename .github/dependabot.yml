@@ -1,0 +1,19 @@
+# Dependabot pull-request titles have to parse as Conventional Commits:
+# pr-title-lint.yml fails any title that does not, and the squash-merged title
+# is the only input to release computation (see CONTRIBUTING.md, Releases).
+# Dependency bumps are never releasable, hence the `chore` prefix.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      prefix-development: chore
