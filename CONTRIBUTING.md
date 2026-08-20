@@ -13,6 +13,9 @@ Requirements: macOS Apple Silicon, [uv](https://docs.astral.sh/uv/), Accessibili
 
 `just test` enforces a 70% coverage floor (`fail_under` in `pyproject.toml`); CI runs the same gate.
 
+Participation is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). For suspected
+vulnerabilities, follow [SECURITY.md](SECURITY.md) rather than opening a public issue.
+
 Task tracking uses the [`td`](https://github.com/gtayl0r/td) CLI (`brew install td`). Run `td usage --new-session` at the start of a session to see current focus and next work; state is local under a gitignored `.todos/`. See [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
 
 ## Project Structure
