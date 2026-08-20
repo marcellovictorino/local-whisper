@@ -6,6 +6,10 @@ __pycache__/
 
 # pytest
 .pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
 # uv
 .python-version
