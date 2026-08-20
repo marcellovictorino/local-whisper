@@ -114,7 +114,7 @@ validate-config:
 # Run tests
 [group('dev')]
 test:
-    {{ uv }} run pytest tests/ -v --cov=local_whisper --cov-report=term-missing
+    {{ uv }} run pytest tests/ -v
 
 # Run linter + formatter check
 [group('dev')]

@@ -17,26 +17,34 @@ visible to everyone before a fix exists, which puts users at risk in the meantim
 Only the latest tagged version on `master` is supported. There are no LTS branches —
 fixes land on `master` and ship in the next tag. Older tags do not receive backports.
 
-## Architecture
+## What Leaves Your Machine
 
 local-whisper is a local-only macOS application. Audio capture and transcription
-("core dictation") run entirely on-device via MLX-based Whisper/Parakeet models — no
-audio or transcript leaves the machine for the core dictation path.
+("plain dictation") run entirely on-device via MLX-based Whisper/Parakeet models — no
+audio or transcript leaves the machine for the plain dictation path.
 
-An optional, opt-in LLM clean-up step can post-process the raw transcript through any
-OpenAI-compatible API (OpenAI itself, or a compatible endpoint via
-`LOCAL_WHISPER_OPENAI_BASE_URL`), using the user's own API key
-(`OPENAI_API_KEY` / `LOCAL_WHISPER_OPENAI_API_KEY`). This step is disabled unless
-explicitly configured, and when enabled it sends transcript text (and only transcript
-text) to that third-party endpoint.
+Three optional LLM features post-process text through an OpenAI-compatible endpoint
+(OpenAI itself, or a compatible endpoint via `LOCAL_WHISPER_OPENAI_BASE_URL`) using an
+API key from the environment (`OPENAI_API_KEY` / `LOCAL_WHISPER_OPENAI_API_KEY`):
+
+- **Auto-cleanup** and **adapt mode** (Right ⌥) send the raw transcript.
+- **Command mode** (Right ⌘) additionally sends the text currently selected in the
+  frontmost application, captured via a synthetic copy
+  (`src/local_whisper/command.py`), plus the spoken instruction.
+
+All three paths are inert unless an API key is present in the daemon environment — no
+`config.toml` entry is required to activate them. `auto_adapt.apply()` falls back to a
+built-in default prompt for any app with no configured prompt
+(`src/local_whisper/auto_adapt.py`).
 
 ## Scope
 
 In scope:
 
-- Shell invocation and argument handling (`setup.sh`, `install.sh`, daemon entry points).
-- Credential handling in `config.toml` and environment variables (e.g. API keys).
-- Deserialisation of configuration files or cached model artifacts.
+- Shell invocation and argument handling (`install.sh`, daemon entry points).
+- Credential handling in environment variables (API keys) and their propagation into
+  the LaunchAgent plist by `setup.sh`.
+- Deserialisation of configuration files (`config.toml`) or cached model artifacts.
 - The `launchd` installation path: `setup.sh`'s generation of the LaunchAgent plist and
   the plist itself (e.g. embedded paths, environment variables, permissions of the
   installed files).

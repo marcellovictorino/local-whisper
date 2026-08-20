@@ -26,10 +26,14 @@ dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.4", "pre-commit>=3"]
 
 [tool.coverage.run]
 source = ["local_whisper"]
-omit = ["src/local_whisper/benchmark.py"]
+# benchmark.py drives real models/timings; not exercised by the mocked suite.
+omit = ["*/local_whisper/benchmark.py"]
 
 [tool.coverage.report]
 fail_under = 70
+
+[tool.pytest.ini_options]
+addopts = "--cov=local_whisper --cov-report=term-missing"
 
 [tool.ruff]
 src = ["src"]
