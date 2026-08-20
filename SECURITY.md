@@ -42,8 +42,9 @@ built-in default prompt for any app with no configured prompt
 In scope:
 
 - Shell invocation and argument handling (`install.sh`, daemon entry points).
-- Credential handling in environment variables (API keys) and their propagation into
-  the LaunchAgent plist by `setup.sh`.
+- Credential handling in environment variables (API keys), any credential a user has
+  written into `config.toml`, and their propagation into the LaunchAgent plist by
+  `setup.sh`.
 - Deserialisation of configuration files (`config.toml`) or cached model artifacts.
 - The `launchd` installation path: `setup.sh`'s generation of the LaunchAgent plist and
   the plist itself (e.g. embedded paths, environment variables, permissions of the

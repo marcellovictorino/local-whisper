@@ -46,7 +46,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2 xvfb
 
       - name: Test
-        run: xvfb-run -a uv run pytest tests/ -v
+        run: xvfb-run -a uv run pytest tests/ -v --cov --cov-report=term-missing
 
   release:
     needs: ci

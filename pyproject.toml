@@ -32,9 +32,6 @@ omit = ["*/local_whisper/benchmark.py"]
 [tool.coverage.report]
 fail_under = 70
 
-[tool.pytest.ini_options]
-addopts = "--cov --cov-report=term-missing"
-
 [tool.ruff]
 src = ["src"]
 line-length = 120
