@@ -326,7 +326,7 @@ model = "mlx-community/whisper-large-v3-turbo"
 Restart the service to apply:
 
 ```bash
-just stop && just start
+just restart
 ```
 
 ### Spelling preference
@@ -468,8 +468,15 @@ System Settings → Privacy & Security → Accessibility → enable "Python"
 ```
 
 No manual restart needed — after you grant it, the service exits and launchd
-respawns a fresh process that picks up the permission, within ~30s. If the
-dialog didn't appear:
+respawns a fresh process that picks up the permission, within ~30s (see
+[docs/adr/0001-launchd-stop-semantics.md](docs/adr/0001-launchd-stop-semantics.md)).
+If you don't want to wait:
+
+```bash
+just restart
+```
+
+If the dialog didn't appear:
 
 ```bash
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
@@ -506,10 +513,23 @@ bash setup.sh
 
 ## Updating
 
-After merging changes, re-run setup **from the canonical clone** — never from a git worktree:
+Normal path — pull, sync deps, and restart in one step, **from the canonical clone** — never from a linked worktree:
 
 ```bash
-cd ~/path/to/local-whisper && git pull && bash setup.sh
+cd ~/path/to/local-whisper && just update
 ```
 
-The launchd plist hard-codes the directory `setup.sh` is run from. If that directory is an ephemeral worktree that later gets deleted, the daemon silently dies. `setup.sh` warns and asks for confirmation when run from a linked worktree.
+`just update` hard-refuses to run from a linked worktree: the launchd plist hard-codes the directory it was installed from, so running the update from a linked worktree that later gets deleted would leave the daemon pointing at a dead path.
+
+Edge cases:
+- **No new commits** — `just update` exits early: no sync, no restart.
+- **Service not loaded** (e.g. after `just stop`) — the restart step bootstraps it automatically.
+- **Never installed** — use `just install` instead.
+
+If the pull touches `setup.sh`, `just update` stops and tells you to reinstall instead of syncing and restarting — `setup.sh` can change the plist contents or the captured env vars, so a restart alone isn't enough. Run it from the canonical clone — it warns and asks for confirmation if run from a linked worktree, and it's idempotent, so re-running is safe:
+
+```bash
+bash setup.sh
+```
+
+`setup.sh` runs `uv sync` itself, so this single command covers both the dependency sync and the reinstall.

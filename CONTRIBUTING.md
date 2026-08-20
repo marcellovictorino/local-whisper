@@ -94,6 +94,14 @@ The PR title is therefore the **only** input to release computation. Squash-merg
 
 A PR title lint (`.github/workflows/pr-title-lint.yml`) enforces this format — an unparseable title fails loudly at PR time instead of silently producing no release later. Do not change the generated release pull request title: `chore(release): <version>` is how CI recognises its approved merge and publishes that version.
 
+## Pulling in Changes
+
+To pick up upstream changes, run `just update` from the canonical clone. It does the pull itself, then syncs dependencies and restarts the service — do not pull first, or it will find nothing to do and exit without syncing or restarting. See [README > Updating](README.md#updating) for the full procedure (including the linked-worktree refusal and the `setup.sh` reinstall path).
+
+## Service Commands
+
+`just stop` runs a real `launchctl bootout` (fully unloads the service), not a soft stop — see [docs/adr/0001-launchd-stop-semantics.md](docs/adr/0001-launchd-stop-semantics.md) for why.
+
 ## Constraints
 
 - **macOS Apple Silicon only** — no cross-platform abstractions needed
