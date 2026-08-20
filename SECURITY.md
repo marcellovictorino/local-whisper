@@ -23,16 +23,19 @@ local-whisper is a local-only macOS application. Audio capture and transcription
 ("plain dictation") run entirely on-device via MLX-based Whisper/Parakeet models — no
 audio or transcript leaves the machine for the plain dictation path.
 
-Three optional LLM features post-process text through an OpenAI-compatible endpoint
+**Auto-cleanup** (filler-word removal and repetition collapse) runs locally via regex
+and never contacts an external service (`src/local_whisper/auto_cleanup.py`).
+
+Two optional LLM features post-process text through an OpenAI-compatible endpoint
 (OpenAI itself, or a compatible endpoint via `LOCAL_WHISPER_OPENAI_BASE_URL`) using an
 API key from the environment (`OPENAI_API_KEY` / `LOCAL_WHISPER_OPENAI_API_KEY`):
 
-- **Auto-cleanup** and **adapt mode** (Right ⌥) send the raw transcript.
+- **Adapt mode** (Right ⌥) sends the raw transcript.
 - **Command mode** (Right ⌘) additionally sends the text currently selected in the
   frontmost application, captured via a synthetic copy
   (`src/local_whisper/command.py`), plus the spoken instruction.
 
-All three paths are inert unless an API key is present in the daemon environment — no
+Both paths are inert unless an API key is present in the daemon environment — no
 `config.toml` entry is required to activate them. `auto_adapt.apply()` falls back to a
 built-in default prompt for any app with no configured prompt
 (`src/local_whisper/auto_adapt.py`).
