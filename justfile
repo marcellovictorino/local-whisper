@@ -94,12 +94,12 @@ status:
 # Run in foreground (for debugging — Ctrl+C to quit)
 [group('dev')]
 run:
-    {{ uv }} run python -m local_whisper --run 2> >(grep -v "MallocStackLogging" >&2)
+    "{{ uv }}" run python -m local_whisper --run 2> >(grep -v "MallocStackLogging" >&2)
 
 # Cycle the overlay + menu-bar item through every visual state (no mic needed)
 [group('dev')]
 demo-ui mode="":
-    {{ uv }} run python scripts/demo_ui.py {{ mode }} 2> >(grep -v "MallocStackLogging" >&2)
+    "{{ uv }}" run python scripts/demo_ui.py {{ mode }} 2> >(grep -v "MallocStackLogging" >&2)
 
 # Stream service logs
 [group('dev')]
@@ -109,40 +109,40 @@ logs:
 # Validate the user config TOML
 [group('dev')]
 validate-config:
-    {{ uv }} run python scripts/validate_config.py
+    "{{ uv }}" run python scripts/validate_config.py
 
 # Run tests
 [group('dev')]
 test:
-    {{ uv }} run pytest tests/ -v --cov --cov-report=term-missing
+    "{{ uv }}" run pytest tests/ -v --cov --cov-report=term-missing
 
 # Run linter + formatter check
 [group('dev')]
 lint:
-    {{ uv }} run ruff check src/ tests/ scripts/validate_config.py
-    {{ uv }} run ruff format --check src/ tests/ scripts/validate_config.py
+    "{{ uv }}" run ruff check src/ tests/ scripts/validate_config.py
+    "{{ uv }}" run ruff format --check src/ tests/ scripts/validate_config.py
 
 # Health check: permissions, model cache, service, LLM env (exits non-zero on critical failure)
 [group('dev')]
 doctor:
-    {{ uv }} run python -m local_whisper --doctor
+    "{{ uv }}" run python -m local_whisper --doctor
 
 # Benchmark transcription latency (model from config or default)
 [group('dev')]
 benchmark:
-    {{ uv }} run python -m local_whisper --benchmark
+    "{{ uv }}" run python -m local_whisper --benchmark
 
 # Record a 30s audio sample for accuracy comparison (reads from mic)
 [group('dev')]
 record-sample:
-    {{ uv }} run python tests/record_sample.py
+    "{{ uv }}" run python tests/record_sample.py
 
 # Compare accuracy + latency across models using recorded sample
 [group('dev')]
 compare:
-    {{ uv }} run python tests/benchmark_compare.py --out tests/results.json
+    "{{ uv }}" run python tests/benchmark_compare.py --out tests/results.json
 
 # Install pre-commit hooks (run once after cloning)
 [group('dev')]
 hooks:
-    {{ uv }} run pre-commit install
+    "{{ uv }}" run pre-commit install
