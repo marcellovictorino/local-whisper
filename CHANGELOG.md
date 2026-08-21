@@ -2,6 +2,68 @@
 
 <!-- version list -->
 
+## v0.18.0 (2026-08-21)
+
+### Bug Fixes
+
+- **ci**: Floor CI coverage at 55%, not the macOS 70%
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+- **coverage-reporting**: Gate coverage at the test call sites, not globally
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+### Chores
+
+- Add repo maturity files and pytest coverage gate
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+- **deps**: Relock for requires-python >=3.12
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+- **finishing**: Align SECURITY.md with actual LLM egress, dedupe coverage flags
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+- **finishing/simplify**: Dedupe coverage source declaration in pyproject.toml
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+- **t-r001**: Untrack coverage artefact, ignore coverage outputs
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+### Documentation
+
+- Link the new policy files from CONTRIBUTING
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+- Note the release-PR action_required workflow gap in CLAUDE.md
+  ([#61](https://github.com/marcellovictorino/local-whisper/pull/61),
+  [`59063fe`](https://github.com/marcellovictorino/local-whisper/commit/59063fec2daba75cfaa46db4ef3b1f4646f47f66))
+
+- **code-of-conduct**: Add Contributor Covenant v2.1
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+- **security-policy**: Add SECURITY.md
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+### Features
+
+- Add changelog link to menu bar ([#60](https://github.com/marcellovictorino/local-whisper/pull/60),
+  [`b431331`](https://github.com/marcellovictorino/local-whisper/commit/b431331d984de3f53b96786b84f5b2eece35c275))
+
+- **coverage-reporting**: Enforce 70% coverage gate on tests
+  ([#58](https://github.com/marcellovictorino/local-whisper/pull/58),
+  [`117e950`](https://github.com/marcellovictorino/local-whisper/commit/117e9504a78a8bf7084793542ffc49e59d3359f6))
+
+
 ## v0.17.0 (2026-08-20)
 
 ### Bug Fixes
