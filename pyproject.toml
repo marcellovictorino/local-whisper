@@ -22,7 +22,15 @@ parakeet = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.4", "pre-commit>=3"]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.4", "pre-commit>=3"]
+
+[tool.coverage.run]
+source = ["local_whisper"]
+# benchmark.py drives real models/timings; not exercised by the mocked suite.
+omit = ["*/local_whisper/benchmark.py"]
+
+[tool.coverage.report]
+fail_under = 70
 
 [tool.ruff]
 src = ["src"]

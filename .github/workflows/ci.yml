@@ -45,8 +45,11 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2 xvfb
 
+      # The floor is 55 here, not the 70 that `just test` enforces: these runners
+      # are Linux, so the PyObjC surfaces (menubar, overlay, _macos) never load and
+      # ~198 statements go unexercised. Measured 59% here against 74% on macOS.
       - name: Test
-        run: xvfb-run -a uv run pytest tests/ -v
+        run: xvfb-run -a uv run pytest tests/ -v --cov --cov-report=term-missing --cov-fail-under=55
 
   release:
     needs: ci
