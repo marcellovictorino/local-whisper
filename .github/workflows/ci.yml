@@ -107,6 +107,7 @@ jobs:
           fi
           uvx --from python-semantic-release==10.6.1 semantic-release version \
             --no-commit --no-tag --no-push --no-vcs-release
+          uv lock
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
@@ -123,5 +124,6 @@ jobs:
             Review and merge this pull request. After its merge to `master`, CI creates the matching tag and GitHub Release.
           add-paths: |
             pyproject.toml
+            uv.lock
             src/local_whisper/__init__.py
             CHANGELOG.md
