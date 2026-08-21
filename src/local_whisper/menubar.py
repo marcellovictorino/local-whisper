@@ -23,6 +23,7 @@ logger = logging.getLogger("local_whisper")
 APP_NAME = "local-whisper"
 LOG_PATH = Path.home() / "Library" / "Logs" / "local-whisper.log"
 DOCS_URL = "https://github.com/marcellovictorino/local-whisper#usage"
+CHANGELOG_URL = "https://github.com/marcellovictorino/local-whisper/blob/master/CHANGELOG.md"
 
 # "Whisper Cut" brand mark: four rounded bars forming a stylised W / voice
 # signature, drawn into an 18pt template image. Heights are the identity —
@@ -164,6 +165,7 @@ class MenuActions:
         config_path: Path = CONFIG_PATH,
         log_path: Path = LOG_PATH,
         docs_url: str = DOCS_URL,
+        changelog_url: str = CHANGELOG_URL,
         session_info: Callable[[], Mapping[str, str]] | None = None,
     ) -> None:
         self._reload_config = reload_config
@@ -171,6 +173,7 @@ class MenuActions:
         self._config_path = config_path
         self._log_path = log_path
         self._docs_url = docs_url
+        self._changelog_url = changelog_url
         self._session_info = session_info
 
     def session_rows(self) -> list[tuple[str, str]]:
@@ -197,6 +200,10 @@ class MenuActions:
     def open_docs(self) -> None:
         """Open the online usage docs in the default browser."""
         _open_url(self._docs_url)
+
+    def open_changelog(self) -> None:
+        """Open the repo's CHANGELOG.md in the default browser."""
+        _open_url(self._changelog_url)
 
     def reload_config(self) -> None:
         """Reload config via the same handler the SIGHUP signal invokes."""
@@ -304,6 +311,7 @@ if HAS_APPKIT:
                 ("Reload config", "reloadConfig:", "r"),
                 ("Open logs", "openLogs:", ""),
                 ("How-to / Docs", "openDocs:", ""),
+                ("View Changelog", "openChangelog:", ""),
             ):
                 item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(title, selector, key)
                 item.setTarget_(self)
@@ -354,6 +362,9 @@ if HAS_APPKIT:
 
         def openDocs_(self, _sender: object) -> None:
             self._actions.open_docs()
+
+        def openChangelog_(self, _sender: object) -> None:
+            self._actions.open_changelog()
 
         def quitApp_(self, _sender: object) -> None:
             self._actions.quit()
