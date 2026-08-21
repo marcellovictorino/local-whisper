@@ -11,7 +11,9 @@ just run   # verify the app works
 
 Requirements: macOS Apple Silicon, [uv](https://docs.astral.sh/uv/), Accessibility permission granted to Terminal.
 
-`just test` enforces a 70% coverage floor (`fail_under` in `pyproject.toml`); CI runs the same gate.
+`just test` enforces a 70% coverage floor (`fail_under` in `pyproject.toml`). CI enforces 55%
+instead: its Linux runners never load the PyObjC surfaces (`menubar`, `overlay`, `_macos`), so
+roughly 198 statements go unexercised there. Run `just test` on macOS for the real number.
 
 Participation is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). For suspected
 vulnerabilities, follow [SECURITY.md](SECURITY.md) rather than opening a public issue.
