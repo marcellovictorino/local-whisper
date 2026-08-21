@@ -2,6 +2,56 @@
 
 <!-- version list -->
 
+## v0.18.1 (2026-08-21)
+
+### Bug Fixes
+
+- Quote {{uv}} interpolations in dev recipes
+  ([#62](https://github.com/marcellovictorino/local-whisper/pull/62),
+  [`80038f2`](https://github.com/marcellovictorino/local-whisper/commit/80038f21fb82ba5cbecb39ec27641e67d4f270aa))
+
+- Sync uv.lock during release version bump
+  ([#63](https://github.com/marcellovictorino/local-whisper/pull/63),
+  [`3a5f4a7`](https://github.com/marcellovictorino/local-whisper/commit/3a5f4a7c02f747be2c2a0ae2ae5d11f2db06243c))
+
+### Chores
+
+- Bump actions/checkout from 4.4.0 to 7.0.1
+  ([#50](https://github.com/marcellovictorino/local-whisper/pull/50),
+  [`3bfdd3a`](https://github.com/marcellovictorino/local-whisper/commit/3bfdd3ad491a716df579239e9af2c2920503528b))
+
+- Bump amannn/action-semantic-pull-request from 5 to 6
+  ([#47](https://github.com/marcellovictorino/local-whisper/pull/47),
+  [`4a99e40`](https://github.com/marcellovictorino/local-whisper/commit/4a99e40dbab0765f1a32b4cd9c9cd6bda63a7ca9))
+
+- Bump astral-sh/setup-uv from 5.4.2 to 10.0.1
+  ([#48](https://github.com/marcellovictorino/local-whisper/pull/48),
+  [`3e28c04`](https://github.com/marcellovictorino/local-whisper/commit/3e28c04cd5518071dd04517a16f13f032e84aa2e))
+
+- Bump numpy from 2.4.4 to 2.5.2 ([#56](https://github.com/marcellovictorino/local-whisper/pull/56),
+  [`0cd132b`](https://github.com/marcellovictorino/local-whisper/commit/0cd132bc2da94f24c7e073a59e3167bd541f2485))
+
+- Bump openai from 2.32.0 to 3.2.0
+  ([#55](https://github.com/marcellovictorino/local-whisper/pull/55),
+  [`1db4535`](https://github.com/marcellovictorino/local-whisper/commit/1db4535f40c79b3b669150c49241d5909d35ccf0))
+
+- Bump peter-evans/create-pull-request from 7.0.11 to 8.1.1
+  ([#49](https://github.com/marcellovictorino/local-whisper/pull/49),
+  [`e57f6e4`](https://github.com/marcellovictorino/local-whisper/commit/e57f6e4ca00398931e3f69ec0bc71912532044ea))
+
+- Bump pre-commit from 4.6.0 to 4.6.2
+  ([#51](https://github.com/marcellovictorino/local-whisper/pull/51),
+  [`3769a37`](https://github.com/marcellovictorino/local-whisper/commit/3769a379e6240f6105d8235e20a5e9e3b5893e6f))
+
+- Bump pytest from 9.0.3 to 9.1.1
+  ([#54](https://github.com/marcellovictorino/local-whisper/pull/54),
+  [`02484cd`](https://github.com/marcellovictorino/local-whisper/commit/02484cd99389fd1106de2073bb141a678f120608))
+
+- Bump ruff from 0.15.12 to 0.16.3
+  ([#52](https://github.com/marcellovictorino/local-whisper/pull/52),
+  [`6312b89`](https://github.com/marcellovictorino/local-whisper/commit/6312b890ae763eaa436a4ce1beb29a0946f5985a))
+
+
 ## v0.18.0 (2026-08-21)
 
 ### Bug Fixes
