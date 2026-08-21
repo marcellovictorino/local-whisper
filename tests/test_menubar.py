@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from local_whisper import __version__, menubar, theme
-from local_whisper.menubar import DOCS_URL, MenuActions, config_open_target, icon_bar_rects, status_row
+from local_whisper.menubar import CHANGELOG_URL, DOCS_URL, MenuActions, config_open_target, icon_bar_rects, status_row
 
 
 def test_config_open_target_returns_file_when_it_exists(tmp_path: Path) -> None:
@@ -51,6 +51,14 @@ def test_open_docs_targets_the_usage_url() -> None:
         actions.open_docs()
     open_url.assert_called_once_with(DOCS_URL)
     assert DOCS_URL == "https://github.com/marcellovictorino/local-whisper#usage"
+
+
+def test_open_changelog_targets_the_changelog_url() -> None:
+    actions = MenuActions(reload_config=MagicMock(), quit_app=MagicMock())
+    with patch("local_whisper.menubar._open_url") as open_url:
+        actions.open_changelog()
+    open_url.assert_called_once_with(CHANGELOG_URL)
+    assert CHANGELOG_URL == "https://github.com/marcellovictorino/local-whisper/blob/master/CHANGELOG.md"
 
 
 def test_reload_config_delegates_to_the_shared_handler() -> None:
