@@ -9,7 +9,7 @@ dependencies = [
     "numpy>=2.5.2",
     "pyperclip>=1.8",
     "pynput>=1.7",
-    "openai>=1.0",
+    "openai>=3.2.0",
     "soundfile>=0.12",
 ]
 
