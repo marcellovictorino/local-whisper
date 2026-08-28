@@ -233,7 +233,16 @@ def test_metal_lock_serializes_concurrent_mlx_whisper_calls() -> None:
     mock_mlx_whisper = MagicMock()
     mock_mlx_whisper.transcribe.side_effect = fake_transcribe
 
-    with patch.dict(sys.modules, {"mlx_whisper": mock_mlx_whisper}):
+    mock_mlx = MagicMock()
+    # mx.stream(...) is used as a context manager around the transcribe call.
+    mock_mlx.core.stream.return_value.__enter__ = lambda self: None
+    mock_mlx.core.stream.return_value.__exit__ = lambda self, *a: None
+
+    with patch.dict(sys.modules, {
+        "mlx_whisper": mock_mlx_whisper,
+        "mlx": mock_mlx,
+        "mlx.core": mock_mlx.core,
+    }):
         threads = [threading.Thread(target=_run_mlx_whisper, args=(audio, DEFAULT_MODEL)) for _ in range(4)]
         for t in threads:
             t.start()
