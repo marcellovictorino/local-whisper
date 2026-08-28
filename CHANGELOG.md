@@ -2,6 +2,59 @@
 
 <!-- version list -->
 
+## v0.18.2 (2026-08-28)
+
+### Bug Fixes
+
+- Add timeout to osascript subprocess calls in clipboard and command
+  ([#70](https://github.com/marcellovictorino/local-whisper/pull/70),
+  [`e005e26`](https://github.com/marcellovictorino/local-whisper/commit/e005e26ab3c5e9bfd860dbbdd76ed8d1c59a214c))
+
+- Add watchdog to force-close a session that never completes
+  ([#70](https://github.com/marcellovictorino/local-whisper/pull/70),
+  [`e005e26`](https://github.com/marcellovictorino/local-whisper/commit/e005e26ab3c5e9bfd860dbbdd76ed8d1c59a214c))
+
+- Close two review-found gaps in the lock and watchdog
+  ([#70](https://github.com/marcellovictorino/local-whisper/pull/70),
+  [`e005e26`](https://github.com/marcellovictorino/local-whisper/commit/e005e26ab3c5e9bfd860dbbdd76ed8d1c59a214c))
+
+- Serialize MLX/Metal calls with a lock to stop concurrent-access hangs
+  ([#70](https://github.com/marcellovictorino/local-whisper/pull/70),
+  [`e005e26`](https://github.com/marcellovictorino/local-whisper/commit/e005e26ab3c5e9bfd860dbbdd76ed8d1c59a214c))
+
+- **local_whisper**: Prevent overlay pill hang after dictation hotkey release
+  ([#70](https://github.com/marcellovictorino/local-whisper/pull/70),
+  [`e005e26`](https://github.com/marcellovictorino/local-whisper/commit/e005e26ab3c5e9bfd860dbbdd76ed8d1c59a214c))
+
+### Chores
+
+- Bump openai from 3.2.0 to 3.3.0
+  ([#65](https://github.com/marcellovictorino/local-whisper/pull/65),
+  [`7e6eeb2`](https://github.com/marcellovictorino/local-whisper/commit/7e6eeb27b31e56318ef270d15b406c2f07e06f2e))
+
+- Bump parakeet-mlx from 0.5.1 to 0.5.2
+  ([#66](https://github.com/marcellovictorino/local-whisper/pull/66),
+  [`1477051`](https://github.com/marcellovictorino/local-whisper/commit/1477051c08d6cd10492428f1f94669713f7bb498))
+
+- Bump pynput from 1.8.1 to 1.8.2
+  ([#68](https://github.com/marcellovictorino/local-whisper/pull/68),
+  [`165595c`](https://github.com/marcellovictorino/local-whisper/commit/165595cd004596de2ddfa39d262eb8b1950bc4bf))
+
+- Bump sounddevice from 0.5.5 to 0.5.6
+  ([#67](https://github.com/marcellovictorino/local-whisper/pull/67),
+  [`750b8df`](https://github.com/marcellovictorino/local-whisper/commit/750b8df9f9721f742306a78cf5f699f5a723ddae))
+
+- Bump soundfile from 0.13.1 to 0.14.0
+  ([#69](https://github.com/marcellovictorino/local-whisper/pull/69),
+  [`49324c4`](https://github.com/marcellovictorino/local-whisper/commit/49324c41d97b24ad10c543e703a1e5849f9fdf6c))
+
+### Refactoring
+
+- Bound the Metal lock and dedup session-cleanup logic
+  ([#70](https://github.com/marcellovictorino/local-whisper/pull/70),
+  [`e005e26`](https://github.com/marcellovictorino/local-whisper/commit/e005e26ab3c5e9bfd860dbbdd76ed8d1c59a214c))
+
+
 ## v0.18.1 (2026-08-21)
 
 ### Bug Fixes
