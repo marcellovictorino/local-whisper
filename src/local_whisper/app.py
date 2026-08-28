@@ -328,4 +328,5 @@ class App:
         finally:
             if session.watchdog is not None:
                 session.watchdog.cancel()
-            self._clear_session()
+            if self._active is session:
+                self._clear_session()
