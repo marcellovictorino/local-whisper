@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -10,6 +11,7 @@ import pytest
 
 from local_whisper import config
 from local_whisper.app import App, _log_session, _run_command_pipeline, _run_dictation_pipeline, _Session, _SessionMode
+from local_whisper.hotkey import Trigger
 from local_whisper.transcribe import Backend
 
 
@@ -243,6 +245,85 @@ def test_parakeet_logs_configured_vocabulary_once_across_reloads(caplog: pytest.
     messages = [record.getMessage() for record in caplog.records]
     message = "Configured vocabulary unavailable on parakeet-mlx; corrections still apply post-transcription."
     assert messages.count(message) == 1
+
+
+def _build_app(overlay: MagicMock | None = None) -> App:
+    with (
+        patch("local_whisper.app.corrections.load", return_value={}),
+        patch("local_whisper.app.config.get_vocabulary_words", return_value=[]),
+    ):
+        return App(overlay=overlay, backend=Backend.MLX_WHISPER)
+
+
+# --- watchdog ---
+
+
+def test_watchdog_force_clears_a_session_that_never_completes(caplog: pytest.LogCaptureFixture) -> None:
+    """A session thread wedged in a native call never reaches its own finally —
+    the watchdog is the only thing that can still force the pill closed."""
+    overlay = MagicMock()
+    app = _build_app(overlay=overlay)
+    session = _Session(mode=_SessionMode.DICTATION)
+    app._active = session
+
+    with (
+        patch("local_whisper.app._POST_RELEASE_TIMEOUT_S", 0.05),
+        caplog.at_level(logging.ERROR, logger="local_whisper"),
+    ):
+        app._on_key_release(Trigger.DICTATE)
+        time.sleep(0.2)
+
+    assert app._active is None
+    overlay.hide.assert_called_once_with()
+    assert any("watchdog" in record.getMessage() for record in caplog.records)
+
+
+def test_watchdog_is_cancelled_when_session_completes_normally() -> None:
+    """A session that finishes on its own must not be clobbered by a later watchdog fire."""
+    overlay = MagicMock()
+    app = _build_app(overlay=overlay)
+    session = _Session(mode=_SessionMode.DICTATION)
+    app._active = session
+
+    with (
+        patch("local_whisper.app._POST_RELEASE_TIMEOUT_S", 0.1),
+        patch.object(app, "_on_watchdog_timeout") as mock_timeout,
+    ):
+        app._on_key_release(Trigger.DICTATE)
+        with (
+            patch("local_whisper.app.audio.record_until_event", return_value=np.ones(4_800, dtype="float32")),
+            patch("local_whisper.app.transcribe.wait_warmed", return_value=True),
+            patch("local_whisper.app.transcribe.run", return_value="hello"),
+            patch("local_whisper.app.clipboard.write_and_paste"),
+        ):
+            app._run_session(session)
+        assert session.watchdog is not None
+        # Give the (cancelled) timer's original deadline time to pass — it must not fire late.
+        time.sleep(0.2)
+        mock_timeout.assert_not_called()
+
+    assert app._active is None
+    overlay.hide.assert_called_once_with()
+
+
+def test_watchdog_only_fires_for_the_session_it_was_armed_for() -> None:
+    """A stale watchdog from a finished session must not clobber a new active session."""
+    overlay = MagicMock()
+    app = _build_app(overlay=overlay)
+    old_session = _Session(mode=_SessionMode.DICTATION)
+    app._active = old_session
+
+    with patch("local_whisper.app._POST_RELEASE_TIMEOUT_S", 0.05):
+        app._on_key_release(Trigger.DICTATE)
+        # Simulate the old session finishing and a new one starting before the
+        # stale watchdog fires.
+        old_session.watchdog.cancel()
+        new_session = _Session(mode=_SessionMode.DICTATION)
+        app._active = new_session
+        time.sleep(0.2)
+
+    assert app._active is new_session
+    overlay.hide.assert_not_called()
 
 
 def test_log_session_emits_line_on_failure_outcome(caplog: pytest.LogCaptureFixture) -> None:
