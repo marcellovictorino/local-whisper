@@ -235,8 +235,8 @@ def test_metal_lock_serializes_concurrent_mlx_whisper_calls() -> None:
 
     mock_mlx = MagicMock()
     # mx.stream(...) is used as a context manager around the transcribe call.
-    mock_mlx.core.stream.return_value.__enter__ = lambda self: None
-    mock_mlx.core.stream.return_value.__exit__ = lambda self, *a: None
+    mock_mlx.core.stream.return_value.__enter__ = lambda _self: None
+    mock_mlx.core.stream.return_value.__exit__ = lambda _self, *_a: None
 
     with patch.dict(sys.modules, {
         "mlx_whisper": mock_mlx_whisper,
