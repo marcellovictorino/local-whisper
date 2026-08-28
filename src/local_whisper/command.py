@@ -42,6 +42,7 @@ def get_selection() -> str:
             ],
             check=True,
             capture_output=True,
+            timeout=10,
         )
         time.sleep(0.1)
     except Exception as exc:

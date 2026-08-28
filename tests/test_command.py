@@ -52,6 +52,20 @@ def test_get_selection_detects_selection_when_text_equals_prior_clipboard():
         assert get_selection() == "my long thoughts"
 
 
+def test_get_selection_cmd_c_call_has_a_timeout():
+    """A hung System Events call must not wedge the CGEventTap callback thread forever."""
+    mock_NS = _mock_pasteboard(5, 6, "selected text")
+    with (
+        patch("local_whisper.command.HAS_APPKIT", True),
+        patch("local_whisper.command._NSPasteboard", mock_NS),
+        patch("subprocess.run") as mock_run,
+        patch("time.sleep"),
+    ):
+        get_selection()
+
+    assert mock_run.call_args.kwargs["timeout"] == 10
+
+
 def test_get_selection_returns_empty_when_stringForType_returns_none():
     mock_pb = MagicMock()
     mock_pb.changeCount.side_effect = [3, 4]
