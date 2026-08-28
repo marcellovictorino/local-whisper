@@ -84,6 +84,11 @@ def _silence(duration_s: float = 0.5) -> np.ndarray:
 # Set by warm_up() when the warm-up attempt completes (success or failure).
 _warmed = threading.Event()
 
+# Serializes all MLX/Metal calls (dictation, keepalive ping, wake re-warm, warm_up)
+# — MLX Metal command queues are not safe for concurrent access from multiple
+# threads, and a collision can hang the native call with no Python exception.
+_metal_lock = threading.Lock()
+
 _progress_bars_suppressed = False
 
 
@@ -144,7 +149,10 @@ def _run_mlx_whisper(audio: np.ndarray, model: str, initial_prompt: str | None =
 
     # MLX Metal streams are thread-local; warm_up runs on a different thread than
     # each keypress transcription thread, so we create a fresh stream here.
-    with mx.stream(mx.gpu):
+    # _metal_lock serializes this against keepalive/wake-rewarm/warm_up calls —
+    # concurrent Metal command-queue access from multiple threads can hang the
+    # native call with no Python exception raised.
+    with _metal_lock, mx.stream(mx.gpu):
         result = mlx_whisper.transcribe(
             audio,
             path_or_hf_repo=model,
@@ -170,20 +178,21 @@ def _run_parakeet(audio: np.ndarray, model: str) -> str:
     import parakeet_mlx
     import soundfile as sf
 
-    if model not in _parakeet_cache:
-        _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
-    parakeet_model = _parakeet_cache[model]
+    with _metal_lock:
+        if model not in _parakeet_cache:
+            _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
+        parakeet_model = _parakeet_cache[model]
 
-    tmp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            tmp_path = tmp.name
-        sf.write(tmp_path, audio, SAMPLE_RATE_HZ, subtype="PCM_16")
-        result = parakeet_model.transcribe(tmp_path)
-    finally:
-        if tmp_path:
-            with contextlib.suppress(OSError):
-                Path(tmp_path).unlink(missing_ok=True)
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp_path = tmp.name
+            sf.write(tmp_path, audio, SAMPLE_RATE_HZ, subtype="PCM_16")
+            result = parakeet_model.transcribe(tmp_path)
+        finally:
+            if tmp_path:
+                with contextlib.suppress(OSError):
+                    Path(tmp_path).unlink(missing_ok=True)
     return result.text.strip()
 
 
@@ -234,7 +243,8 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
         import mlx_whisper
 
         try:
-            mlx_whisper.transcribe(_silence(), path_or_hf_repo=model, verbose=False)
+            with _metal_lock:
+                mlx_whisper.transcribe(_silence(), path_or_hf_repo=model, verbose=False)
             logger.info("Model ready.")
         except Exception as exc:
             logger.warning("Warm-up failed (non-fatal): %s", exc)

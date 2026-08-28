@@ -1,9 +1,12 @@
 """Tests for transcribe._model_is_cached, get_model, KnownModel, get_backend, parakeet caching."""
 
 import sys
+import threading
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 import local_whisper.transcribe as _tr
@@ -14,6 +17,7 @@ from local_whisper.transcribe import (
     _keepalive_loop,
     _model_is_cached,
     _parakeet_cache,
+    _run_mlx_whisper,
     _run_parakeet,
     get_backend,
     get_model,
@@ -199,6 +203,44 @@ def test_warm_up_warms_whisper_fallback_when_parakeet_unavailable() -> None:
         _tr.warm_up(KnownModel.PARAKEET_V2, backend="parakeet-mlx")
     mock_mlx.transcribe.assert_called_once()
     assert mock_mlx.transcribe.call_args.kwargs["path_or_hf_repo"] == KnownModel.WHISPER_SMALL_EN
+
+
+# --- _metal_lock serialization ---
+
+
+def test_metal_lock_serializes_concurrent_mlx_whisper_calls() -> None:
+    """Two threads calling _run_mlx_whisper concurrently must never overlap.
+
+    Proves the lock, not just its presence: the mocked transcribe call sleeps
+    briefly with a shared in-critical-section counter, and the test fails if
+    that counter is ever seen above 1.
+    """
+    audio = np.zeros(8000, dtype="float32")
+    concurrent_count = 0
+    max_concurrent = 0
+    lock = threading.Lock()
+
+    def fake_transcribe(*_a, **_kw):
+        nonlocal concurrent_count, max_concurrent
+        with lock:
+            concurrent_count += 1
+            max_concurrent = max(max_concurrent, concurrent_count)
+        time.sleep(0.05)
+        with lock:
+            concurrent_count -= 1
+        return {"text": "hi"}
+
+    mock_mlx_whisper = MagicMock()
+    mock_mlx_whisper.transcribe.side_effect = fake_transcribe
+
+    with patch.dict(sys.modules, {"mlx_whisper": mock_mlx_whisper}):
+        threads = [threading.Thread(target=_run_mlx_whisper, args=(audio, DEFAULT_MODEL)) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+
+    assert max_concurrent == 1
 
 
 # --- keepalive ---
