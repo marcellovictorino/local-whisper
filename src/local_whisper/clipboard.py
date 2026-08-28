@@ -22,7 +22,7 @@ def write_and_paste(text: str, *, settle_ms: int = 0, retries: int = 0) -> None:
     if settle_ms > 0:
         time.sleep(settle_ms / 1000)
 
-    last_exc: subprocess.CalledProcessError | None = None
+    last_exc: subprocess.CalledProcessError | subprocess.TimeoutExpired | None = None
     for attempt in range(1 + retries):
         try:
             subprocess.run(
@@ -33,15 +33,19 @@ def write_and_paste(text: str, *, settle_ms: int = 0, retries: int = 0) -> None:
                 ],
                 check=True,
                 capture_output=True,
+                timeout=10,
             )
             logger.info("Pasted %d chars.", len(text))
             return
-        except subprocess.CalledProcessError as exc:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             last_exc = exc
             if attempt < retries:
                 time.sleep(0.1)
 
-    stderr_msg = last_exc.stderr.decode().strip() if last_exc and last_exc.stderr else ""
+    if isinstance(last_exc, subprocess.CalledProcessError):
+        stderr_msg = last_exc.stderr.decode().strip() if last_exc.stderr else ""
+    else:
+        stderr_msg = "timed out"
     logger.warning(
         "Paste via osascript failed (after %d attempt(s)): %s — text copied to clipboard, paste manually with Cmd+V.",
         1 + retries,

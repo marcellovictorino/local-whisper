@@ -34,6 +34,13 @@ logger = logging.getLogger("local_whisper")
 _MIN_RECORD_DURATION_S = 0.3
 _SILENCE_PEAK_THRESHOLD = 0.01
 
+# Safety net for a session thread wedged in a native call (e.g. a Metal hang):
+# Python's finally never fires on a thread stuck outside the interpreter, so a
+# watchdog independent of that thread is the only way to force the pill closed.
+# Timed from key release, not from key press, so holding the hotkey for a long
+# dictation is never mistaken for a hang.
+_POST_RELEASE_TIMEOUT_S = 180
+
 
 class _SessionMode(StrEnum):
     DICTATION = "dictation"
@@ -46,6 +53,7 @@ class _Session:
     mode: _SessionMode
     stop_event: threading.Event = field(default_factory=threading.Event)
     selection: str = ""
+    watchdog: threading.Timer | None = None
 
     @property
     def trigger(self) -> Trigger:
@@ -231,6 +239,28 @@ class App:
         active = self._active  # snapshot — the session thread nulls it on completion
         if active is not None and active.trigger == trigger:
             active.stop_event.set()
+            if active.watchdog is None:  # guard against a duplicate release event re-arming the timer
+                active.watchdog = threading.Timer(_POST_RELEASE_TIMEOUT_S, self._on_watchdog_timeout, args=(active,))
+                active.watchdog.daemon = True
+                active.watchdog.start()
+
+    def _on_watchdog_timeout(self, session: _Session) -> None:
+        """Force-clear a wedged session so the pill can't stay stuck forever.
+
+        Only fires if the session thread never reached its own finally block —
+        that block cancels this timer on any normal or exceptional exit.
+        """
+        if self._active is session:
+            logger.error(
+                "Session watchdog fired after %ds — forcing pill closed (session likely wedged in a native call).",
+                _POST_RELEASE_TIMEOUT_S,
+            )
+            self._clear_session()
+
+    def _clear_session(self) -> None:
+        self._active = None
+        if self._overlay:
+            self._overlay.hide()
 
     def _run_session(self, session: _Session) -> None:
         """Record until stop_event, transcribe, apply pipeline, paste."""
@@ -296,6 +326,7 @@ class App:
                     t_transcribed if t_transcribed is not None else time.perf_counter(),
                 )
         finally:
-            self._active = None
-            if self._overlay:
-                self._overlay.hide()
+            if session.watchdog is not None:
+                session.watchdog.cancel()
+            if self._active is session:
+                self._clear_session()

@@ -67,6 +67,35 @@ def test_retries_on_failure_success_on_second_attempt() -> None:
     assert len(call_count) == 2
 
 
+def test_paste_call_has_a_timeout() -> None:
+    """A hung osascript/System Events call must not wedge the session thread forever."""
+    with (
+        patch("pyperclip.copy"),
+        patch("subprocess.run") as mock_run,
+        patch("time.sleep"),
+    ):
+        write_and_paste("hi")
+
+    assert mock_run.call_args.kwargs["timeout"] == 10
+
+
+def test_timeout_expired_is_treated_like_a_failed_paste() -> None:
+    """A stalled osascript call must be caught, not left to hang the session."""
+    copied = []
+
+    with (
+        patch("pyperclip.copy", side_effect=lambda t: copied.append(t)),
+        patch("subprocess.run", side_effect=subprocess.TimeoutExpired("osascript", 10)),
+        patch("time.sleep"),
+        patch("local_whisper.clipboard.logger") as mock_logger,
+    ):
+        write_and_paste("hello")
+
+    assert copied == ["hello"]
+    mock_logger.warning.assert_called_once()
+    assert "timed out" in mock_logger.warning.call_args[0]
+
+
 def test_all_retries_exhausted_logs_warning_and_preserves_clipboard() -> None:
     copied = []
 

@@ -84,6 +84,30 @@ def _silence(duration_s: float = 0.5) -> np.ndarray:
 # Set by warm_up() when the warm-up attempt completes (success or failure).
 _warmed = threading.Event()
 
+# Serializes all MLX/Metal calls (dictation, keepalive ping, wake re-warm, warm_up)
+# — MLX Metal command queues are not safe for concurrent access from multiple
+# threads, and a collision can hang the native call with no Python exception.
+_metal_lock = threading.Lock()
+
+# Bounds how long a caller waits for _metal_lock. Without this, a thread wedged
+# while holding the lock (e.g. the exact Metal hang the lock exists to prevent)
+# would poison every future MLX/Metal call forever, not just the one session.
+_METAL_LOCK_TIMEOUT_S = 120
+
+
+@contextlib.contextmanager
+def _metal_guard():
+    """Acquire _metal_lock with a bound, so a wedged holder can't lock out every future call."""
+    if not _metal_lock.acquire(timeout=_METAL_LOCK_TIMEOUT_S):
+        raise TimeoutError(
+            f"Timed out after {_METAL_LOCK_TIMEOUT_S}s waiting for the MLX/Metal lock (a prior call is likely wedged)."
+        )
+    try:
+        yield
+    finally:
+        _metal_lock.release()
+
+
 _progress_bars_suppressed = False
 
 
@@ -144,7 +168,10 @@ def _run_mlx_whisper(audio: np.ndarray, model: str, initial_prompt: str | None =
 
     # MLX Metal streams are thread-local; warm_up runs on a different thread than
     # each keypress transcription thread, so we create a fresh stream here.
-    with mx.stream(mx.gpu):
+    # _metal_guard serializes this against keepalive/wake-rewarm/warm_up calls —
+    # concurrent Metal command-queue access from multiple threads can hang the
+    # native call with no Python exception raised.
+    with _metal_guard(), mx.stream(mx.gpu):
         result = mlx_whisper.transcribe(
             audio,
             path_or_hf_repo=model,
@@ -170,16 +197,18 @@ def _run_parakeet(audio: np.ndarray, model: str) -> str:
     import parakeet_mlx
     import soundfile as sf
 
-    if model not in _parakeet_cache:
-        _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
-    parakeet_model = _parakeet_cache[model]
+    with _metal_guard():
+        if model not in _parakeet_cache:
+            _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
+        parakeet_model = _parakeet_cache[model]
 
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             tmp_path = tmp.name
         sf.write(tmp_path, audio, SAMPLE_RATE_HZ, subtype="PCM_16")
-        result = parakeet_model.transcribe(tmp_path)
+        with _metal_guard():
+            result = parakeet_model.transcribe(tmp_path)
     finally:
         if tmp_path:
             with contextlib.suppress(OSError):
@@ -213,7 +242,8 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
                 import parakeet_mlx
 
                 try:
-                    _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
+                    with _metal_guard():
+                        _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
                     # Dummy inference pre-pays Metal shader compilation and the ffmpeg
                     # audio-loading path, same as the whisper branch below.
                     _run_parakeet(_silence(), model)
@@ -234,7 +264,8 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
         import mlx_whisper
 
         try:
-            mlx_whisper.transcribe(_silence(), path_or_hf_repo=model, verbose=False)
+            with _metal_guard():
+                mlx_whisper.transcribe(_silence(), path_or_hf_repo=model, verbose=False)
             logger.info("Model ready.")
         except Exception as exc:
             logger.warning("Warm-up failed (non-fatal): %s", exc)
