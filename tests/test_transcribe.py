@@ -238,11 +238,14 @@ def test_metal_lock_serializes_concurrent_mlx_whisper_calls() -> None:
     mock_mlx.core.stream.return_value.__enter__ = lambda _self: None
     mock_mlx.core.stream.return_value.__exit__ = lambda _self, *_a: None
 
-    with patch.dict(sys.modules, {
-        "mlx_whisper": mock_mlx_whisper,
-        "mlx": mock_mlx,
-        "mlx.core": mock_mlx.core,
-    }):
+    with patch.dict(
+        sys.modules,
+        {
+            "mlx_whisper": mock_mlx_whisper,
+            "mlx": mock_mlx,
+            "mlx.core": mock_mlx.core,
+        },
+    ):
         threads = [threading.Thread(target=_run_mlx_whisper, args=(audio, DEFAULT_MODEL)) for _ in range(4)]
         for t in threads:
             t.start()
