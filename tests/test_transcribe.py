@@ -243,6 +243,17 @@ def test_metal_lock_serializes_concurrent_mlx_whisper_calls() -> None:
     assert max_concurrent == 1
 
 
+def test_metal_lock_acquire_is_bounded_by_a_timeout() -> None:
+    """A holder that never releases must not lock out every future MLX/Metal call forever.
+
+    Exercises _metal_guard directly rather than through _run_mlx_whisper, so the
+    test doesn't depend on the real MLX/Metal runtime.
+    """
+    with patch("local_whisper.transcribe._METAL_LOCK_TIMEOUT_S", 0.05), _tr._metal_lock:
+        with pytest.raises(TimeoutError), _tr._metal_guard():
+            pass
+
+
 # --- keepalive ---
 
 

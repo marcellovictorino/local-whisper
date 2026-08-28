@@ -255,9 +255,12 @@ class App:
                 "Session watchdog fired after %ds — forcing pill closed (session likely wedged in a native call).",
                 _POST_RELEASE_TIMEOUT_S,
             )
-            self._active = None
-            if self._overlay:
-                self._overlay.hide()
+            self._clear_session()
+
+    def _clear_session(self) -> None:
+        self._active = None
+        if self._overlay:
+            self._overlay.hide()
 
     def _run_session(self, session: _Session) -> None:
         """Record until stop_event, transcribe, apply pipeline, paste."""
@@ -325,6 +328,4 @@ class App:
         finally:
             if session.watchdog is not None:
                 session.watchdog.cancel()
-            self._active = None
-            if self._overlay:
-                self._overlay.hide()
+            self._clear_session()
