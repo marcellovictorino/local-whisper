@@ -239,9 +239,10 @@ class App:
         active = self._active  # snapshot — the session thread nulls it on completion
         if active is not None and active.trigger == trigger:
             active.stop_event.set()
-            active.watchdog = threading.Timer(_POST_RELEASE_TIMEOUT_S, self._on_watchdog_timeout, args=(active,))
-            active.watchdog.daemon = True
-            active.watchdog.start()
+            if active.watchdog is None:  # guard against a duplicate release event re-arming the timer
+                active.watchdog = threading.Timer(_POST_RELEASE_TIMEOUT_S, self._on_watchdog_timeout, args=(active,))
+                active.watchdog.daemon = True
+                active.watchdog.start()
 
     def _on_watchdog_timeout(self, session: _Session) -> None:
         """Force-clear a wedged session so the pill can't stay stuck forever.

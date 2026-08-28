@@ -222,7 +222,8 @@ def warm_up(model: str = DEFAULT_MODEL, backend: str = DEFAULT_BACKEND) -> None:
                 import parakeet_mlx
 
                 try:
-                    _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
+                    with _metal_lock:
+                        _parakeet_cache[model] = parakeet_mlx.from_pretrained(model)
                     # Dummy inference pre-pays Metal shader compilation and the ffmpeg
                     # audio-loading path, same as the whisper branch below.
                     _run_parakeet(_silence(), model)

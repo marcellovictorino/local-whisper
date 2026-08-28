@@ -326,6 +326,22 @@ def test_watchdog_only_fires_for_the_session_it_was_armed_for() -> None:
     overlay.hide.assert_not_called()
 
 
+def test_duplicate_release_event_does_not_re_arm_the_watchdog() -> None:
+    """A second release event for the same session must not orphan the first timer."""
+    overlay = MagicMock()
+    app = _build_app(overlay=overlay)
+    session = _Session(mode=_SessionMode.DICTATION)
+    app._active = session
+
+    with patch("local_whisper.app._POST_RELEASE_TIMEOUT_S", 60):
+        app._on_key_release(Trigger.DICTATE)
+        first_timer = session.watchdog
+        app._on_key_release(Trigger.DICTATE)
+
+    assert session.watchdog is first_timer
+    first_timer.cancel()
+
+
 def test_log_session_emits_line_on_failure_outcome(caplog: pytest.LogCaptureFixture) -> None:
     """Failing sessions must still produce a timing line — they are the ones worth investigating."""
     with caplog.at_level(logging.INFO, logger="local_whisper"):
