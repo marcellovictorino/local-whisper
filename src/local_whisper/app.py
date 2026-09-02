@@ -262,9 +262,7 @@ class App:
         if active is None or (trigger is not None and active.trigger != trigger):
             return
         active.stop_event.set()
-        if active.watchdog is not None:
-            active.watchdog.cancel()
-        self._clear_session()
+        self._end_session(active)
 
     def _on_watchdog_timeout(self, session: _Session) -> None:
         """Force-clear a wedged session so the pill can't stay stuck forever.
@@ -277,12 +275,21 @@ class App:
                 "Session watchdog fired after %ds — forcing pill closed (session likely wedged in a native call).",
                 _POST_RELEASE_TIMEOUT_S,
             )
-            self._clear_session()
+            self._end_session(session)
 
-    def _clear_session(self) -> None:
-        self._active = None
-        if self._overlay:
-            self._overlay.hide()
+    def _end_session(self, session: _Session) -> None:
+        """Cancel this session's watchdog and hide the pill, if it's still the active one.
+
+        Shared by every path that can end a session: normal completion
+        (via _run_session's finally), the watchdog firing, and a forced
+        cancel/recovery.
+        """
+        if session.watchdog is not None:
+            session.watchdog.cancel()
+        if self._active is session:
+            self._active = None
+            if self._overlay:
+                self._overlay.hide()
 
     def _run_session(self, session: _Session) -> None:
         """Record until stop_event, transcribe, apply pipeline, paste."""
@@ -350,7 +357,4 @@ class App:
                     t_transcribed if t_transcribed is not None else time.perf_counter(),
                 )
         finally:
-            if session.watchdog is not None:
-                session.watchdog.cancel()
-            if self._active is session:
-                self._clear_session()
+            self._end_session(session)

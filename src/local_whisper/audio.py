@@ -62,6 +62,7 @@ def record_until_event(
     """
     chunks: list[np.ndarray] = []
     last_voice_at = time.monotonic()
+    need_rms = on_amplitude is not None or silence_timeout_s is not None
 
     def _callback(
         indata: np.ndarray,
@@ -73,12 +74,13 @@ def record_until_event(
         if status:
             logger.warning("[audio] %s", status)
         chunks.append(indata.copy())
-        flat = indata[:, 0]
-        rms = math.sqrt(float(np.dot(flat, flat)) / len(flat))
-        if rms >= silence_rms_threshold:
-            last_voice_at = time.monotonic()
-        if on_amplitude is not None:
-            on_amplitude(rms)
+        if need_rms:
+            flat = indata[:, 0]
+            rms = math.sqrt(float(np.dot(flat, flat)) / len(flat))
+            if silence_timeout_s is not None and rms >= silence_rms_threshold:
+                last_voice_at = time.monotonic()
+            if on_amplitude is not None:
+                on_amplitude(rms)
 
     logger.info("Recording...")
     with sounddevice.InputStream(
@@ -88,13 +90,11 @@ def record_until_event(
         blocksize=chunk_size,
         callback=_callback,
     ):
-        if silence_timeout_s is None:
-            stop_event.wait()
-        else:
-            while not stop_event.wait(timeout=_POLL_INTERVAL_S):
-                if time.monotonic() - last_voice_at >= silence_timeout_s:
-                    logger.info("Silence timeout — auto-stopping.")
-                    break
+        poll_timeout = _POLL_INTERVAL_S if silence_timeout_s is not None else None
+        while not stop_event.wait(timeout=poll_timeout):
+            if silence_timeout_s is not None and time.monotonic() - last_voice_at >= silence_timeout_s:
+                logger.info("Silence timeout — auto-stopping.")
+                break
 
     logger.info("Done.")
 
