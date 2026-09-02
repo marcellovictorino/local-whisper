@@ -41,6 +41,11 @@ _SILENCE_PEAK_THRESHOLD = 0.01
 # dictation is never mistaken for a hang.
 _POST_RELEASE_TIMEOUT_S = 180
 
+# Auto-stop a recording after this many seconds of continuous silence — also
+# the grace period before the first word. Backstops a lost key-release event
+# without imposing a fixed max recording length.
+_SILENCE_TIMEOUT_S = 3.0
+
 
 class _SessionMode(StrEnum):
     DICTATION = "dictation"
@@ -150,6 +155,7 @@ class App:
         self._listener = HotkeyListener(
             on_activate=self._on_key_press,
             on_deactivate=self._on_key_release,
+            on_cancel=self._on_key_cancel,
         )
 
     def start(self) -> None:
@@ -159,7 +165,8 @@ class App:
         self._signal_if_config_malformed()
         logger.info(
             "local-whisper running. Hold Right ⌘ to dictate (or transform selection); "
-            "hold Right ⌥ to dictate with app-adapted formatting. Ctrl+C to quit."
+            "hold Right ⌥ to dictate with app-adapted formatting. Esc cancels a stuck "
+            "session. Ctrl+C to quit."
         )
         if not llm.is_available():
             logger.warning(
@@ -244,6 +251,21 @@ class App:
                 active.watchdog.daemon = True
                 active.watchdog.start()
 
+    def _on_key_cancel(self, trigger: Trigger | None) -> None:
+        """Force-recover a wedged session — via Esc (trigger=None) or a re-press.
+
+        Unlike a normal release, this clears self._active synchronously
+        (not just stop_event) so a re-press's immediate on_activate isn't
+        dropped by the "one session at a time" guard in _on_key_press.
+        """
+        active = self._active
+        if active is None or (trigger is not None and active.trigger != trigger):
+            return
+        active.stop_event.set()
+        if active.watchdog is not None:
+            active.watchdog.cancel()
+        self._clear_session()
+
     def _on_watchdog_timeout(self, session: _Session) -> None:
         """Force-clear a wedged session so the pill can't stay stuck forever.
 
@@ -267,7 +289,9 @@ class App:
         duration_s = t0 = t_transcribed = None
         try:
             on_amp = self._overlay.update_amplitude if self._overlay else None
-            audio_data: np.ndarray = audio.record_until_event(session.stop_event, on_amplitude=on_amp)
+            audio_data: np.ndarray = audio.record_until_event(
+                session.stop_event, on_amplitude=on_amp, silence_timeout_s=_SILENCE_TIMEOUT_S
+            )
             if self._overlay:
                 self._overlay.set_processing()
             if audio_data.size == 0:

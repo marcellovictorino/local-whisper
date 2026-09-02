@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from unittest.mock import MagicMock, patch
 
@@ -340,6 +341,71 @@ def test_duplicate_release_event_does_not_re_arm_the_watchdog() -> None:
 
     assert session.watchdog is first_timer
     first_timer.cancel()
+
+
+# --- forced recovery (Esc / re-press) ---
+
+
+def test_key_cancel_force_clears_a_wedged_session() -> None:
+    """Esc (trigger=None) must recover whatever session is active, synchronously."""
+    overlay = MagicMock()
+    app = _build_app(overlay=overlay)
+    session = _Session(mode=_SessionMode.DICTATION)
+    app._active = session
+
+    app._on_key_cancel(None)
+
+    assert session.stop_event.is_set()
+    assert app._active is None
+    overlay.hide.assert_called_once_with()
+
+
+def test_key_cancel_with_mismatched_trigger_is_ignored() -> None:
+    """A re-press recovery call for a different trigger must not touch the active session."""
+    overlay = MagicMock()
+    app = _build_app(overlay=overlay)
+    session = _Session(mode=_SessionMode.DICTATION)  # trigger is Trigger.DICTATE
+    app._active = session
+
+    app._on_key_cancel(Trigger.ADAPT)
+
+    assert not session.stop_event.is_set()
+    assert app._active is session
+    overlay.hide.assert_not_called()
+
+
+def test_key_cancel_cancels_any_armed_watchdog() -> None:
+    """A forced recovery must not leave a stale watchdog timer to fire later."""
+    overlay = MagicMock()
+    app = _build_app(overlay=overlay)
+    session = _Session(mode=_SessionMode.DICTATION)
+    app._active = session
+
+    with patch("local_whisper.app._POST_RELEASE_TIMEOUT_S", 0.05):
+        app._on_key_release(Trigger.DICTATE)
+        app._on_key_cancel(Trigger.DICTATE)
+        time.sleep(0.2)
+
+    overlay.hide.assert_called_once_with()  # once from the cancel, not again from a stale watchdog
+
+
+def test_key_cancel_clears_active_synchronously_so_a_repress_is_not_dropped() -> None:
+    """A re-press must see self._active already cleared, so its on_activate isn't swallowed."""
+    overlay = MagicMock()
+    app = _build_app(overlay=overlay)
+    session = _Session(mode=_SessionMode.DICTATION)
+    app._active = session
+
+    block_forever = threading.Event()  # never set — keeps the new session's thread parked mid-recording
+    app._on_key_cancel(Trigger.DICTATE)  # what the listener does before re-firing on_activate
+    with (
+        patch("local_whisper.app.command.get_selection", return_value=""),
+        patch("local_whisper.app.audio.record_until_event", side_effect=lambda *_a, **_kw: block_forever.wait()),
+    ):
+        app._on_key_press(Trigger.DICTATE)
+
+    assert app._active is not None
+    assert app._active is not session
 
 
 def test_log_session_emits_line_on_failure_outcome(caplog: pytest.LogCaptureFixture) -> None:
