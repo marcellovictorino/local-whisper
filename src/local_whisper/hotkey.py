@@ -26,7 +26,13 @@ class HotkeyListener:
     Right Command (hold/release): on_activate / on_deactivate with Trigger.DICTATE.
     Right Option (hold/release): same callbacks with Trigger.ADAPT.
 
-    Debounced per key — repeated press events while held do not re-trigger.
+    macOS can silently drop a key-release event (CGEventTap stalls, sleep/wake,
+    focus steal), which would otherwise wedge a trigger "held" forever. Two
+    recovery paths cover that: pressing Esc calls on_cancel(None) to recover
+    whatever is active. Pressing a trigger key this listener still thinks is
+    held means its release was lost — modifier keys don't OS-repeat, so a
+    genuine second press can only mean that — and calls on_cancel(trigger)
+    before still firing on_activate to start a fresh session.
 
     Requires macOS Accessibility permission for the running
     Python interpreter — the venv binary launchd runs (System
@@ -37,15 +43,22 @@ class HotkeyListener:
         self,
         on_activate: Callable[[Trigger], None],
         on_deactivate: Callable[[Trigger], None],
+        on_cancel: Callable[[Trigger | None], None] | None = None,
     ) -> None:
         """Initialise the listener.
 
         Args:
             on_activate: Called once when a trigger key is pressed.
             on_deactivate: Called once when that trigger key is released.
+            on_cancel: Called to force-recover a wedged session — with None
+                on Esc (recover whatever is active), or a specific trigger
+                when that same key is pressed again while still "held".
+                Unlike on_deactivate, this must clear state synchronously so
+                a following on_activate for the same trigger isn't dropped.
         """
         self._on_activate = on_activate
         self._on_deactivate = on_deactivate
+        self._on_cancel = on_cancel
         self._pressed: set[Trigger] = set()
         self._listener: keyboard.Listener | None = None
 
@@ -76,10 +89,22 @@ class HotkeyListener:
             self._listener = None
 
     def _handle_press(self, key: keyboard.Key | keyboard.KeyCode) -> None:
+        if key == keyboard.Key.esc:
+            if self._on_cancel is not None:
+                self._on_cancel(None)
+            return
+
         trigger = _KEY_TO_TRIGGER.get(key)  # type: ignore[arg-type]
-        if trigger is not None and trigger not in self._pressed:
-            self._pressed.add(trigger)
-            self._on_activate(trigger)
+        if trigger is None:
+            return
+        if trigger in self._pressed:
+            # A prior release event was lost — this key can't physically be
+            # held across a fresh press, so force-recover before restarting.
+            self._pressed.discard(trigger)
+            if self._on_cancel is not None:
+                self._on_cancel(trigger)
+        self._pressed.add(trigger)
+        self._on_activate(trigger)
 
     def _handle_release(self, key: keyboard.Key | keyboard.KeyCode) -> None:
         trigger = _KEY_TO_TRIGGER.get(key)  # type: ignore[arg-type]

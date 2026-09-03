@@ -9,10 +9,14 @@ from pynput import keyboard
 from local_whisper.hotkey import HotkeyListener, Trigger
 
 
-def _listener() -> tuple[HotkeyListener, MagicMock, MagicMock]:
+def _listener(on_cancel: MagicMock | None = None) -> tuple[HotkeyListener, MagicMock, MagicMock]:
     on_activate = MagicMock()
     on_deactivate = MagicMock()
-    return HotkeyListener(on_activate=on_activate, on_deactivate=on_deactivate), on_activate, on_deactivate
+    return (
+        HotkeyListener(on_activate=on_activate, on_deactivate=on_deactivate, on_cancel=on_cancel),
+        on_activate,
+        on_deactivate,
+    )
 
 
 def test_cmd_r_activates_dictate() -> None:
@@ -34,11 +38,41 @@ def test_release_fires_deactivate_with_matching_trigger() -> None:
     on_deactivate.assert_called_once_with(Trigger.ADAPT)
 
 
-def test_repeated_press_is_debounced_per_key() -> None:
+def test_repeat_press_of_held_trigger_recovers_and_restarts() -> None:
+    """A second physical press of a still-"held" trigger means its release was lost.
+
+    Modifier keys don't auto-repeat in pynput, so a genuine second press only
+    happens if the OS/tap dropped the release event — recover the wedged
+    session, then start a fresh one rather than swallowing the press.
+    """
+    on_cancel = MagicMock()
+    listener, on_activate, _ = _listener(on_cancel=on_cancel)
+    listener._handle_press(keyboard.Key.cmd_r)
+    listener._handle_press(keyboard.Key.cmd_r)
+    on_cancel.assert_called_once_with(Trigger.DICTATE)
+    assert on_activate.call_count == 2
+
+
+def test_repeat_press_without_cancel_handler_still_restarts() -> None:
     listener, on_activate, _ = _listener()
     listener._handle_press(keyboard.Key.cmd_r)
     listener._handle_press(keyboard.Key.cmd_r)
-    assert on_activate.call_count == 1
+    assert on_activate.call_count == 2
+
+
+def test_esc_invokes_on_cancel_with_no_trigger() -> None:
+    on_cancel = MagicMock()
+    listener, on_activate, _ = _listener(on_cancel=on_cancel)
+    listener._handle_press(keyboard.Key.esc)
+    on_cancel.assert_called_once_with(None)
+    on_activate.assert_not_called()
+
+
+def test_esc_without_cancel_handler_is_a_noop() -> None:
+    listener, on_activate, on_deactivate = _listener()
+    listener._handle_press(keyboard.Key.esc)
+    on_activate.assert_not_called()
+    on_deactivate.assert_not_called()
 
 
 def test_release_without_press_is_ignored() -> None:
