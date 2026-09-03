@@ -26,13 +26,13 @@ class HotkeyListener:
     Right Command (hold/release): on_activate / on_deactivate with Trigger.DICTATE.
     Right Option (hold/release): same callbacks with Trigger.ADAPT.
 
-    Debounced per key — repeated press events while held do not re-trigger.
-
     macOS can silently drop a key-release event (CGEventTap stalls, sleep/wake,
     focus steal), which would otherwise wedge a trigger "held" forever. Two
-    recovery paths cover that: pressing Esc calls on_cancel, and pressing a
-    trigger key that this listener still thinks is held forces a synthetic
-    on_deactivate before honoring the new press.
+    recovery paths cover that: pressing Esc calls on_cancel(None) to recover
+    whatever is active. Pressing a trigger key this listener still thinks is
+    held means its release was lost — modifier keys don't OS-repeat, so a
+    genuine second press can only mean that — and calls on_cancel(trigger)
+    before still firing on_activate to start a fresh session.
 
     Requires macOS Accessibility permission for the running
     Python interpreter — the venv binary launchd runs (System

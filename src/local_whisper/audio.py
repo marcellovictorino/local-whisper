@@ -90,7 +90,7 @@ def record_until_event(
         blocksize=chunk_size,
         callback=_callback,
     ):
-        poll_timeout = _POLL_INTERVAL_S if silence_timeout_s is not None else None
+        poll_timeout = min(_POLL_INTERVAL_S, silence_timeout_s) if silence_timeout_s is not None else None
         while not stop_event.wait(timeout=poll_timeout):
             if silence_timeout_s is not None and time.monotonic() - last_voice_at >= silence_timeout_s:
                 logger.info("Silence timeout — auto-stopping.")
