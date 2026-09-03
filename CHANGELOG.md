@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.18.3 (2026-09-03)
+
+### Bug Fixes
+
+- **local_whisper**: Recover overlay pill stuck mid-recording
+  ([`3fc0802`](https://github.com/marcellovictorino/local-whisper/commit/3fc0802d39263d0e04b12e5b6d20c209e13bbee1))
+
+
 ## v0.18.2 (2026-08-28)
 
 ### Bug Fixes
